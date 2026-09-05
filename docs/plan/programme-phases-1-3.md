@@ -1,0 +1,110 @@
+# AI See You CRM: programme state, Phases 1 to 3
+
+This is the coordinator's working document. It records what is done, what is in
+progress, and what each child workstream owns. The architecture it implements is
+`docs/ai-see-you-crm-foundation-audit.md`, sections H and R. That document wins on
+every question of design.
+
+## Standing rules
+
+1. The CRM never writes AI See You Production. No credential, no client, no path.
+2. `DATABASE_URL` points at the dedicated AI See You CRM Supabase project, or at a
+   local Postgres. Never Production. Never the Research Lab.
+3. Telemetry stays off.
+4. Additive, file-local changes. The fork must keep merging from upstream.
+5. No em dashes, no en dashes, anywhere.
+6. No code comments except ones that record a decision somebody would undo.
+
+## Environments
+
+| Thing | Value |
+| --- | --- |
+| Repository | `ai-seeyou/ai-see-you-crm` |
+| Canonical branch | `release` |
+| Phase 0 merge | `f6888b5` |
+| CRM Supabase project | `AI See You CRM`, ref `oobfqkcqcdsbcnapegyk`, `ap-southeast-2` |
+| CRM Supabase Data API | Disabled. `db_schema` is empty. Verified 5 Sep 2026. |
+| Local Postgres | Homebrew `postgresql@16` on `localhost:5432`, databases `crm` and `crm_test` |
+| Vercel region | `syd1`, pinned for the API in `apps/api/vercel.json` |
+
+## Phase 1: run it, locally then deployed
+
+### 1a, local. Done, 5 Sep 2026
+
+- `bun install` clean.
+- 56 migrations applied to the local `crm` database.
+- Seed wrote 15 companies, 45 contacts, 23 deals, 159 activities.
+- `bun run build` passes. `bun run check-types` passes.
+- `bun run test` passes, 0 failures, after `bun run db:test` created `crm_test`.
+- API `GET /health` returns `{"status":"ok","database":"up"}`.
+- App `GET /` redirects to `/sign-in`. The sign-in page renders as
+  `Sign in - AI See You CRM`.
+- A local session comes from `apps/api/scripts/dev-session.ts`. It needs no
+  Google OAuth client, so UI verification does not wait on one.
+
+### 1b, deployed. Blocked on three founder credentials
+
+The code is ready. The blockers are account access, not engineering:
+
+1. The CRM Supabase database password, for `DATABASE_URL` and `DIRECT_DATABASE_URL`.
+2. Vercel account access, for three projects (app, API, agent) in `syd1`.
+3. A Google OAuth client, for sign-in only.
+
+Item 3 is sign-in scope only. Gmail and Calendar reading stays off until the
+founder approves it, which is a separate decision and a Phase 4 item.
+
+## Phase 2: the travel data architecture
+
+Audit section H.3 and H.4. Additive migrations only. `Company` stays the physical
+table. `Contact.companyId` is retained and kept synchronised with the single
+primary employer assignment.
+
+| # | Migration | State |
+| --- | --- | --- |
+| 1 | `Vertical`, `Company.verticalId`, `Company.entityType`, seed four verticals | |
+| 2 | `EntityRelationship`, `RelationshipType` | |
+| 3 | `ContactAssignment`, `ContactRoleType`, `AssignmentScope`, backfill | |
+| 4 | `ExternalRef` and its enums | |
+| 5 | Drop the `Company.domain` unique index, change `companyForEmail` | |
+| 6 | Travel `FieldDefinition` seeds, replace the `DealStage` values | |
+
+Refused by design: a `parentId` tree, Production identifiers stored as custom
+fields, any Production write path.
+
+### Acceptance test
+
+Synthetic data only. One hotel group, three properties, one management company,
+typed relationships between them, one senior group contact employed at the group
+and responsible for all three properties. Both directions queryable. No reliance
+on a unique corporate domain for property identity. Canonical external references
+represented.
+
+## Phase 3: make it useful
+
+Audit section R items 18 to 22, plus the founder brief.
+
+- Company reads as Business, Deal reads as Opportunity, in user-facing language.
+- Business record sheet: a Relationships panel and an Assignments panel.
+- Contact record sheet: a Responsible for panel.
+- Filters: vertical, entity type, lifecycle stage, role type, region.
+- `TODAY`: overdue tasks, recent replies, stale opportunities, follow-ups.
+- `COVERAGE`: target businesses missing a required commercial role.
+
+## Workstreams
+
+| Id | Owns | Agent |
+| --- | --- | --- |
+| WS-A | Infrastructure and deployment | Coordinator |
+| WS-B | Phase 2 data architecture | Child |
+| WS-C | Phase 3 product and UI | Child |
+| WS-D | Independent adversarial QA | Child, never the one that implemented |
+
+The agent that implements a material change never certifies it.
+
+## Programme exclusions
+
+Not in this programme: Clay, real hotel or contact import, the Production read
+API, Production synchronisation, Gmail sending, automated outreach, campaigns,
+sequences, suppression, website tracking activation, Slack activation, cruise
+import, tour operator import. The schema supports future verticals. This
+programme does not populate them.

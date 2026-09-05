@@ -1531,6 +1531,11 @@ model AppSetting {
 
   contextDevApiKey String?
 
+  // A research key is optional here, unlike upstream, where the onboarding gate
+  // cannot be passed without one. This records the moment somebody chose to go on
+  // without a key, so the gate settles and Settings can still ask for one later.
+  contextDevDeferredAt DateTime?
+
   reportingCurrency String?
 
   ratesRefreshedAt DateTime?

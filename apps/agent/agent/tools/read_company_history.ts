@@ -1,11 +1,12 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { readCompanyHistory } from "../lib/accounts";
+import { structureNote } from "../lib/entities";
 import { focusOn } from "../lib/focus";
 
 export default defineTool({
 	description:
-		"Read everything the CRM has on a company: every contact there with their id, title and whether we have heard from them; every deal with stage and value; recent email threads with full bodies; meetings; and notes. Free and fast — call it first in a company session, and whenever you need to find a person at a company you already know.",
+		"Read everything the CRM has on a company: every contact there with their id, title and whether we have heard from them; every deal with stage and value; recent email threads with full bodies; meetings; and notes. Free and fast, call it first in a company session, and whenever you need to find a person at a company you already know.",
 	inputSchema: z.object({
 		companyId: z.string(),
 		threads: z
@@ -29,13 +30,15 @@ export default defineTool({
 		const history = await readCompanyHistory(companyId, { threads, people });
 		if (!history) return { found: false as const, reason: "No such company." };
 
+		const whoWeKnow =
+			history.people.length === 0
+				? "We have no contacts on file at this company, so there is nobody here to research yet."
+				: "Every person above carries their contact id, use it directly with read_crm_history, identify_contact or record_fact. Never ask a rep for an id that is in this list.";
+
 		return {
 			found: true as const,
 			...history,
-			note:
-				history.people.length === 0
-					? "We have no contacts on file at this company, so there is nobody here to research yet."
-					: "Every person above carries their contact id — use it directly with read_crm_history, identify_contact or record_fact. Never ask a rep for an id that is in this list.",
+			note: `${whoWeKnow} ${structureNote(history.structure)}`,
 		};
 	},
 });

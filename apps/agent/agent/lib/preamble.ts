@@ -1,6 +1,12 @@
 import { db } from "@crm/db";
 import { websiteUrl } from "@crm/db/workspace";
 import { capabilitiesMarkdown } from "./capabilities";
+import {
+	coverageMarkdown,
+	readBusinessStructure,
+	readContactCoverage,
+	structureMarkdown,
+} from "./entities";
 import { identity, usMarkdown, type WorkspaceIdentity } from "./workspace";
 
 export type Opened = {
@@ -8,7 +14,7 @@ export type Opened = {
 	kind?: string | null;
 	reason?: string | null;
 	budget?: number | null;
-	/** Set only for a `field-backfill` task — the custom field key(s) still blank on this record. */
+	/** Set only for a `field-backfill` task, the custom field key(s) still blank on this record. */
 	fieldKeys?: string[] | null;
 };
 
@@ -61,13 +67,13 @@ function opening(opened: Opened, questions: string): string {
 	if (opened.dispatched) {
 		return [
 			"This session was started by the dispatcher, not by a person. Nobody is",
-			"waiting on a reply — do the work, record what you find, and stop.",
+			"waiting on a reply, do the work, record what you find, and stop.",
 		].join(" ");
 	}
 
 	return [
 		"**A rep has this record open and is talking to you.** Answer what they",
-		`actually asked — usually some form of ${questions} — from what the CRM`,
+		`actually asked, usually some form of ${questions}, from what the CRM`,
 		"already holds, and say plainly when we do not know something. Research it",
 		"further only if the answer needs it or they ask you to. Never ask them for",
 		"an id, a name or an address you can look up yourself.",
@@ -107,7 +113,7 @@ export async function contactPreamble(
 
 	const known =
 		contact._count.emailThreads > 0 || contact._count.calendarEvents > 0
-			? `We have ${contact._count.emailThreads} thread(s) and ${contact._count.calendarEvents} meeting(s) with them — read those first.`
+			? `We have ${contact._count.emailThreads} thread(s) and ${contact._count.calendarEvents} meeting(s) with them, read those first.`
 			: "We have never corresponded with them, so there is nothing internal to go on.";
 
 	const deals = contact.deals
@@ -138,8 +144,15 @@ export async function contactPreamble(
 		contact.company
 			? `They work at **${contact.company.name}**${
 					contact.company.domain ? ` (${contact.company.domain})` : ""
-				}, company id \`${contact.company.id}\` — pass that straight to \`read_company_history\`, \`enrich_company\` or \`research_company\` when the question reaches past this one person.`
+				}, company id \`${contact.company.id}\`, pass that straight to \`read_company_history\`, \`enrich_company\` or \`research_company\` when the question reaches past this one person.`
 			: "They are not attached to a company. `search_crm` will find one by name or domain if the conversation needs it.",
+		coverageMarkdown(name, await readContactCoverage(contactId)),
+		contact.company
+			? structureMarkdown(
+					contact.company.name,
+					await readBusinessStructure(contact.company.id),
+				)
+			: "",
 		deals ? `They are on: ${deals}.` : "They are not on any deal.",
 		"",
 		known,
@@ -194,7 +207,7 @@ export async function companyPreamble(
 			const name = [person.firstName, person.lastName]
 				.filter(Boolean)
 				.join(" ");
-			return `- ${name}${person.title ? ` — ${person.title}` : ""} \`${person.id}\``;
+			return `- ${name}${person.title ? `, ${person.title}` : ""} \`${person.id}\``;
 		})
 		.join("\n");
 
@@ -212,7 +225,7 @@ export async function companyPreamble(
 		"",
 		`You are working on **${company.name}**${
 			company.domain ? ` (${company.domain})` : ""
-		}${company.industry ? `, ${company.industry}` : ""} — company id \`${companyId}\`.`,
+		}${company.industry ? `, ${company.industry}` : ""}, company id \`${companyId}\`.`,
 		fieldBackfillLine(opened),
 		"",
 		opening(
@@ -220,8 +233,10 @@ export async function companyPreamble(
 			"what this company does, who we know there, or what has changed recently",
 		),
 		"",
+		structureMarkdown(company.name, await readBusinessStructure(companyId)),
+		"",
 		people
-			? `### Who we know there (${company._count.contacts})\n\n${people}${more}\n\nThose are contact ids. Use them directly — with \`read_crm_history\`, \`identify_contact\` or \`record_fact\`. Never ask a rep which contact they mean without naming these first.`
+			? `### Who we know there (${company._count.contacts})\n\n${people}${more}\n\nThose are contact ids. Use them directly, with \`read_crm_history\`, \`identify_contact\` or \`record_fact\`. Never ask a rep which contact they mean without naming these first.`
 			: "We have no contacts on file here yet.",
 		"",
 		deals ? `Deals: ${deals}.` : "There are no deals here.",
@@ -229,7 +244,7 @@ export async function companyPreamble(
 			? "There is already a description on the record."
 			: "There is no description on the record yet.",
 		"",
-		"Start with `read_company_history` on this company id — it returns the people, the deals, the correspondence and the notes in one free call.",
+		"Start with `read_company_history` on this company id, it returns the people, the deals, the correspondence and the notes in one free call.",
 		"",
 		await closing(),
 	]
@@ -273,7 +288,7 @@ export async function dealPreamble(
 				.filter(Boolean)
 				.join(" ");
 			return `${name}${contact.title ? ` (${contact.title})` : ""}${
-				role ? ` — ${role}` : ""
+				role ? `, ${role}` : ""
 			} \`${contact.id}\``;
 		})
 		.join("; ");
@@ -283,7 +298,7 @@ export async function dealPreamble(
 		"",
 		`You are working on the deal **${deal.name}**${
 			deal.company ? ` at ${deal.company.name}` : ""
-		} — deal id \`${dealId}\`${
+		}, deal id \`${dealId}\`${
 			deal.company ? `, company id \`${deal.company.id}\`` : ""
 		}.`,
 		`Stage: **${deal.stage}**${
@@ -309,11 +324,11 @@ export async function dealPreamble(
 			"where this stands, who else should be involved, or what the risk is",
 		),
 		"",
-		"Start with `read_deal_history` on this deal id. It returns the stage clock, every stage this deal has moved through, the last reply from their side and the next meeting — which is how you answer *where does this stand* rather than reciting the stage field back.",
+		"Start with `read_deal_history` on this deal id. It returns the stage clock, every stage this deal has moved through, the last reply from their side and the next meeting, which is how you answer *where does this stand* rather than reciting the stage field back.",
 		"",
 		opened.fieldKeys && opened.fieldKeys.length > 0
-			? "You can research the people and the company behind it with the usual tools too — most of what you learn about them is recorded against them, not the deal."
-			: "You can research the people and the company behind it with the usual tools — a deal itself has no fields to enrich, so anything you learn is recorded against them.",
+			? "You can research the people and the company behind it with the usual tools too, most of what you learn about them is recorded against them, not the deal."
+			: "You can research the people and the company behind it with the usual tools, a deal itself has no fields to enrich, so anything you learn is recorded against them.",
 		"",
 		await closing(),
 	]
@@ -351,8 +366,8 @@ export async function workspacePreamble(
 				"## This session",
 				"",
 				"You were asked to write the profile of the company you work for, and",
-				"this install has no web address on record — nobody gave one, or what is",
-				"stored is not one. There is nothing to read. Stop — do not guess at it",
+				"this install has no web address on record, nobody gave one, or what is",
+				"stored is not one. There is nothing to read. Stop, and do not guess at it",
 				"from the email addresses in the CRM.",
 			].join("\n"),
 			focus: {},
@@ -362,20 +377,20 @@ export async function workspacePreamble(
 	const markdown = [
 		"## This session",
 		"",
-		`You are writing the profile of **the company you work for** — ${us.name} (${us.website}).`,
+		`You are writing the profile of **the company you work for**, ${us.name} (${us.website}).`,
 		us.profile
 			? `One already exists, written ${us.profile.refreshedAt.toDateString()}. Replace it only if the site now says something different.`
 			: "There is no profile of us yet.",
 		"",
-		`Read ${site} with \`web_fetch\` — the home page, and the pricing or product`,
-		"page if there is one — and search the web only if the site does not say who",
+		`Read ${site} with \`web_fetch\`, the home page, and the pricing or product`,
+		"page if there is one, and search the web only if the site does not say who",
 		"the customer is. Then call `write_workspace_profile`.",
 		"",
 		"**Every other session opens with what you write here**, in front of the",
 		"record a rep is asking about, so it has to be short and it has to be",
 		"substance. The tool enforces that: 320 characters of narrative and one",
 		"short line each for what we sell, who we sell to, and what we are picked",
-		"over. Leave a line out rather than padding it. No marketing adjectives —",
+		"over. Leave a line out rather than padding it. No marketing adjectives:",
 		'"leading", "innovative" and "best-in-class" say nothing a rep can use.',
 		"",
 		"You are describing us to a colleague who has just joined, not writing our",

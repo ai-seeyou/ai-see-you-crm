@@ -1,4 +1,10 @@
 import { db, EnrichmentStatus, type Prisma } from "@crm/db";
+import {
+	type BusinessStructure,
+	type ContactCoverage,
+	readBusinessStructure,
+	readContactCoverage,
+} from "./entities";
 import { domainOf, isDerivedName } from "./names";
 import type { Person } from "./socials";
 
@@ -119,6 +125,8 @@ export type CrmHistory = {
 			industry: string | null;
 		} | null;
 	};
+	coverage: ContactCoverage;
+	employerStructure: BusinessStructure | null;
 	deals: {
 		id: string;
 		name: string;
@@ -200,61 +208,66 @@ export async function readCrmHistory(
 	const includeEmail = options.includeEmail ?? true;
 	const includeCalendar = options.includeCalendar ?? true;
 
-	const [threads, meetings, colleagues] = await Promise.all([
-		includeEmail
-			? db.emailThread.findMany({
-					where: { contactId },
-					orderBy: { lastMessageAt: "desc" },
-					take: options.threads ?? 5,
-					select: {
-						subject: true,
-						messageCount: true,
-						lastMessageAt: true,
-						messages: {
-							orderBy: { sentAt: "desc" },
-							take: options.messagesPerThread ?? 6,
-							select: {
-								direction: true,
-								fromEmail: true,
-								fromName: true,
-								sentAt: true,
-								body: true,
-								snippet: true,
+	const [coverage, employerStructure, threads, meetings, colleagues] =
+		await Promise.all([
+			readContactCoverage(contactId),
+			contact.companyId
+				? readBusinessStructure(contact.companyId)
+				: Promise.resolve(null),
+			includeEmail
+				? db.emailThread.findMany({
+						where: { contactId },
+						orderBy: { lastMessageAt: "desc" },
+						take: options.threads ?? 5,
+						select: {
+							subject: true,
+							messageCount: true,
+							lastMessageAt: true,
+							messages: {
+								orderBy: { sentAt: "desc" },
+								take: options.messagesPerThread ?? 6,
+								select: {
+									direction: true,
+									fromEmail: true,
+									fromName: true,
+									sentAt: true,
+									body: true,
+									snippet: true,
+								},
 							},
 						},
-					},
-				})
-			: Promise.resolve([]),
-		includeCalendar
-			? db.calendarEvent.findMany({
-					where: {
-						OR: [{ contactId }, { attendees: { some: { contactId } } }],
-					},
-					orderBy: { startsAt: "desc" },
-					take: 10,
-					select: {
-						title: true,
-						startsAt: true,
-						attendees: {
-							select: {
-								email: true,
-								name: true,
-								contactId: true,
-								responseStatus: true,
+					})
+				: Promise.resolve([]),
+			includeCalendar
+				? db.calendarEvent.findMany({
+						where: {
+							OR: [{ contactId }, { attendees: { some: { contactId } } }],
+						},
+						orderBy: { startsAt: "desc" },
+						take: 10,
+						select: {
+							title: true,
+							startsAt: true,
+							attendees: {
+								select: {
+									email: true,
+									name: true,
+									contactId: true,
+									responseStatus: true,
+								},
 							},
 						},
-					},
-				})
-			: Promise.resolve([]),
-		contact.companyId
-			? db.contact.findMany({
-					where: { companyId: contact.companyId, id: { not: contactId } },
-					select: { id: true, firstName: true, lastName: true, title: true },
-					take: 8,
-					orderBy: { lastActivityAt: "desc" },
-				})
-			: Promise.resolve([]),
-	]);
+					})
+				: Promise.resolve([]),
+			contact.companyId
+				? db.contact.findMany({
+						where: { companyId: contact.companyId, id: { not: contactId } },
+						select: { id: true, firstName: true, lastName: true, title: true },
+						take: 8,
+						orderBy: { lastActivityAt: "desc" },
+					})
+				: Promise.resolve([]),
+		]);
 
 	const inbound = threads
 		.flatMap((thread) => thread.messages)
@@ -274,6 +287,8 @@ export async function readCrmHistory(
 			companyName: contact.company?.name ?? null,
 			company: contact.company,
 		},
+		coverage,
+		employerStructure,
 		deals: contact.deals.map(({ role, deal }) => ({
 			id: deal.id,
 			name: deal.name,

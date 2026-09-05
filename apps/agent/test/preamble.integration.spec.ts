@@ -106,9 +106,9 @@ describe("companyPreamble", () => {
 		const { markdown } = await companyPreamble(companyId, rep);
 
 		expect(markdown).toContain(
-			`Paula Marchetti — Growth Specialist \`${paulaId}\``,
+			`Paula Marchetti, Growth Specialist \`${paulaId}\``,
 		);
-		expect(markdown).toContain(`Tomi Okonkwo — Head of Security \`${tomiId}\``);
+		expect(markdown).toContain(`Tomi Okonkwo, Head of Security \`${tomiId}\``);
 		expect(markdown).toContain("Never ask a rep which contact they mean");
 	});
 

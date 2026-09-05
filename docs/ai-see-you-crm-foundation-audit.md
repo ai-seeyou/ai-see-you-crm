@@ -1761,7 +1761,7 @@ Each phase ends with something that works. No phase depends on a later one.
 7. Wire the Supabase CRM project: pooled `DATABASE_URL` with `?pgbouncer=true`, direct
    `DIRECT_DATABASE_URL`, both declared in `turbo.json` pass-through.
 8. Deploy app, API and agent to Vercel in **`syd1`**. Google OAuth client, `ALLOWED_SIGN_IN`
-   set to the aiseeyou.com domain, `BETTER_AUTH_SECRET`, `CRON_SECRET`,
+   set to `dave@ai-seeyou.com`, `BETTER_AUTH_SECRET`, `CRON_SECRET`,
    `AGENT_BRIDGE_SECRET`.
 9. Sign in. Complete onboarding. Add the Context.dev key.
 10. Smoke test: `/health` on the API, `GET /eve/v1/info` on the agent, one company created
@@ -1796,8 +1796,15 @@ in both directions.
 21. Filters: Vertical, entity type, lifecycle stage, role type, region.
 22. Two views: **Today** (overdue tasks, replies since yesterday, stale opportunities) and
     **Coverage** (target entities missing a required role).
+23. Finish the CRM with the current AI See You Production visual system as the canonical reference.
+    Keep CRM workflows and information density. Make the application light only.
+    Remove the dark theme and its toggle. Do not follow the operating system theme.
+    Carry across typography, colours, surfaces, borders, radii, controls, tables, navigation,
+    interaction states, spacing and visual hierarchy. Do not redesign working functionality.
+24. Add `noindex, nofollow` metadata. Exclude CRM routes from sitemaps and public navigation.
 
 **Done when:** the founder can answer seven of the nine questions in section L.1.
+The CRM must also feel like another internal part of AI See You and remain light only.
 
 ### Phase 4: real data
 23. Import script: businesses, relationships, contacts, assignments, `ExternalRef` rows with

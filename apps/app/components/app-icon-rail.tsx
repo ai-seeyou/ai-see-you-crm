@@ -28,6 +28,7 @@ import { useMemo } from "react";
 import { AgentBuilderSidebar } from "@/components/agent-builder/agent-builder-sidebar";
 import { usePrefetchSection } from "@/components/crm/section-prefetch";
 import { useMobileNav } from "@/components/mobile-nav";
+import { BUSINESS, OPPORTUNITY } from "@/lib/labels";
 import { useWorkspaceUrl } from "@/lib/use-workspace-url";
 
 type RailItem = {
@@ -49,14 +50,24 @@ const ITEMS: RailItem[] = [
 		match: "prefix",
 		related: ["/agents"],
 	},
-	{ title: "Companies", href: "/companies", icon: Building, match: "prefix" },
+	{
+		title: BUSINESS.many,
+		href: "/companies",
+		icon: Building,
+		match: "prefix",
+	},
 	{
 		title: "Contacts",
 		href: "/contacts",
 		icon: UserMultiple,
 		match: "prefix",
 	},
-	{ title: "Deals", href: "/deals", icon: Partnership, match: "prefix" },
+	{
+		title: OPPORTUNITY.many,
+		href: "/deals",
+		icon: Partnership,
+		match: "prefix",
+	},
 	{ title: "Settings", href: "/settings", icon: Settings, match: "prefix" },
 ];
 

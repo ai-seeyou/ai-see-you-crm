@@ -18,13 +18,14 @@ import { useQuery } from "@tanstack/react-query";
 import { parseAsBoolean, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { useOpenRecord } from "@/components/crm/record-sheet/record-stack";
+import { BUSINESS, CONTACT, OPPORTUNITY } from "@/lib/labels";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useTRPC } from "@/lib/trpc/client";
 
 const GROUP_LABEL = {
-	company: "Companies",
+	company: BUSINESS.many,
 	contact: "Contacts",
-	deal: "Deals",
+	deal: OPPORTUNITY.many,
 } as const;
 
 const KINDS = ["company", "contact", "deal"] as const;
@@ -70,11 +71,11 @@ export function QuickSwitcher() {
 			open={open}
 			onOpenChange={(next) => setOpen(next || null)}
 			title="Search"
-			description="Jump to a company, contact or deal"
+			description={`Jump to a ${BUSINESS.oneLower}, ${CONTACT.oneLower} or ${OPPORTUNITY.oneLower}`}
 		>
 			<Command shouldFilter={false}>
 				<CommandInput
-					placeholder="Search companies, contacts and deals…"
+					placeholder={`Search ${BUSINESS.manyLower}, ${CONTACT.manyLower} and ${OPPORTUNITY.manyLower}…`}
 					value={query}
 					onValueChange={setQuery}
 				/>

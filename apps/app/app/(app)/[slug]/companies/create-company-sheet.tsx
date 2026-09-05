@@ -33,6 +33,7 @@ import { parseAsBoolean, useQueryState } from "nuqs";
 import { type ComponentProps, Suspense, useId, useState } from "react";
 import { toast } from "sonner";
 import { useOpenRecord } from "@/components/crm/record-sheet/record-stack";
+import { BUSINESS } from "@/lib/labels";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -43,7 +44,7 @@ function AddButton(props: ComponentProps<typeof Button>) {
 	return (
 		<Button {...props}>
 			<Icon icon={Add} data-icon="inline-start" />
-			New company
+			New {BUSINESS.oneLower}
 		</Button>
 	);
 }
@@ -96,10 +97,10 @@ function CreateCompanyForm() {
 			</SheetTrigger>
 			<SheetContent side="right">
 				<SheetHeader>
-					<SheetTitle>New company</SheetTitle>
+					<SheetTitle>New {BUSINESS.oneLower}</SheetTitle>
 					<SheetDescription>
 						Give it a name and a domain. The agent fills in the logo,
-						description, industry, address and socials.
+						description, address and socials.
 					</SheetDescription>
 				</SheetHeader>
 
@@ -170,7 +171,7 @@ function CreateCompanyForm() {
 						disabled={create.isPending || name.trim() === ""}
 					>
 						{create.isPending ? <Spinner /> : null}
-						Add company
+						Add {BUSINESS.oneLower}
 					</Button>
 					<SheetClose asChild>
 						<Button variant="outline">Cancel</Button>

@@ -22,6 +22,7 @@ import {
 	reportBulk,
 } from "@/components/crm/bulk-actions";
 import { CompanyMenuSearch } from "@/components/crm/company-picker";
+import { BUSINESS, NO_BUSINESS } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -169,7 +170,9 @@ export function ContactsBulkActions({
 				onSelect={(ownerId) => assignOwner.mutate({ ids, ownerId })}
 			/>
 			<DropdownMenuSub>
-				<DropdownMenuSubTrigger>Move to company</DropdownMenuSubTrigger>
+				<DropdownMenuSubTrigger>
+					Move to {BUSINESS.oneLower}
+				</DropdownMenuSubTrigger>
 				<DropdownMenuSubContent
 					className="w-64 p-0"
 					onFocus={(event) => {
@@ -179,7 +182,7 @@ export function ContactsBulkActions({
 					}}
 				>
 					<CompanyMenuSearch
-						none="No company"
+						none={NO_BUSINESS}
 						inputRef={companySearch}
 						onSelect={(companyId) => {
 							setMenuOpen(false);

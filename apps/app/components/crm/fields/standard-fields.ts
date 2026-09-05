@@ -1,3 +1,4 @@
+import { BUSINESS } from "@/lib/labels";
 import type { FieldEntity } from "./fields-entity";
 
 export const STANDARD_FIELDS = {
@@ -9,6 +10,8 @@ export const STANDARD_FIELDS = {
 		"Email",
 		"City",
 		"Country",
+		"Vertical",
+		"Type",
 		"Owner",
 	],
 	CONTACT: [
@@ -19,7 +22,7 @@ export const STANDARD_FIELDS = {
 		"Phone",
 		"LinkedIn",
 		"GitHub",
-		"Company",
+		BUSINESS.one,
 		"Owner",
 	],
 	DEAL: [
@@ -27,7 +30,7 @@ export const STANDARD_FIELDS = {
 		"Amount",
 		"Currency",
 		"Close date",
-		"Company",
+		BUSINESS.one,
 		"Owner",
 		"Stage",
 	],

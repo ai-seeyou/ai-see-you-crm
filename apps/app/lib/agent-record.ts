@@ -1,4 +1,5 @@
 import type { CarbonIcon } from "@crm/ui/components/icon";
+import { BUSINESS, OPPORTUNITY } from "@/lib/labels";
 
 export type AgentRecordKind = "contact" | "company" | "deal";
 
@@ -40,7 +41,7 @@ const COPY: RecordCopyByKind = {
 	company: {
 		header: "x-crm-company",
 		field: "companyId",
-		title: "Ask about this company",
+		title: `Ask about this ${BUSINESS.oneLower}`,
 		blurb:
 			"It reads their site and our own history with them, and shows its working.",
 		placeholder: "What do they sell?",
@@ -53,7 +54,7 @@ const COPY: RecordCopyByKind = {
 	deal: {
 		header: "x-crm-deal",
 		field: "dealId",
-		title: "Ask about this deal",
+		title: `Ask about this ${OPPORTUNITY.oneLower}`,
 		blurb:
 			"It can read the thread, the meetings and the people on both sides of it.",
 		placeholder: "Where has this stalled?",

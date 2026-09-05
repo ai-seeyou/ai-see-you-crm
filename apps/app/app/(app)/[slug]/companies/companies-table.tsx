@@ -31,6 +31,8 @@ import {
 	ENRICHMENT_POLL_MS,
 	isEnriching,
 } from "@/lib/enrichment-status";
+import { ENTITY_TYPE_OPTIONS, entityTypeLabel } from "@/lib/entity-type";
+import { BUSINESS } from "@/lib/labels";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { CompaniesBulkActions } from "./companies-bulk-actions";
@@ -41,7 +43,7 @@ type CompanyRow = RouterOutputs["companies"]["list"]["rows"][number];
 const COLUMNS: DataTableColumn<CompanyRow>[] = [
 	{
 		id: "name",
-		header: "Company",
+		header: BUSINESS.one,
 		sortable: true,
 		hideable: false,
 		width: "w-[26%]",
@@ -72,11 +74,33 @@ const COLUMNS: DataTableColumn<CompanyRow>[] = [
 			),
 	},
 	{
+		id: "entityType",
+		header: "Type",
+		width: "w-[14%]",
+		hideBelow: "lg",
+		cell: (row) => (
+			<span className="truncate">{entityTypeLabel(row.entityType)}</span>
+		),
+	},
+	{
+		id: "vertical",
+		header: "Vertical",
+		width: "w-[12%]",
+		hideBelow: "lg",
+		cell: (row) =>
+			row.vertical ? (
+				<span className="truncate">{row.vertical.label}</span>
+			) : (
+				<EmptyCellValue />
+			),
+	},
+	{
 		id: "industry",
 		header: "Industry",
+		label: "Industry, from enrichment",
 		sortable: true,
 		width: "w-[16%]",
-		hideBelow: "lg",
+		defaultHidden: true,
 		cell: (row) =>
 			row.industry ? (
 				<span className="truncate">{row.industry}</span>
@@ -188,6 +212,9 @@ export function CompaniesTable() {
 				: false,
 	});
 	const users = useQuery(trpc.users.list.queryOptions());
+	const verticals = useQuery(
+		trpc.verticals.list.queryOptions({ includeArchived: false }),
+	);
 
 	const rows = companies.data?.rows ?? [];
 	const selection = useTableSelection(
@@ -208,6 +235,20 @@ export function CompaniesTable() {
 					label: user.name,
 				})),
 			].filter((option) => (facetCounts?.owner?.[option.value] ?? 0) > 0),
+		},
+		{
+			id: "vertical",
+			label: "Vertical",
+			options: (verticals.data ?? [])
+				.map((vertical) => ({ value: vertical.id, label: vertical.label }))
+				.filter((option) => (facetCounts?.vertical?.[option.value] ?? 0) > 0),
+		},
+		{
+			id: "entityType",
+			label: "Type",
+			options: ENTITY_TYPE_OPTIONS.filter(
+				(option) => (facetCounts?.entityType?.[option.value] ?? 0) > 0,
+			),
 		},
 		{
 			id: "industry",
@@ -245,7 +286,11 @@ export function CompaniesTable() {
 	return (
 		<DataTable
 			query={query}
-			search={<ListSearch placeholder="Search companies by name or domain…" />}
+			search={
+				<ListSearch
+					placeholder={`Search ${BUSINESS.manyLower} by name or domain…`}
+				/>
+			}
 			actions={
 				<>
 					<SavedViewsMenu entity="COMPANY" table={table} />
@@ -282,8 +327,8 @@ export function CompaniesTable() {
 			onRowClick={(row) => openRecord({ kind: "company", id: row.id })}
 			empty={
 				input.archived
-					? "No archived companies."
-					: "No companies match this view."
+					? `No archived ${BUSINESS.manyLower}.`
+					: `No ${BUSINESS.manyLower} match this view.`
 			}
 		/>
 	);

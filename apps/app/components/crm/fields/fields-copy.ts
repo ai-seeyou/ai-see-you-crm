@@ -1,16 +1,11 @@
 import type { RecordKind } from "@/components/crm/record-sheet/record-stack";
-import type { FieldEntity } from "./fields-entity";
+import { RECORD_LABEL, recordLabelPlural } from "@/lib/labels";
+import { type FieldEntity, kindOf } from "./fields-entity";
 
 export const SHEET_TITLE = "Fields";
 
-const SUBTITLE = {
-	company: "This shapes every company in your CRM.",
-	contact: "This shapes every contact in your CRM.",
-	deal: "This shapes every deal in your CRM.",
-} satisfies Record<RecordKind, string>;
-
 export function subtitleFor(kind: RecordKind): string {
-	return SUBTITLE[kind];
+	return `This shapes every ${RECORD_LABEL[kind].oneLower} in your CRM.`;
 }
 
 export const STANDARD_ROW = "Standard fields";
@@ -61,38 +56,18 @@ export const SAVE = "Save changes";
 export const ARCHIVE = "Archive";
 export const FILL_REST = "Fill the rest";
 
-const SHEET_PLACEMENT = {
-	COMPANY: "Show on the company sheet",
-	CONTACT: "Show on the contact sheet",
-	DEAL: "Show on the deal sheet",
-} satisfies Record<FieldEntity, string>;
-
-const TABLE_PLACEMENT = {
-	COMPANY: "Offer as a column on the Companies table",
-	CONTACT: "Offer as a column on the Contacts table",
-	DEAL: "Offer as a column on the Deals table",
-} satisfies Record<FieldEntity, string>;
-
-const FILTER_PLACEMENT = {
-	COMPANY: "Offer as a filter on the Companies table",
-	CONTACT: "Offer as a filter on the Contacts table",
-	DEAL: "Offer as a filter on the Deals table",
-} satisfies Record<FieldEntity, string>;
-
 export function sheetPlacement(entity: FieldEntity): string {
-	return SHEET_PLACEMENT[entity];
+	return `Show on the ${RECORD_LABEL[kindOf(entity)].oneLower} sheet`;
 }
 
 export function tablePlacement(entity: FieldEntity): string {
-	return TABLE_PLACEMENT[entity];
+	return `Offer as a column on the ${recordLabelPlural(kindOf(entity))} table`;
 }
 
 export function filterPlacement(entity: FieldEntity): string {
-	return FILTER_PLACEMENT[entity];
+	return `Offer as a filter on the ${recordLabelPlural(kindOf(entity))} table`;
 }
 
-export const ENTITY_TABS = [
-	{ kind: "company", label: "Companies" },
-	{ kind: "contact", label: "Contacts" },
-	{ kind: "deal", label: "Deals" },
-] as const satisfies readonly { kind: RecordKind; label: string }[];
+export const ENTITY_TABS: readonly { kind: RecordKind; label: string }[] = (
+	["company", "contact", "deal"] as const
+).map((kind) => ({ kind, label: recordLabelPlural(kind) }));

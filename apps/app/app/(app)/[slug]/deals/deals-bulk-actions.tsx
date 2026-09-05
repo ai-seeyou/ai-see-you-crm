@@ -34,11 +34,12 @@ import {
 	reportBulk,
 } from "@/components/crm/bulk-actions";
 import { DEAL_STAGE_OPTIONS, NEEDS_A_REASON } from "@/lib/deal-stage";
+import { OPPORTUNITY } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
 function deals(count: number): string {
-	return formatCount(count, "deal");
+	return formatCount(count, OPPORTUNITY.oneLower, OPPORTUNITY.manyLower);
 }
 
 export function DealsBulkActions({

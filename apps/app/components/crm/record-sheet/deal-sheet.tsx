@@ -54,6 +54,7 @@ import {
 	LocalDay,
 	LocalRelativeTime,
 } from "@/components/local-date-time";
+import { CONTACT, OPPORTUNITY } from "@/lib/labels";
 import { savingField } from "@/lib/pending-field";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -171,7 +172,7 @@ export function DealSheet({ dealId }: { dealId: string }) {
 		<RecordSheetFrame
 			loading={query.isPending}
 			error={query.error?.message ?? null}
-			title={deal?.name ?? "Deal"}
+			title={deal?.name ?? OPPORTUNITY.one}
 			description={
 				deal ? (
 					<button
@@ -474,8 +475,8 @@ function DealContacts({
 				{adding ? null : (
 					<DetailSheetEmpty
 						icon={UserMultiple}
-						title="No contacts on this deal"
-						description={`Nobody from ${deal.company.name} is attached yet. Bring the people you are selling to onto the deal and it says who to chase.`}
+						title={`No ${CONTACT.manyLower} on this ${OPPORTUNITY.oneLower}`}
+						description={`Nobody from ${deal.company.name} is attached yet. Bring the people you are selling to onto the ${OPPORTUNITY.oneLower} and it says who to chase.`}
 						action={
 							<Button variant="outline" size="sm" onClick={onAdd}>
 								<Icon icon={Add} data-icon="inline-start" />
@@ -511,7 +512,7 @@ function DealContacts({
 						</TableCell>
 						<TableCell className="truncate px-1 py-2.5">
 							<InlineTextCell
-								label={`Role on this deal for ${contactName(contact)}`}
+								label={`Role on this ${OPPORTUNITY.oneLower} for ${contactName(contact)}`}
 								value={contact.role}
 								placeholder="Champion"
 								saving={
@@ -554,7 +555,9 @@ function DealContacts({
 										</span>
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>Take off this deal</TooltipContent>
+								<TooltipContent>
+									Take off this {OPPORTUNITY.oneLower}
+								</TooltipContent>
 							</Tooltip>
 						</TableCell>
 					</SimpleTableRow>

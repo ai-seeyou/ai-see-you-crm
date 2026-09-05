@@ -25,6 +25,7 @@ import { Icon } from "@crm/ui/components/icon";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { recordLabelLower } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 import {
@@ -32,12 +33,6 @@ import {
 	type RecordRef,
 	useRecordStack,
 } from "./record-stack";
-
-const NOUN = {
-	company: "company",
-	contact: "contact",
-	deal: "deal",
-} satisfies Record<RecordKind, string>;
 
 const RECORD_PROCEDURES = {
 	company: "companies",
@@ -52,7 +47,7 @@ function useArchiveRecord(record: RecordRef) {
 	const handlers = {
 		onSuccess: (archived: { name: string }) => {
 			toast.success(
-				`${archived.name || `The ${NOUN[record.kind]}`} was archived.`,
+				`${archived.name || `The ${recordLabelLower(record.kind)}`} was archived.`,
 			);
 			void cache[record.kind](record.id);
 		},
@@ -71,7 +66,7 @@ function useRestoreRecord(record: RecordRef) {
 	const handlers = {
 		onSuccess: (restored: { name: string }) => {
 			toast.success(
-				`${restored.name || `The ${NOUN[record.kind]}`} was restored.`,
+				`${restored.name || `The ${recordLabelLower(record.kind)}`} was restored.`,
 			);
 			void cache[record.kind](record.id);
 		},
@@ -91,7 +86,7 @@ function usePurgeRecord(record: RecordRef) {
 	const handlers = {
 		onSuccess: (purged: { name: string }) => {
 			toast.success(
-				`${purged.name || `The ${NOUN[record.kind]}`} was deleted forever.`,
+				`${purged.name || `The ${recordLabelLower(record.kind)}`} was deleted forever.`,
 			);
 			void cache.removed(record);
 			close();
@@ -138,14 +133,14 @@ export function RecordActions({
 								onSelect={() => restore.mutate({ id: record.id })}
 							>
 								<Icon icon={Undo} />
-								Restore {NOUN[record.kind]}
+								Restore {recordLabelLower(record.kind)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								variant="destructive"
 								onSelect={() => setConfirming(true)}
 							>
 								<Icon icon={TrashCan} />
-								Delete {NOUN[record.kind]} forever
+								Delete {recordLabelLower(record.kind)} forever
 							</DropdownMenuItem>
 						</>
 					) : (
@@ -153,7 +148,7 @@ export function RecordActions({
 							onSelect={() => archive.mutate({ id: record.id })}
 						>
 							<Icon icon={Archive} />
-							Archive {NOUN[record.kind]}
+							Archive {recordLabelLower(record.kind)}
 						</DropdownMenuItem>
 					)}
 				</DropdownMenuContent>

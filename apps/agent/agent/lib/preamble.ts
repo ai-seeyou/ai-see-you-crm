@@ -367,7 +367,7 @@ export async function workspacePreamble(
 				"",
 				"You were asked to write the profile of the company you work for, and",
 				"this install has no web address on record, nobody gave one, or what is",
-				"stored is not one. There is nothing to read. Stop. Do not guess at it",
+				"stored is not one. There is nothing to read. Stop, and do not guess at it",
 				"from the email addresses in the CRM.",
 			].join("\n"),
 			focus: {},

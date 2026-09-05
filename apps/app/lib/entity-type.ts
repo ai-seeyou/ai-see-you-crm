@@ -15,7 +15,9 @@ export const ENTITY_TYPE_ORDER: readonly EntityType[] = [
 
 type EntityTypePresentation = { label: string; many: string };
 
-const PRESENTATION: Record<EntityType, EntityTypePresentation> = {
+type EntityTypeMap = Record<EntityType, EntityTypePresentation>;
+
+const PRESENTATION: EntityTypeMap = {
 	HOTEL: { label: "Hotel", many: "Hotels" },
 	HOTEL_GROUP: { label: "Hotel group", many: "Hotel groups" },
 	HOTEL_BRAND: { label: "Hotel brand", many: "Hotel brands" },

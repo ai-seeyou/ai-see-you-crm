@@ -4,7 +4,9 @@ export type RelationshipDirection = "outgoing" | "incoming";
 
 type RelationshipPresentation = { outgoing: string; incoming: string };
 
-const PRESENTATION: Record<RelationshipType, RelationshipPresentation> = {
+type RelationshipMap = Record<RelationshipType, RelationshipPresentation>;
+
+const PRESENTATION: RelationshipMap = {
 	BELONGS_TO: { outgoing: "Belongs to", incoming: "Includes" },
 	BRAND_OF: { outgoing: "Brand of", incoming: "Has brand" },
 	MANAGED_BY: { outgoing: "Managed by", incoming: "Manages" },

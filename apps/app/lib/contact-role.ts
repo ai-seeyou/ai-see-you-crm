@@ -13,7 +13,9 @@ export const CONTACT_ROLE_ORDER: readonly ContactRoleType[] = [
 	ContactRoleType.OTHER,
 ];
 
-const PRESENTATION: Record<ContactRoleType, string> = {
+type ContactRoleMap = Record<ContactRoleType, string>;
+
+const PRESENTATION: ContactRoleMap = {
 	EXECUTIVE: "Executive",
 	OWNER: "Owner",
 	GENERAL_MANAGER: "General manager",

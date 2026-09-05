@@ -1,9 +1,11 @@
-import { DealStage, db } from "@crm/db";
+import { DealStage, db, type EntityType } from "@crm/db";
 import {
 	LOSING_DEAL_STAGES,
 	OPEN_DEAL_STAGES,
 	WON_DEAL_STAGES,
 } from "@crm/db/deal-stage";
+import { structureForHits } from "./entities";
+import { ENTITY_TYPE_LABELS } from "./entity-config";
 import { domainOf, normalise } from "./names";
 
 export type RecordKind = "contact" | "company" | "deal";
@@ -24,6 +26,10 @@ export type CompanyHit = {
 	name: string;
 	domain: string | null;
 	industry: string | null;
+	entityType: EntityType;
+	entityTypeLabel: string;
+	vertical: string | null;
+	partOf: { id: string; name: string; reads: string }[];
 	contacts: number;
 	deals: number;
 };
@@ -271,26 +277,33 @@ async function searchCompanies(
 			name: true,
 			domain: true,
 			industry: true,
+			entityType: true,
+			vertical: { select: { label: true } },
 			_count: { select: { contacts: true, deals: true } },
 		},
 	});
 
-	return rows
-		.map((row) => ({
-			score: score(term, [row.name, row.domain ?? ""]),
-			hit: {
-				kind: "company" as const,
-				id: row.id,
-				name: row.name,
-				domain: row.domain,
-				industry: row.industry,
-				contacts: row._count.contacts,
-				deals: row._count.deals,
-			},
-		}))
+	const page = rows
+		.map((row) => ({ score: score(term, [row.name, row.domain ?? ""]), row }))
 		.sort((a, b) => b.score - a.score)
 		.slice(0, limit)
-		.map((row) => row.hit);
+		.map(({ row }) => row);
+
+	const partOf = await structureForHits(page.map((row) => row.id));
+
+	return page.map((row) => ({
+		kind: "company" as const,
+		id: row.id,
+		name: row.name,
+		domain: row.domain,
+		industry: row.industry,
+		entityType: row.entityType,
+		entityTypeLabel: ENTITY_TYPE_LABELS[row.entityType],
+		vertical: row.vertical?.label ?? null,
+		partOf: partOf.get(row.id) ?? [],
+		contacts: row._count.contacts,
+		deals: row._count.deals,
+	}));
 }
 
 async function searchDeals(

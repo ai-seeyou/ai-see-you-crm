@@ -3,6 +3,7 @@ import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { sensitiveWrite } from "../lib/approval";
 import { writeTimelineNote } from "../lib/crm";
+import { employerMoveBlock } from "../lib/entities";
 import { lastEmployerChange } from "../lib/facts";
 import { focusOn } from "../lib/focus";
 import { assertResearchPurpose } from "../lib/session-purpose";
@@ -16,11 +17,11 @@ export default defineTool({
 			.string()
 			.optional()
 			.describe(
-				"Only when the new employer is already a company in the CRM and a person has approved the move.",
+				"Only when the new employer is already a company in the CRM and a person has approved the move. A move between two businesses that are already related in the CRM, a property and its group, a group and its management company, is refused: which entity inside a group employs somebody is a commercial fact a person confirms.",
 			),
 	}),
 	approval: sensitiveWrite(
-		"Raise the change without `moveToCompanyId` — the alert lands on the timeline and their owner decides whether to move them.",
+		"Raise the change without `moveToCompanyId`, the alert lands on the timeline and their owner decides whether to move them.",
 	),
 	async execute({ contactId, moveToCompanyId }, ctx) {
 		assertResearchPurpose(ctx);
@@ -65,7 +66,11 @@ export default defineTool({
 			{ source: "job-change", from: change.from, to: change.to },
 		);
 
-		if (moveToCompanyId) {
+		const blocked = moveToCompanyId
+			? await employerMoveBlock(contact.companyId, moveToCompanyId)
+			: null;
+
+		if (moveToCompanyId && !blocked) {
 			await db.contact.update({
 				where: { id: contactId },
 				data: { companyId: moveToCompanyId },
@@ -76,7 +81,8 @@ export default defineTool({
 			raised: true as const,
 			from: change.from,
 			to: change.to,
-			moved: Boolean(moveToCompanyId),
+			moved: Boolean(moveToCompanyId) && blocked === null,
+			blocked,
 			ownerNotified: contact.ownerId !== null,
 		};
 	},

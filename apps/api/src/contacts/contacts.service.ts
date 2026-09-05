@@ -39,6 +39,7 @@ import {
 	archivedFilter,
 	countsByKey,
 	FACET_UNASSIGNED,
+	type FacetCount,
 	type ListResult,
 	type OrderByColumns,
 	ownerFilter,
@@ -67,12 +68,12 @@ const OWNER_SELECT = {
 // 180. groupBy carries the pair so the count stays a count of people.
 function countsByRole(
 	groups: Array<{ roleType: ContactRoleType; contactId: string }>,
-): Record<string, number> {
-	const counts: Record<string, number> = {};
+): FacetCount {
+	const counts = new Map<ContactRoleType, number>();
 	for (const group of groups) {
-		counts[group.roleType] = (counts[group.roleType] ?? 0) + 1;
+		counts.set(group.roleType, (counts.get(group.roleType) ?? 0) + 1);
 	}
-	return counts;
+	return Object.fromEntries(counts);
 }
 
 const COMPANY_SELECT = {

@@ -71,7 +71,7 @@ export class TodayService {
 		const taskWhere: Prisma.ActivityWhereInput = {
 			type: ActivityType.TASK,
 			completedAt: null,
-			...(mine ? { createdById: actingUserId } : {}),
+			createdById: mine ? actingUserId : undefined,
 		};
 
 		const overdueWhere: Prisma.ActivityWhereInput = {
@@ -87,7 +87,7 @@ export class TodayService {
 		const staleWhere: Prisma.DealWhereInput = {
 			archivedAt: null,
 			stage: { in: [...OPEN_DEAL_STAGES] },
-			...(mine ? { ownerId: actingUserId } : {}),
+			ownerId: mine ? actingUserId : undefined,
 			OR: [
 				{ lastActivityAt: { lt: quietSince } },
 				{ lastActivityAt: null, stageChangedAt: { lt: quietSince } },

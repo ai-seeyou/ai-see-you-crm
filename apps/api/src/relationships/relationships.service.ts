@@ -36,16 +36,16 @@ export class RelationshipsService {
 			throw new NotFoundException(`No business with id ${input.companyId}.`);
 		}
 
-		const current = input.includeEnded ? {} : { validTo: null };
+		const validTo = input.includeEnded ? undefined : null;
 
 		const [outgoing, incoming] = await Promise.all([
 			this.db.entityRelationship.findMany({
-				where: { fromCompanyId: input.companyId, ...current },
+				where: { fromCompanyId: input.companyId, validTo },
 				orderBy: [{ type: "asc" }, { createdAt: "asc" }],
 				select: RELATIONSHIP_EDGE_SELECT,
 			}),
 			this.db.entityRelationship.findMany({
-				where: { toCompanyId: input.companyId, ...current },
+				where: { toCompanyId: input.companyId, validTo },
 				orderBy: [{ type: "asc" }, { createdAt: "asc" }],
 				select: RELATIONSHIP_EDGE_SELECT,
 			}),

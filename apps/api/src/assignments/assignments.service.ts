@@ -39,7 +39,7 @@ export class AssignmentsService {
 			where: {
 				companyId: input.companyId,
 				scope: { in: input.scope },
-				...(input.includeEnded ? {} : { validTo: null }),
+				validTo: input.includeEnded ? undefined : null,
 			},
 			orderBy: [
 				{ roleType: "asc" },
@@ -68,7 +68,7 @@ export class AssignmentsService {
 			where: {
 				contactId: input.contactId,
 				scope: { in: input.scope },
-				...(input.includeEnded ? {} : { validTo: null }),
+				validTo: input.includeEnded ? undefined : null,
 			},
 			orderBy: [{ company: { name: "asc" } }],
 			select: CONTACT_ASSIGNMENT_SELECT,

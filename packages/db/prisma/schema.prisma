@@ -277,6 +277,41 @@ enum AgentResponseRating {
   DOWN
 }
 
+enum RelationshipType {
+  BELONGS_TO
+  BRAND_OF
+  MANAGED_BY
+  OWNED_BY
+  OPERATED_BY
+  LOCATED_IN
+}
+
+model EntityRelationship {
+  id String @id @default(cuid())
+
+  fromCompanyId String
+  fromCompany   Company @relation("EntityRelationshipFrom", fields: [fromCompanyId], references: [id], onDelete: Cascade)
+  toCompanyId   String
+  toCompany     Company @relation("EntityRelationshipTo", fields: [toCompanyId], references: [id], onDelete: Cascade)
+
+  type RelationshipType
+
+  validFrom DateTime?
+  validTo   DateTime?
+
+  source   RecordSource @default(MANUAL)
+  evidence Json?
+  note     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fromCompanyId, toCompanyId, type], map: "entity_relationship_current_key", where: { validTo: null })
+  @@index([toCompanyId, type])
+  @@index([fromCompanyId, type])
+  @@map("entityRelationship")
+}
+
 enum EntityType {
   HOTEL
   HOTEL_GROUP
@@ -338,7 +373,7 @@ model Company {
   primaryContact   Contact? @relation("PrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
 
   verticalId String?
-  vertical   Vertical? @relation(fields: [verticalId], references: [id], onDelete: SetNull)
+  vertical   Vertical?  @relation(fields: [verticalId], references: [id], onDelete: SetNull)
   entityType EntityType @default(OTHER)
 
   enrichmentStatus EnrichmentStatus   @default(PENDING)
@@ -351,15 +386,17 @@ model Company {
   lastActivityAt DateTime?
   archivedAt     DateTime?
 
-  contacts       Contact[]           @relation("CompanyContacts")
+  contacts       Contact[]            @relation("CompanyContacts")
+  relationsFrom  EntityRelationship[] @relation("EntityRelationshipFrom")
+  relationsTo    EntityRelationship[] @relation("EntityRelationshipTo")
   conversations  AgentConversation[]
   deals          Deal[]
   activities     Activity[]
   emailThreads   EmailThread[]
   calendarEvents CalendarEvent[]
   fieldValues    FieldValue[]
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   @@unique([domain], map: "company_domain_active_key", where: { archivedAt: null })
   @@index([ownerId])

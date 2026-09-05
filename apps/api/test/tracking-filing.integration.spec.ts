@@ -33,6 +33,7 @@ const agent = {
 	companyCreated: async () => undefined,
 	companyRequested: async () => true,
 	withCrmEvents: withDiscardedCrmEvents,
+	fieldBackfillRecords: async () => ({ queued: 0, merged: 0 }),
 } as unknown as AgentTriggerService;
 
 const stamp = new ActivityStampService(db);

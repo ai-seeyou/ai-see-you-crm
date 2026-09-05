@@ -116,13 +116,13 @@ describe("CRM agent events", () => {
 				type: "deal.created",
 				record: { kind: "deal", id: dealId },
 				occurredAt: createdAt,
-				data: { companyId, stage: "DEMO_BOOKED" },
+				data: { companyId, stage: "CONTACTED" },
 			});
 			await emit({
 				type: "deal.closed",
 				record: { kind: "deal", id: dealId },
 				occurredAt: closedAt,
-				data: { companyId, from: "NEGOTIATION", to: "CLOSED_WON" },
+				data: { companyId, from: "NEGOTIATION", to: "LIVE" },
 			});
 		});
 
@@ -144,7 +144,7 @@ describe("CRM agent events", () => {
 				type: "deal.created",
 				record: { kind: "deal", id: dealId },
 				occurredAt: createdAt.toISOString(),
-				data: { companyId, stage: "DEMO_BOOKED" },
+				data: { companyId, stage: "CONTACTED" },
 			},
 			finishedAt: null,
 		});
@@ -155,7 +155,7 @@ describe("CRM agent events", () => {
 				type: "deal.closed",
 				record: { kind: "deal", id: dealId },
 				occurredAt: closedAt.toISOString(),
-				data: { companyId, from: "NEGOTIATION", to: "CLOSED_WON" },
+				data: { companyId, from: "NEGOTIATION", to: "LIVE" },
 			},
 			finishedAt: null,
 		});
@@ -223,15 +223,15 @@ describe("CRM agent events", () => {
 		persistedDealId = deal.id;
 
 		const transitions = await Promise.all([
-			deals.setStage({ id: deal.id, stage: "CLOSED_WON" }, ownerId),
-			deals.setStage({ id: deal.id, stage: "CLOSED_WON" }, ownerId),
+			deals.setStage({ id: deal.id, stage: "LIVE" }, ownerId),
+			deals.setStage({ id: deal.id, stage: "LIVE" }, ownerId),
 		]);
 
 		expect(transitions.map((transition) => transition.changed).sort()).toEqual([
 			false,
 			true,
 		]);
-		await deals.setStage({ id: deal.id, stage: "QUALIFIED_TO_BUY" }, ownerId);
+		await deals.setStage({ id: deal.id, stage: "EVALUATING" }, ownerId);
 
 		const reasons = (
 			await db.agentTask.findMany({

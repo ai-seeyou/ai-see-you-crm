@@ -1,5 +1,9 @@
 import { DealStage, db } from "@crm/db";
-import { LOSING_DEAL_STAGES, OPEN_DEAL_STAGES } from "@crm/db/deal-stage";
+import {
+	LOSING_DEAL_STAGES,
+	OPEN_DEAL_STAGES,
+	WON_DEAL_STAGES,
+} from "@crm/db/deal-stage";
 import { domainOf, normalise } from "./names";
 
 export type RecordKind = "contact" | "company" | "deal";
@@ -70,7 +74,7 @@ export async function listDeals(options: DealListOptions = {}) {
 		status === "open"
 			? [...OPEN_DEAL_STAGES]
 			: status === "won"
-				? [DealStage.CLOSED_WON]
+				? [...WON_DEAL_STAGES]
 				: status === "lost"
 					? [...LOSING_DEAL_STAGES]
 					: null;

@@ -16,6 +16,7 @@ const domain = `money-${suffix}.test`;
 
 const agent = {
 	withCrmEvents: withDiscardedCrmEvents,
+	fieldBackfillRecords: async () => ({ queued: 0, merged: 0 }),
 } as unknown as AgentTriggerService;
 
 const conversion = new ConversionService(db);
@@ -454,7 +455,7 @@ describe("the dashboard only values what it can convert", () => {
 	});
 
 	async function stale(name: string, stage: DealStage) {
-		const closed = stage === DealStage.CLOSED_WON;
+		const closed = stage === DealStage.LIVE;
 
 		return db.deal.create({
 			data: {
@@ -481,10 +482,10 @@ describe("the dashboard only values what it can convert", () => {
 			ownerId: analystId,
 			amountCents: 10_000,
 			currency: "USD",
-			stage: DealStage.CLOSED_WON,
+			stage: DealStage.LIVE,
 		});
 
-		const unvalued = await stale("Stale win", DealStage.CLOSED_WON);
+		const unvalued = await stale("Stale win", DealStage.LIVE);
 
 		const summary = await dashboard.summary(analystId, { scope: "me" });
 
@@ -504,7 +505,7 @@ describe("the dashboard only values what it can convert", () => {
 			currency: "USD",
 		});
 
-		const unvalued = await stale("Stale open", DealStage.DEMO_BOOKED);
+		const unvalued = await stale("Stale open", DealStage.CONTACTED);
 
 		const summary = await dashboard.summary(analystId, { scope: "me" });
 

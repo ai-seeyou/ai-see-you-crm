@@ -29,6 +29,7 @@ const agent = {
 	companyCreated: async () => undefined,
 	withCrmEvents: withDiscardedCrmEvents,
 	companyRequested: async () => true,
+	fieldBackfillRecords: async () => ({ queued: 0, merged: 0 }),
 } as unknown as AgentTriggerService;
 
 const directory = new CompanyDirectoryService(db);

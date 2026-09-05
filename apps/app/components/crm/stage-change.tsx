@@ -1,7 +1,7 @@
 "use client";
 
 import ChevronDown from "@carbon/icons-react/es/ChevronDown";
-import type { DealStage } from "@crm/db/enums";
+import { DealStage } from "@crm/db/enums";
 import { Button } from "@crm/ui/components/button";
 import {
 	Dialog,
@@ -147,12 +147,14 @@ export function CloseReasonDialog() {
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>
-						{stage === "CLOSED_LOST" ? "Close as lost" : "Mark as unqualified"}
+						{stage === DealStage.CLOSED_LOST
+							? "Close as lost"
+							: "Mark as dormant"}
 					</DialogTitle>
 					<DialogDescription>
-						{stage === "CLOSED_LOST"
+						{stage === DealStage.CLOSED_LOST
 							? "What did we lose it to? This is the only place that answer gets recorded."
-							: "Why is this not a fit? It goes on the timeline so nobody re-runs the same deal."}
+							: "Why has this gone quiet? It goes on the timeline so nobody restarts it blind."}
 					</DialogDescription>
 				</DialogHeader>
 

@@ -14,9 +14,7 @@ import { ensureWorkspaceMembership } from "./organization";
 import {
 	GOOGLE_PROVIDER_ID,
 	MICROSOFT_PROVIDER_ID,
-	MICROSOFT_SYNC_SCOPES,
 	SLACK_PROVIDER_ID,
-	SYNC_SCOPES,
 } from "./scopes";
 import { notifySignedIn } from "./signed-in";
 import { slackConnectGuard } from "./slack-connect";
@@ -37,10 +35,12 @@ const slackRedirectUri = new URL(
 ).toString();
 
 if (env.google) {
+	// Sign-in asks for identity and nothing else. Upstream requested Gmail and
+	// Calendar here, so signing in handed the CRM a mailbox before anybody chose
+	// to connect one. Settings, Connections passes SYNC_SCOPES to linkSocial when
+	// somebody does choose, so no capability is lost by leaving them out here.
 	const google: NonNullable<typeof socialProviders.google> = {
 		...env.google,
-
-		scope: [...SYNC_SCOPES],
 
 		accessType: "offline",
 	};
@@ -56,8 +56,6 @@ if (env.microsoft) {
 		clientId: env.microsoft.clientId,
 		clientSecret: env.microsoft.clientSecret,
 		tenantId: env.microsoft.tenantId,
-
-		scope: [...MICROSOFT_SYNC_SCOPES],
 
 		prompt: "select_account",
 

@@ -85,33 +85,48 @@ export async function queueProductionRefreshTask(
 	}
 }
 
-const boundaryEvidenceSchema = z.object({
-	manifestSnapshot: z.string().datetime(),
-});
+export const productionBoundaryEvidenceSchema = z
+	.object({
+		contractVersion: z.literal("1"),
+		httpMethod: z.literal("GET"),
+		readRequests: z.number().int().positive(),
+		clientEvidence: z.literal("GET_ONLY_HTTP_CLIENT"),
+		manifestSnapshot: z.string().datetime(),
+	})
+	.strict();
+
+export const SYDNEY_PROOF = {
+	scope: "qualifying-hotels:sydney",
+	destination: "sydney",
+	expectedCount: 228,
+	subject: "production-hotel-universe-proving:sydney:dry-run",
+} as const;
 
 export async function queueSydneyProductionDryRun() {
 	const completed = await db.productionImportRun.findMany({
 		where: {
-			scope: "qualifying-hotels:sydney",
-			destination: "sydney",
+			scope: SYDNEY_PROOF.scope,
+			destination: SYDNEY_PROOF.destination,
 			dryRun: true,
 			status: "COMPLETED",
-			qualifyingCount: 228,
+			qualifyingCount: SYDNEY_PROOF.expectedCount,
 		},
 		orderBy: { completedAt: "desc" },
 		select: { boundaryEvidence: true },
 	});
 	if (
 		completed.some(
-			(run) => boundaryEvidenceSchema.safeParse(run.boundaryEvidence).success,
+			(run) =>
+				productionBoundaryEvidenceSchema.safeParse(run.boundaryEvidence)
+					.success,
 		)
 	) {
 		return null;
 	}
 	return queueProductionRefreshTask({
 		fullReconciliation: false,
-		destination: "sydney",
-		expectedCount: 228,
+		destination: SYDNEY_PROOF.destination,
+		expectedCount: SYDNEY_PROOF.expectedCount,
 		dryRun: true,
 	});
 }
@@ -119,11 +134,11 @@ export async function queueSydneyProductionDryRun() {
 export async function approveSydneyProductionProving() {
 	const dryRun = await db.productionImportRun.findFirst({
 		where: {
-			scope: "qualifying-hotels:sydney",
-			destination: "sydney",
+			scope: SYDNEY_PROOF.scope,
+			destination: SYDNEY_PROOF.destination,
 			dryRun: true,
 			status: "COMPLETED",
-			qualifyingCount: 228,
+			qualifyingCount: SYDNEY_PROOF.expectedCount,
 		},
 		orderBy: { completedAt: "desc" },
 		select: { boundaryEvidence: true },
@@ -131,11 +146,13 @@ export async function approveSydneyProductionProving() {
 	if (!dryRun) {
 		throw new Error("A completed 228-hotel Sydney dry-run is required");
 	}
-	const evidence = boundaryEvidenceSchema.parse(dryRun.boundaryEvidence);
+	const evidence = productionBoundaryEvidenceSchema.parse(
+		dryRun.boundaryEvidence,
+	);
 	return queueProductionRefreshTask({
 		fullReconciliation: false,
-		destination: "sydney",
-		expectedCount: 228,
+		destination: SYDNEY_PROOF.destination,
+		expectedCount: SYDNEY_PROOF.expectedCount,
 		dryRun: false,
 		snapshot: evidence.manifestSnapshot,
 	});

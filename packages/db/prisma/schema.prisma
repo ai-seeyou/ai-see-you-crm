@@ -277,6 +277,49 @@ enum AgentResponseRating {
   DOWN
 }
 
+enum ExternalRecordType {
+  COMPANY
+  CONTACT
+}
+
+enum ExternalSystem {
+  PRODUCTION
+  CLAY
+  LINKEDIN
+  CONTEXT_DEV
+}
+
+enum MatchActor {
+  HUMAN
+  AGENT
+  IMPORT
+}
+
+model ExternalRef {
+  id String @id @default(cuid())
+
+  recordType ExternalRecordType
+  recordId   String
+
+  system      ExternalSystem
+  externalId  String
+  externalUrl String?
+
+  matchMethod String
+  matchedBy   MatchActor
+
+  confirmedAt DateTime?
+  lastSeenAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([system, recordType, externalId])
+  @@unique([system, recordType, recordId])
+  @@index([recordType, recordId])
+  @@map("externalRef")
+}
+
 enum AssignmentScope {
   EMPLOYER
   RESPONSIBLE_FOR

@@ -1,6 +1,7 @@
 import {
 	type ContactBriefSections,
 	type Db,
+	ExternalRecordType,
 	type FactEvidence,
 	FactStatus,
 	type Prisma,
@@ -415,6 +416,9 @@ export class ContactsService {
 
 				await tx.agentTask.deleteMany({ where: { contactId: id } });
 				await tx.agentEvent.deleteMany({ where: { contactId: id } });
+				await tx.externalRef.deleteMany({
+					where: { recordType: ExternalRecordType.CONTACT, recordId: id },
+				});
 
 				const contact = await tx.contact.delete({
 					where: { id },

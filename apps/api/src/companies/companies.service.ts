@@ -1,6 +1,7 @@
 import {
 	type Db,
 	type EnrichmentStatus,
+	ExternalRecordType,
 	type Prisma,
 	Prisma as PrismaNamespace,
 	type RecordSource,
@@ -470,6 +471,10 @@ export class CompaniesService {
 							{ dealId: { in: deals.map((deal) => deal.id) } },
 						],
 					},
+				});
+
+				await tx.externalRef.deleteMany({
+					where: { recordType: ExternalRecordType.COMPANY, recordId: id },
 				});
 
 				const company = await tx.company.delete({

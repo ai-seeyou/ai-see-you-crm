@@ -111,20 +111,28 @@ export class DomainReviewsService {
 
 		await this.claim(review.id, review.domain, actingUserId);
 
-		const created = await this.companies.create({
-			name: input.name,
-			domain: review.domain,
-			ownerId: null,
-		});
-
-		if (input.entityType !== undefined || input.verticalId !== undefined) {
-			await this.companies.update(created.id, {
-				entityType: input.entityType,
-				verticalId: input.verticalId,
+		// Claiming first is what stops two callers each creating a business. It also
+		// means a failure after the claim would leave the review decided and
+		// pointing at nothing, and every retry refused, so the claim is given back.
+		try {
+			const created = await this.companies.create({
+				name: input.name,
+				domain: review.domain,
+				ownerId: null,
 			});
-		}
 
-		return this.attach(review.id, review.domain, created.id);
+			if (input.entityType !== undefined || input.verticalId !== undefined) {
+				await this.companies.update(created.id, {
+					entityType: input.entityType,
+					verticalId: input.verticalId,
+				});
+			}
+
+			return await this.attach(review.id, review.domain, created.id);
+		} catch (cause) {
+			await this.release(review.id);
+			throw cause;
+		}
 	}
 
 	async dismiss(id: string, actingUserId: string) {
@@ -174,6 +182,17 @@ export class DomainReviewsService {
 				`${domain} was decided by somebody else while you were deciding it.`,
 			);
 		}
+	}
+
+	private async release(id: string): Promise<void> {
+		await this.db.domainReview.updateMany({
+			where: { id, status: DomainReviewStatus.APPLIED, companyId: null },
+			data: {
+				status: DomainReviewStatus.PROPOSED,
+				decidedById: null,
+				decidedAt: null,
+			},
+		});
 	}
 
 	private async attach(id: string, domain: string, companyId: string) {

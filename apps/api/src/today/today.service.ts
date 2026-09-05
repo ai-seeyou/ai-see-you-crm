@@ -162,6 +162,7 @@ export class TodayService {
 						where: {
 							direction: EmailDirection.INBOUND,
 							sentAt: { gte: replySince },
+							syncedByUserId: mine ? actingUserId : undefined,
 						},
 						orderBy: [{ sentAt: "desc" }],
 						take: 1,

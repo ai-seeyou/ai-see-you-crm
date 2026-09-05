@@ -3,6 +3,7 @@ import {
 	type ContactRoleType,
 	type Db,
 	type Prisma,
+	Prisma as PrismaNamespace,
 	type RecordSource,
 } from "@crm/db";
 import { parse } from "@crm/validation";
@@ -10,11 +11,32 @@ import {
 	type RelationshipEvidence,
 	relationshipEvidence,
 } from "@crm/validation/relationship-evidence";
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+	BadRequestException,
+	Injectable,
+	NotFoundException,
+} from "@nestjs/common";
 import { blankToNull } from "../crm/values";
 import { InjectDatabase } from "../database/database.constants";
 
 type Writer = Prisma.TransactionClient;
+
+const PERIOD_CONSTRAINT = "contact_assignment_period";
+
+// The database refuses a period that ends before it starts, which is right. Left
+// alone it surfaces as a 500 carrying a server file path, and "they actually left
+// last year" is a reasonable thing to mean, so it is answered rather than crashed.
+function endedBeforeItStarted(cause: unknown): unknown {
+	const violated =
+		cause instanceof PrismaNamespace.PrismaClientKnownRequestError &&
+		String(cause.meta?.constraint ?? cause.message).includes(PERIOD_CONSTRAINT);
+
+	return violated
+		? new BadRequestException(
+				"That end date is before the responsibility started. Pick a later one.",
+			)
+		: cause;
+}
 
 export type EmployerInput = {
 	contactId: string;
@@ -94,17 +116,21 @@ export class ContactAssignmentService {
 		companyId: string;
 		at?: Date;
 	}): Promise<boolean> {
-		const ended = await this.db.contactAssignment.updateMany({
-			where: {
-				contactId: input.contactId,
-				companyId: input.companyId,
-				scope: AssignmentScope.RESPONSIBLE_FOR,
-				validTo: null,
-			},
-			data: { validTo: input.at ?? new Date() },
-		});
+		try {
+			const ended = await this.db.contactAssignment.updateMany({
+				where: {
+					contactId: input.contactId,
+					companyId: input.companyId,
+					scope: AssignmentScope.RESPONSIBLE_FOR,
+					validTo: null,
+				},
+				data: { validTo: input.at ?? new Date() },
+			});
 
-		return ended.count > 0;
+			return ended.count > 0;
+		} catch (cause) {
+			throw endedBeforeItStarted(cause);
+		}
 	}
 
 	private async responsibility(

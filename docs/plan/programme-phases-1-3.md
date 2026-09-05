@@ -55,16 +55,57 @@ Two local environment facts, both discovered the hard way:
   placeholder values for this reason. Without them the suite fails locally and
   passes in CI.
 
-### 1b, deployed. Blocked on three founder credentials
+### 1b, deployed
 
-The code is ready. The blockers are account access, not engineering:
+Three Vercel projects on the `AI See You` team, all three git-connected to
+`ai-seeyou/ai-see-you-crm` with `release` as the production branch, all three
+pinned to `syd1`, next to the database in `ap-southeast-2`.
 
-1. The CRM Supabase database password, for `DATABASE_URL` and `DIRECT_DATABASE_URL`.
-2. Vercel account access, for three projects (app, API, agent) in `syd1`.
-3. A Google OAuth client, for sign-in only.
+| Project | Root directory | Build | Output | Address |
+| --- | --- | --- | --- | --- |
+| `crm-app` | `apps/app` | Next.js preset | Next.js | `crm.ai-seeyou.com` |
+| `crm-api` | `apps/api` | `node scripts/build-func.mjs` | `.vercel/output` | `api.crm.ai-seeyou.com` |
+| `crm-agent` | `apps/agent` | `bun run build` (`eve build`) | `.vercel/output` | `agent.crm.ai-seeyou.com` |
 
-Item 3 is sign-in scope only. Gmail and Calendar reading stays off until the
-founder approves it, which is a separate decision and a Phase 4 item.
+Each project runs `npx turbo-ignore <workspace>` as its ignored build step, so a
+push that touches one application does not rebuild the other two.
+
+#### Why the CRM sits on its own parent domain
+
+Better Auth mints the session cookie at `API_URL`, and every OAuth `redirect_uri`
+is built from `API_URL`, never from `APP_URL`. The browser therefore lands on the
+API origin during sign-in, so the app and the API must share a cookie parent.
+`.vercel.app` is on the Public Suffix List and cannot be a cookie domain, so the
+custom domains are load bearing, not cosmetic.
+
+`AUTH_COOKIE_DOMAIN` is `.crm.ai-seeyou.com`, not `.ai-seeyou.com`. A cookie scoped
+to the apex would be sent to `app.ai-seeyou.com`, which is AI See You Production.
+The CRM session token must never reach another application. The extra label keeps
+it inside the CRM.
+
+#### Database connection
+
+The direct host `db.<ref>.supabase.co` resolves to IPv6 only and is unreachable
+from here and from Vercel. Both URLs therefore go through the Supavisor pooler at
+`aws-0-ap-southeast-2.pooler.supabase.com`:
+
+- `DATABASE_URL` is the transaction pooler on port 6543 with `pgbouncer=true`.
+- `DIRECT_DATABASE_URL` is the session pooler on port 5432, which `prisma migrate
+  deploy` needs and which the transaction pooler cannot serve.
+
+`apps/api/scripts/build-func.mjs` runs `prisma migrate deploy` during the `crm-api`
+build, gated on `VERCEL_ENV === "production"`. The schema therefore moves when a
+pull request merges to `release`, with the code that needs it, and once.
+
+#### Still outstanding
+
+1. Three DNS records at the registrar, which holds the nameservers for
+   `ai-seeyou.com`. There is no wildcard, so each subdomain needs its own record.
+2. A Google OAuth client, for sign-in only. The redirect URI is
+   `https://api.crm.ai-seeyou.com/api/auth/callback/google`.
+
+Gmail and Calendar reading stays off until the founder approves it. That is a
+separate decision and a Phase 4 item.
 
 ## Phase 2: the travel data architecture
 

@@ -1,5 +1,7 @@
 import {
+	AssignmentScope,
 	type ContactBriefSections,
+	type ContactRoleType,
 	type Db,
 	ExternalRecordType,
 	type FactEvidence,
@@ -18,6 +20,10 @@ import {
 import { AgentQueueService } from "../agent/agent-queue.service";
 import { AgentTriggerService } from "../agent/agent-trigger.service";
 import { ARCHIVE } from "../archive/archive-config";
+import {
+	CONTACT_ASSIGNMENT_SELECT,
+	serializeContactAssignment,
+} from "../assignments/assignment-rows";
 import { CompanyDirectoryService } from "../companies/company-directory.service";
 import {
 	ActivityStampService,
@@ -56,6 +62,18 @@ const OWNER_SELECT = {
 	email: true,
 	image: true,
 } as const;
+
+// One contact responsible for 180 properties is one contact in the facet, not
+// 180. groupBy carries the pair so the count stays a count of people.
+function countsByRole(
+	groups: Array<{ roleType: ContactRoleType; contactId: string }>,
+): Record<string, number> {
+	const counts: Record<string, number> = {};
+	for (const group of groups) {
+		counts[group.roleType] = (counts[group.roleType] ?? 0) + 1;
+	}
+	return counts;
+}
 
 const COMPANY_SELECT = {
 	id: true,
@@ -134,22 +152,55 @@ export class ContactsService {
 			this.facetCounts(input, filterableFields),
 		]);
 
-		const tableFields = await this.fields.tableValuesFor(
-			"CONTACT",
-			rows.map((row) => row.id),
-		);
+		const ids = rows.map((row) => row.id);
+		const [tableFields, roles] = await Promise.all([
+			this.fields.tableValuesFor("CONTACT", ids),
+			this.currentRoles(ids),
+		]);
 
 		return {
-			rows: rows.map((row) => ({
-				...row,
-				lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
-				createdAt: row.createdAt.toISOString(),
-				archivedAt: row.archivedAt?.toISOString() ?? null,
-				fields: tableFields.get(row.id) ?? {},
-			})),
+			rows: rows.map((row) => {
+				const held = roles.get(row.id);
+				return {
+					...row,
+					roleTypes: [...(held?.roleTypes ?? [])],
+					responsibleForCount: held?.responsibleFor ?? 0,
+					lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
+					createdAt: row.createdAt.toISOString(),
+					archivedAt: row.archivedAt?.toISOString() ?? null,
+					fields: tableFields.get(row.id) ?? {},
+				};
+			}),
 			total,
 			facetCounts,
 		};
+	}
+
+	private async currentRoles(ids: string[]) {
+		const byContact = new Map<
+			string,
+			{ roleTypes: Set<ContactRoleType>; responsibleFor: number }
+		>();
+		if (ids.length === 0) return byContact;
+
+		const assignments = await this.db.contactAssignment.findMany({
+			where: { contactId: { in: ids }, validTo: null },
+			select: { contactId: true, roleType: true, scope: true },
+		});
+
+		for (const row of assignments) {
+			const held = byContact.get(row.contactId) ?? {
+				roleTypes: new Set<ContactRoleType>(),
+				responsibleFor: 0,
+			};
+			byContact.set(row.contactId, held);
+			held.roleTypes.add(row.roleType);
+			if (row.scope === AssignmentScope.RESPONSIBLE_FOR) {
+				held.responsibleFor += 1;
+			}
+		}
+
+		return byContact;
 	}
 
 	async byId(id: string) {
@@ -198,6 +249,14 @@ export class ContactsService {
 				company: {
 					select: { ...COMPANY_SELECT, industry: true, primaryContactId: true },
 				},
+				assignments: {
+					where: {
+						validTo: null,
+						scope: AssignmentScope.RESPONSIBLE_FOR,
+					},
+					orderBy: [{ company: { name: "asc" } }],
+					select: CONTACT_ASSIGNMENT_SELECT,
+				},
 				owner: { select: OWNER_SELECT },
 				deals: {
 					select: {
@@ -227,8 +286,16 @@ export class ContactsService {
 			contact.company?.id ?? null,
 		);
 
-		const { deals, createdAt, archivedAt, brief, facts, company, ...rest } =
-			contact;
+		const {
+			deals,
+			createdAt,
+			archivedAt,
+			brief,
+			facts,
+			company,
+			assignments,
+			...rest
+		} = contact;
 
 		return {
 			...rest,
@@ -258,6 +325,7 @@ export class ContactsService {
 				amountCents: toCents(deal.amount),
 				expectedCloseDate: deal.expectedCloseDate?.toISOString() ?? null,
 			})),
+			responsibleFor: assignments.map(serializeContactAssignment),
 		};
 	}
 
@@ -832,6 +900,16 @@ export class ContactsService {
 			and.push({ seniority: { in: input.seniority } });
 		}
 		if (input.persona.length > 0) and.push({ function: { in: input.persona } });
+		if (input.roleType.length > 0) {
+			and.push({
+				assignments: {
+					some: {
+						roleType: { in: input.roleType as ContactRoleType[] },
+						validTo: null,
+					},
+				},
+			});
+		}
 
 		const activity = activityFilter(input.activity);
 		if (activity) and.push(activity);
@@ -854,6 +932,7 @@ export class ContactsService {
 			titles,
 			seniorities,
 			personas,
+			roleTypes,
 			activity,
 			fieldFacets,
 		] = await Promise.all([
@@ -887,6 +966,10 @@ export class ContactsService {
 				where,
 				_count: { _all: true },
 			}),
+			this.db.contactAssignment.groupBy({
+				by: ["roleType", "contactId"],
+				where: { validTo: null, contact: where },
+			}),
 			activityFacetCounts((activityWhere) =>
 				this.db.contact.count({ where: { AND: [where, activityWhere] } }),
 			),
@@ -900,6 +983,7 @@ export class ContactsService {
 			title: countsByKey(titles, "title"),
 			seniority: countsByKey(seniorities, "seniority"),
 			persona: countsByKey(personas, "function"),
+			roleType: countsByRole(roleTypes),
 			activity,
 			...Object.fromEntries(
 				Object.entries(fieldFacets).map(([key, counts]) => [

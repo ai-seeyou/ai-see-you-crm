@@ -13,6 +13,9 @@ node_modules
 
 # Testing
 coverage
+# apps/api/src/coverage is source, not a coverage report: it is the COVERAGE
+# view. The pattern above silently swallowed the whole module.
+!apps/api/src/coverage
 
 # Turbo
 .turbo

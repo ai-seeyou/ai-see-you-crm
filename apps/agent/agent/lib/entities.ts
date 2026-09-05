@@ -245,7 +245,11 @@ export async function readBusinessStructure(
 			note: recorded ? ONLY_CURRENT : NOTHING_RECORDED,
 		};
 	} catch (error) {
-		report("business structure", companyId, error);
+		report(
+			"business structure",
+			companyId,
+			error instanceof Error ? error.message : String(error),
+		);
 		return { readable: false, reason: UNREADABLE };
 	}
 }
@@ -339,7 +343,11 @@ export async function readContactCoverage(
 					: ONLY_CURRENT,
 		};
 	} catch (error) {
-		report("contact coverage", contactId, error);
+		report(
+			"contact coverage",
+			contactId,
+			error instanceof Error ? error.message : String(error),
+		);
 		return { readable: false, reason: UNREADABLE };
 	}
 }
@@ -380,7 +388,11 @@ export async function structureForHits(
 			});
 		}
 	} catch (error) {
-		report("search structure", companyIds.join(","), error);
+		report(
+			"search structure",
+			companyIds.join(","),
+			error instanceof Error ? error.message : String(error),
+		);
 	}
 
 	return found;
@@ -418,7 +430,7 @@ export async function employerMoveBlock(
 		report(
 			"relationship between two businesses",
 			`${fromCompanyId} and ${toCompanyId}`,
-			error,
+			error instanceof Error ? error.message : String(error),
 		);
 
 		return (
@@ -642,10 +654,6 @@ function fullName(person: {
 	return [person.firstName, person.lastName].filter(Boolean).join(" ");
 }
 
-function report(what: string, id: string, error: unknown): void {
-	console.error(
-		`[agent] could not read the ${what} for ${id}: ${
-			error instanceof Error ? error.message : String(error)
-		}`,
-	);
+function report(what: string, id: string, cause: string): void {
+	console.error(`[agent] could not read the ${what} for ${id}: ${cause}`);
 }

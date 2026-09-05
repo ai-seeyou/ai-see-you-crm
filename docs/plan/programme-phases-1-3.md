@@ -55,7 +55,7 @@ Two local environment facts, both discovered the hard way:
   placeholder values for this reason. Without them the suite fails locally and
   passes in CI.
 
-### 1b, deployed
+### 1b, deployed. Done
 
 Three Vercel projects on the `AI See You` team, all three git-connected to
 `ai-seeyou/ai-see-you-crm` with `release` as the production branch, all three
@@ -107,53 +107,117 @@ pull request merges to `release`, with the code that needs it, and once.
 Gmail and Calendar reading stays off until the founder approves it. That is a
 separate decision and a Phase 4 item.
 
-## Phase 2: the travel data architecture
+## Phase 2: the travel data architecture. Done and merged
 
-Audit section H.3 and H.4. Additive migrations only. `Company` stays the physical
-table. `Contact.companyId` is retained and kept synchronised with the single
-primary employer assignment.
+Audit section H.3 and H.4, in the migration order the audit gives. Merged as
+pull request 5. `Company` stays the physical table, no column was removed, and
+`Contact.companyId` still works for every inherited query.
 
 | # | Migration | State |
 | --- | --- | --- |
-| 1 | `Vertical`, `Company.verticalId`, `Company.entityType`, seed four verticals | |
-| 2 | `EntityRelationship`, `RelationshipType` | |
-| 3 | `ContactAssignment`, `ContactRoleType`, `AssignmentScope`, backfill | |
-| 4 | `ExternalRef` and its enums | |
-| 5 | Drop the `Company.domain` unique index, change `companyForEmail` | |
-| 6 | Travel `FieldDefinition` seeds, replace the `DealStage` values | |
+| 1 | `Vertical`, `Company.verticalId`, `Company.entityType`, four verticals seeded | Done |
+| 2 | `EntityRelationship`, `RelationshipType`, partial unique on `validTo IS NULL` | Done |
+| 3 | `ContactAssignment`, its enums, the backfill, and the synchronisation rule | Done |
+| 4 | `ExternalRef` and its enums, unique in both directions per system | Done |
+| 5 | `Company.domain` uniqueness dropped, `companyForEmail` proposes | Done |
+| 6 | Travel `DealStage`, `OpportunityEntity`, travel `FieldDefinition` seeds | Done |
+| 7 | Integrity checks: no self-relationship, no inverted period, primary means employer | Done |
 
-Refused by design: a `parentId` tree, Production identifiers stored as custom
-fields, any Production write path.
+Refused by design, and still refused: a `parentId` tree, Production identifiers
+stored as custom fields, any Production write path.
 
-### Acceptance test
+### Where the synchronisation rule lives
 
-Synthetic data only. One hotel group, three properties, one management company,
-typed relationships between them, one senior group contact employed at the group
-and responsible for all three properties. Both directions queryable. No reliance
-on a unique corporate domain for property identity. Canonical external references
-represented.
+In the database, as a trigger on `contact`, not in a service. `Contact.companyId`
+is written by tRPC, by the bulk editor, by the mailbox match, by the tracking
+filing, by agent tools and by the seed. A service covers only the callers that
+remember to call it, and `contacts.bulkSetCompany` is exactly the one that would
+have been forgotten. The reverse direction is `ContactAssignmentService`, the only
+writer of that table.
 
-## Phase 3: make it useful
+### Acceptance
 
-Audit section R items 18 to 22, plus the founder brief.
+`apps/api/test/travel-model.integration.spec.ts`. One hotel group, one management
+company, three properties, two of which share the group's corporate domain and
+stay distinct businesses. Typed relationships read in both directions. One group
+Director of Distribution employed at the group and responsible for all three
+properties, found from either end. Both `ExternalRef` uniqueness directions. One
+group-level opportunity covering three properties.
 
-- Company reads as Business, Deal reads as Opportunity, in user-facing language.
-- Business record sheet: a Relationships panel and an Assignments panel.
-- Contact record sheet: a Responsible for panel.
-- Filters: vertical, entity type, lifecycle stage, role type, region.
-- `TODAY`: overdue tasks, recent replies, stale opportunities, follow-ups.
-- `COVERAGE`: target businesses missing a required commercial role.
+Independent review refused it the first time. The model passed; the product did
+not, because `CompaniesService.create` still rejected a second business on one
+domain and the acceptance test wrote straight to Prisma and never met the guard.
+The test goes through the service now.
 
-## Workstreams
+## Phase 3: make it useful. Done and merged
 
-| Id | Owns | Agent |
-| --- | --- | --- |
-| WS-A | Infrastructure and deployment | Coordinator |
-| WS-B | Phase 2 data architecture | Child |
-| WS-C | Phase 3 product and UI | Child |
-| WS-D | Independent adversarial QA | Child, never the one that implemented |
+Audit section R items 18 to 22. Merged as pull request 9.
 
-The agent that implements a material change never certifies it.
+- Company reads as Business and Deal reads as Opportunity, from `apps/app/lib/labels.ts`.
+  No identifier moved: route segments, the `RecordKind` union, tRPC aliases, REST
+  paths, Prisma names, `FieldEntity`, saved-view facet ids and the agent bridge
+  headers are byte-identical to before, and so is `schema.prisma`.
+- Six tRPC modules: `relationships`, `assignments`, `verticals`, `today`,
+  `coverage`, `domainReviews`.
+- The business sheet has Relationships and People responsible, and vertical and
+  entity type as editable fields. The contact sheet has Responsible for.
+- Filters for vertical, entity type and role type. Lifecycle stage and region
+  already worked through the custom-field pipeline.
+- `TODAY` and `COVERAGE`, and the domain review queue that Phase 2's proposals
+  needed.
+
+Thresholds live in `apps/api/src/today/today-config.ts`, the required-role matrix
+in `apps/api/src/coverage/coverage-config.ts`. Both are one `as const` object so a
+new entity type is a compile error rather than a silent gap.
+
+## Two deliberate departures from upstream
+
+Both were founder decisions, both are recorded where the code is.
+
+1. **The Context.dev research key can be skipped.** Upstream's onboarding gate
+   cannot be passed without one, so a workspace that has not bought a key cannot
+   use the CRM at all. `appSetting.contextDevDeferredAt` records the moment
+   somebody chose to go on without one.
+2. **Sign-in asks for identity, not for a mailbox.** Upstream requested
+   `gmail.readonly` and `calendar.readonly` at sign-in and walled anybody who
+   declined, so signing in and handing the CRM a mailbox were one act. They are
+   two decisions. Settings, Connections still passes `SYNC_SCOPES` to
+   `linkSocial`, so no capability was lost.
+
+## What review found that we would have shipped
+
+Every one of these was found by an agent that did not write the code.
+
+- The Coverage view was not in the repository. An unanchored `coverage` pattern in
+  `.gitignore` hid it, a committed file imported it, and the branch did not compile
+  from a clean checkout. The negation needs `\[slug\]` escaped or it does nothing.
+- The product refused to put two hotels on one corporate domain while the
+  acceptance test passed.
+- An invalid filter value returned HTTP 500 carrying an absolute server path.
+- Coverage called a role filled before the person started, and a gap once a
+  leaving date was recorded. A future end date also freed the uniqueness slot.
+- A decided domain review accepted a second decision and lost the first.
+- `mailboxGrantsNeeded` stopped answering as soon as any non-mailbox account
+  existed, which the sign-in change turned from latent into live.
+
+## Open, and deliberately not done
+
+- Connecting Gmail is blocked on a founder decision about which model processes
+  private correspondence. The inherited default is GLM 5.2 through the Vercel AI
+  Gateway, which nobody here chose.
+- The research agent cannot see verticals, entity types, relationships or
+  assignments. Its read tools select fixed field lists.
+- Email about a property still files against the group, because attribution reads
+  a contact's single employer.
+- Coverage stops at 200 target businesses and says so.
+- A relationship to an archived business renders as live.
+- The contact sheet loads every assignment with no cap.
+- No HTTP-level test covers the six new routers.
+- Thirty two `className` overrides sit on shared components, against
+  `docs/design.md`. The pattern is inherited.
+- Around 240 files still contain dashes. The product displays none of them.
+- One agent test fails intermittently in a full run and passes alone. It predates
+  Phase 3 and survived 24 attempts to reproduce it.
 
 ## Programme exclusions
 

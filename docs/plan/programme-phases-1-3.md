@@ -15,6 +15,39 @@ every question of design.
 5. No em dashes, no en dashes, anywhere.
 6. No code comments except ones that record a decision somebody would undo.
 
+## Founder rulings before real data
+
+### Founder only access
+
+V1 permits only `dave@ai-seeyou.com`.
+`ALLOWED_SIGN_IN` contains that full email address only. It never contains `ai-seeyou.com`.
+Google OAuth remains the sign-in mechanism. The CRM exposes no registration or invitation flow.
+The founder is the sole workspace owner and administrator.
+
+Unauthenticated users can reach the sign-in boundary. They cannot reach CRM data or application routes.
+The app and API must enforce this rule independently. Existing test users must be disabled or removed.
+
+Before real data loads, independent tests must prove these cases:
+
+1. The nominated email can sign in.
+2. Another AI See You email cannot sign in.
+3. An unrelated Google account cannot sign in.
+4. Unauthenticated app and API requests cannot retrieve CRM data.
+
+The CRM uses `noindex, nofollow`. Sitemaps and the public AI See You site exclude the CRM.
+The Production MCP deny remains. The CRM never writes Production.
+
+### Light only visual system
+
+Phase 3 finishing uses the current AI See You Production frontend as the canonical visual reference.
+The work copies its visual system, not its page layouts. CRM workflows and information density remain.
+
+The system includes typography, colours, surfaces, borders, radii, controls, tables, navigation,
+interaction states, spacing and hierarchy. The inherited dark treatment and theme toggle are removed.
+The application never follows the operating system theme.
+
+This finish does not restart working functionality. It changes shared UI sources before local overrides.
+
 ## Environments
 
 | Thing | Value |
@@ -218,6 +251,9 @@ Every one of these was found by an agent that did not write the code.
 - Around 240 files still contain dashes. The product displays none of them.
 - One agent test fails intermittently in a full run and passes alone. It predates
   Phase 3 and survived 24 attempts to reproduce it.
+- Founder access hardening must configure `dave@ai-seeyou.com` in every production environment.
+- Founder access acceptance tests are not complete.
+- Phase 3 visual finishing is not complete.
 
 ## Programme exclusions
 

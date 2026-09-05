@@ -54,10 +54,10 @@ outside a phase that authorises them. See [`AGENTS.md`](./AGENTS.md).
 | Phase | State |
 | --- | --- |
 | **Phase 0** Fork hygiene, telemetry off, our documentation, upstream branding removed | **Done** |
-| **Phase 1** Supabase wiring, first deployment, Google sign-in | Not started, needs founder approval |
-| **Phase 2** The data model: verticals, entity types, relationships, contact assignments, external references | Not started |
-| **Phase 3** UI for relationships and coverage | Not started |
-| **Phase 4** Import the real target universe | Not started |
+| **Phase 1** Supabase wiring, first deployment, Google sign-in | **Done** |
+| **Phase 2** The data model: verticals, entity types, relationships, contact assignments, external references | **Done** |
+| **Phase 3** UI for relationships and coverage | **Done, visual finishing remains** |
+| **Phase 4** Import the real target universe | In progress, no real data loaded |
 | **Phase 5** Production read integration | Not started |
 | **Phase 6** Clay enrichment | Not started |
 | **Phase 7** Outreach | Not started |
@@ -129,13 +129,13 @@ guard.
 | Variable | What to put in it |
 | --- | --- |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
-| `ALLOWED_SIGN_IN` | `ai-seeyou.com` |
+| `ALLOWED_SIGN_IN` | `dave@ai-seeyou.com` only |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | A Google OAuth client. Both or neither. Phase 1. |
 
 `ALLOWED_SIGN_IN` is the entire authorisation model. An unset value means nobody can
-sign in, which is the safe direction to fail. After sign-in, every signed-in person
-can read and write every record: there are no per-record permissions. That is
-correct for a founder-led team and is stated plainly in [`SECURITY.md`](./SECURITY.md).
+sign in, which is the safe direction to fail. V1 permits only the founder's exact
+nominated Google email address, `dave@ai-seeyou.com`. A company domain is not permitted. After sign-in,
+the founder can read and write every record. See [`SECURITY.md`](./SECURITY.md).
 
 `.env.example` is the full list with a note on each variable.
 

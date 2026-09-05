@@ -1,6 +1,7 @@
 import {
 	type Db,
 	type EnrichmentStatus,
+	ExternalRecordType,
 	type Prisma,
 	Prisma as PrismaNamespace,
 	type RecordSource,
@@ -9,7 +10,6 @@ import { OPEN_DEAL_STAGES } from "@crm/db/deal-stage";
 import type { FieldDefinitionWithOptions } from "@crm/db/fields";
 import {
 	BadRequestException,
-	ConflictException,
 	Injectable,
 	Logger,
 	NotFoundException,
@@ -274,18 +274,6 @@ export class CompaniesService {
 	async create(input: CompanyCreateInput) {
 		const domain = normalizeDomain(input.domain);
 
-		if (domain) {
-			const existing = await this.db.company.findFirst({
-				where: { domain, archivedAt: null },
-				select: { id: true, name: true },
-			});
-			if (existing) {
-				throw new ConflictException(
-					`${existing.name} already uses the domain ${domain}.`,
-				);
-			}
-		}
-
 		const company = await this.agent.withCrmEvents(async (tx, emit) => {
 			const created = await tx.company.create({
 				data: {
@@ -470,6 +458,10 @@ export class CompaniesService {
 							{ dealId: { in: deals.map((deal) => deal.id) } },
 						],
 					},
+				});
+
+				await tx.externalRef.deleteMany({
+					where: { recordType: ExternalRecordType.COMPANY, recordId: id },
 				});
 
 				const company = await tx.company.delete({
@@ -724,11 +716,6 @@ export class CompaniesService {
 		if (cause instanceof PrismaNamespace.PrismaClientKnownRequestError) {
 			if (cause.code === "P2025") {
 				throw new NotFoundException(`No company with id ${id}.`);
-			}
-			if (cause.code === "P2002") {
-				throw new ConflictException(
-					"Another company already uses that domain.",
-				);
 			}
 		}
 		throw cause;

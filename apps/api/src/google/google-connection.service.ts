@@ -199,16 +199,44 @@ export class GoogleConnectionService {
 
 		if (!options.purge) return { domain: normalised, purged: 0 };
 
-		const company = await this.db.company.findUnique({
+		// A thread is purged by who is on it, not by which business it was filed
+		// against. Since an unrecognised sending domain raises a review instead of
+		// inventing a business, a thread from that domain carries no companyId at
+		// all, and purging by companyId deleted nothing at all.
+		const companies = await this.db.company.findMany({
 			where: { domain: normalised },
 			select: { id: true },
 		});
-
-		if (!company) return { domain: normalised, purged: 0 };
+		const companyIds = companies.map((company) => company.id);
+		// A suppressed domain covers everyone who sends from under it, so
+		// mail.accor.com goes with accor.com. Matching the exact suffix alone left
+		// every subdomain sender behind.
+		const at = `@${normalised}`;
+		const under = `.${normalised}`;
 
 		const [threads, events] = await this.db.$transaction([
-			this.db.emailThread.deleteMany({ where: { companyId: company.id } }),
-			this.db.calendarEvent.deleteMany({ where: { companyId: company.id } }),
+			this.db.emailThread.deleteMany({
+				where: {
+					OR: [
+						{ companyId: { in: companyIds } },
+						{ messages: { some: { fromEmail: { endsWith: at } } } },
+						{ messages: { some: { fromEmail: { endsWith: under } } } },
+						{ contact: { email: { endsWith: at } } },
+						{ contact: { email: { endsWith: under } } },
+					],
+				},
+			}),
+			this.db.calendarEvent.deleteMany({
+				where: {
+					OR: [
+						{ companyId: { in: companyIds } },
+						{ attendees: { some: { email: { endsWith: at } } } },
+						{ attendees: { some: { email: { endsWith: under } } } },
+						{ contact: { email: { endsWith: at } } },
+						{ contact: { email: { endsWith: under } } },
+					],
+				},
+			}),
 		]);
 
 		await this.stamp.recomputeAll();

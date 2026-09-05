@@ -5,11 +5,16 @@ import { cn } from "@crm/ui/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DealStageIndicator } from "@/components/crm/deal-stage";
-import { dealStageLabel, isClosedStage, OPEN_STAGES } from "@/lib/deal-stage";
+import {
+	dealStageLabel,
+	isClosedStage,
+	OPEN_STAGES,
+	WON_STAGE,
+} from "@/lib/deal-stage";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
-const RAIL = [...OPEN_STAGES, DealStage.CLOSED_WON] as readonly DealStage[];
+const RAIL = [...OPEN_STAGES, WON_STAGE] as readonly DealStage[];
 
 export function StageStepper({
 	dealId,
@@ -31,7 +36,7 @@ export function StageStepper({
 		}),
 	);
 
-	const exited = isClosedStage(stage) && stage !== DealStage.CLOSED_WON;
+	const exited = isClosedStage(stage) && stage !== WON_STAGE;
 	const steps = exited ? OPEN_STAGES : RAIL;
 	const currentIndex = steps.indexOf(stage);
 
@@ -56,7 +61,7 @@ export function StageStepper({
 							)}
 						>
 							<span className="block truncate">
-								{current && option === DealStage.CLOSED_WON ? (
+								{current && option === WON_STAGE ? (
 									<DealStageIndicator stage={stage} className="text-xs" />
 								) : (
 									dealStageLabel(option)

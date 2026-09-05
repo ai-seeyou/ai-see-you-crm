@@ -203,7 +203,7 @@ export class DashboardService {
 
 			const { closedAt, stage } = deal;
 			if (!closedAt) continue;
-			const won = stage === DealStage.CLOSED_WON;
+			const won = stage === DealStage.LIVE;
 
 			if (won) {
 				const closed = trend[monthKey(closedAt) - firstBucket];

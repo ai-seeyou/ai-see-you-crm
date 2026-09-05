@@ -75,6 +75,23 @@ export async function writeContextDevKey(db: Db, key: string): Promise<void> {
 	});
 }
 
+export async function readContextDevDeferredAt(db: Db): Promise<Date | null> {
+	const row = await db.appSetting.findUnique({
+		where: { id: SETTINGS_ID },
+		select: { contextDevDeferredAt: true },
+	});
+
+	return row?.contextDevDeferredAt ?? null;
+}
+
+export async function deferContextDevKey(db: Db, at: Date): Promise<void> {
+	await db.appSetting.upsert({
+		where: { id: SETTINGS_ID },
+		create: { id: SETTINGS_ID, contextDevDeferredAt: at },
+		update: { contextDevDeferredAt: at },
+	});
+}
+
 export async function readReportingCurrency(db: Db): Promise<string> {
 	const row = await db.appSetting.findUnique({
 		where: { id: SETTINGS_ID },

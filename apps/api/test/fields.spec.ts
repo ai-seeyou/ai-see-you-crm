@@ -62,7 +62,7 @@ const companies = new CompaniesService(
 );
 const contacts = new ContactsService(
 	db,
-	new CompanyDirectoryService(agent),
+	new CompanyDirectoryService(db),
 	agent,
 	queue,
 	stamp,

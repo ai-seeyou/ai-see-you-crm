@@ -250,16 +250,18 @@ const TITLES = [
 ] as const;
 
 const OPEN_STAGES = [
-	DealStage.DEMO_BOOKED,
-	DealStage.QUALIFIED_TO_BUY,
-	DealStage.DECISION_MAKER_BOUGHT_IN,
-	DealStage.CONTRACT_SENT,
+	DealStage.IDENTIFIED,
+	DealStage.CONTACTED,
+	DealStage.ENGAGED,
+	DealStage.EVALUATING,
+	DealStage.PROPOSAL_SENT,
+	DealStage.IN_CONTRACT,
 ] as const;
 
 const CLOSED_STAGES = [
-	DealStage.CLOSED_WON,
+	DealStage.LIVE,
 	DealStage.CLOSED_LOST,
-	DealStage.UNQUALIFIED_TO_BUY,
+	DealStage.DORMANT,
 ] as const;
 
 const DEAL_DESCRIPTIONS = [
@@ -376,8 +378,9 @@ async function seedCompanies(
 
 	for (const company of COMPANIES) {
 		const row = await db.company.upsert({
-			where: { domain: company.domain },
+			where: { id: `seed-company-${slug(company.name)}` },
 			create: {
+				id: `seed-company-${slug(company.name)}`,
 				name: company.name,
 				domain: company.domain,
 				website: `https://${company.domain}`,
@@ -425,17 +428,49 @@ async function seedIcons(
 	console.log(`Resolved ${resolved} of ${missing.length} company icons.`);
 }
 
-const ACCOUNT_TYPES = ["Prospect", "Customer", "Partner", "Churned"] as const;
-const SEGMENT_TIERS = ["Enterprise", "Mid-Market", "SMB"] as const;
-const TERRITORIES = ["AMER", "EMEA", "APAC"] as const;
 const LIFECYCLE_STAGES = [
-	"Lead",
-	"MQL",
-	"SQL",
+	"Target",
+	"Contacted",
+	"Engaged",
 	"Opportunity",
 	"Customer",
+	"Dormant",
+	"Not a fit",
 ] as const;
-const LEAD_SOURCES = ["Inbound", "Outbound", "Event"] as const;
+const REGIONS = [
+	"Australia and New Zealand",
+	"Pacific",
+	"South East Asia",
+	"North Asia",
+	"South Asia",
+	"Middle East",
+	"Europe",
+	"Americas",
+	"Africa",
+] as const;
+const CHAIN_SCALES = [
+	"Luxury",
+	"Upper upscale",
+	"Upscale",
+	"Upper midscale",
+	"Midscale",
+	"Economy",
+	"Independent",
+] as const;
+const DISTRIBUTION_MODELS = [
+	"Direct led",
+	"OTA led",
+	"Wholesale led",
+	"Mixed",
+] as const;
+const PRIORITIES = ["Tier 1", "Tier 2", "Tier 3"] as const;
+const LEAD_SOURCES = [
+	"Inbound",
+	"Outbound",
+	"Referral",
+	"Event",
+	"Partner",
+] as const;
 
 type SeededField = {
 	id: string;
@@ -444,13 +479,13 @@ type SeededField = {
 };
 
 type SeededFieldSet = {
-	accountType: SeededField;
-	segment: SeededField;
-	territory: SeededField;
 	lifecycleStage: SeededField;
+	region: SeededField;
+	chainScale: SeededField;
+	distributionModel: SeededField;
+	priority: SeededField;
 	leadSource: SeededField;
-	icpFitScore: SeededField;
-	bdrOwner: SeededField;
+	relationshipOwner: SeededField;
 };
 
 async function upsertField(
@@ -492,37 +527,43 @@ async function upsertField(
 
 async function seedCompanyFields(): Promise<SeededFieldSet> {
 	const [
-		accountType,
-		segment,
-		territory,
 		lifecycleStage,
+		region,
+		chainScale,
+		distributionModel,
+		priority,
 		leadSource,
-		icpFitScore,
-		bdrOwner,
+		relationshipOwner,
 	] = await Promise.all([
-		upsertField("COMPANY", "Account type", FieldType.SELECT, 0, ACCOUNT_TYPES),
-		upsertField("COMPANY", "Segment", FieldType.SELECT, 1, SEGMENT_TIERS),
-		upsertField("COMPANY", "Territory", FieldType.SELECT, 2, TERRITORIES),
 		upsertField(
 			"COMPANY",
 			"Lifecycle stage",
 			FieldType.SELECT,
-			3,
+			0,
 			LIFECYCLE_STAGES,
 		),
-		upsertField("COMPANY", "Lead source", FieldType.SELECT, 4, LEAD_SOURCES),
-		upsertField("COMPANY", "ICP fit score", FieldType.NUMBER, 5),
-		upsertField("COMPANY", "BDR owner", FieldType.USER, 6),
+		upsertField("COMPANY", "Region", FieldType.SELECT, 1, REGIONS),
+		upsertField("COMPANY", "Chain scale", FieldType.SELECT, 2, CHAIN_SCALES),
+		upsertField(
+			"COMPANY",
+			"Distribution model",
+			FieldType.SELECT,
+			3,
+			DISTRIBUTION_MODELS,
+		),
+		upsertField("COMPANY", "Priority", FieldType.SELECT, 4, PRIORITIES),
+		upsertField("COMPANY", "Lead source", FieldType.SELECT, 5, LEAD_SOURCES),
+		upsertField("COMPANY", "Relationship owner", FieldType.USER, 6),
 	]);
 
 	return {
-		accountType,
-		segment,
-		territory,
 		lifecycleStage,
+		region,
+		chainScale,
+		distributionModel,
+		priority,
 		leadSource,
-		icpFitScore,
-		bdrOwner,
+		relationshipOwner,
 	};
 }
 
@@ -539,105 +580,28 @@ async function seedCompanyFieldValues(
 	ownerIds: string[],
 ): Promise<void> {
 	for (const company of companies) {
-		const accountType = pick(ACCOUNT_TYPES);
+		const lifecycleStage = pick(LIFECYCLE_STAGES);
 
 		await Promise.all([
+			selectValue(fields.lifecycleStage, company.id, lifecycleStage),
+			selectValue(fields.region, company.id, pick(REGIONS)),
+			selectValue(fields.chainScale, company.id, pick(CHAIN_SCALES)),
+			selectValue(
+				fields.distributionModel,
+				company.id,
+				pick(DISTRIBUTION_MODELS),
+			),
+			selectValue(fields.priority, company.id, pick(PRIORITIES)),
+			selectValue(fields.leadSource, company.id, pick(LEAD_SOURCES)),
 			db.fieldValue.upsert({
 				where: {
 					fieldId_companyId: {
-						fieldId: fields.accountType.id,
+						fieldId: fields.relationshipOwner.id,
 						companyId: company.id,
 					},
 				},
 				create: {
-					fieldId: fields.accountType.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.accountType, accountType),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.segment.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.segment.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.segment, pick(SEGMENT_TIERS)),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.territory.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.territory.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.territory, pick(TERRITORIES)),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.lifecycleStage.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.lifecycleStage.id,
-					companyId: company.id,
-					optionId: optionIdFor(
-						fields.lifecycleStage,
-						accountType === "Customer" ? "Customer" : pick(LIFECYCLE_STAGES),
-					),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.leadSource.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.leadSource.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.leadSource, pick(LEAD_SOURCES)),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.icpFitScore.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.icpFitScore.id,
-					companyId: company.id,
-					number: integer(40, 95),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.bdrOwner.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.bdrOwner.id,
+					fieldId: fields.relationshipOwner.id,
 					companyId: company.id,
 					userId: pick(ownerIds),
 				},
@@ -645,6 +609,22 @@ async function seedCompanyFieldValues(
 			}),
 		]);
 	}
+}
+
+async function selectValue(
+	field: SeededField,
+	companyId: string,
+	label: string,
+): Promise<void> {
+	await db.fieldValue.upsert({
+		where: { fieldId_companyId: { fieldId: field.id, companyId } },
+		create: {
+			fieldId: field.id,
+			companyId,
+			optionId: optionIdFor(field, label),
+		},
+		update: {},
+	});
 }
 
 type SeededContact = { id: string; companyId: string };
@@ -841,8 +821,7 @@ async function seedDeals(
 					),
 					closedAt: closed ? stageChangedAt : null,
 					closedReason:
-						stage === DealStage.CLOSED_LOST ||
-						stage === DealStage.UNQUALIFIED_TO_BUY
+						stage === DealStage.CLOSED_LOST || stage === DealStage.DORMANT
 							? pick(LOST_REASONS)
 							: null,
 					createdAt,
@@ -950,8 +929,8 @@ async function seedActivities(
 			dealId: deal.id,
 			subject: "Stage changed",
 			meta: {
-				from: DealStage.DEMO_BOOKED,
-				to: deal.closed ? DealStage.CLOSED_WON : DealStage.QUALIFIED_TO_BUY,
+				from: DealStage.CONTACTED,
+				to: deal.closed ? DealStage.LIVE : DealStage.EVALUATING,
 			},
 		});
 	}

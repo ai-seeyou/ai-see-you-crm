@@ -1,9 +1,11 @@
 import type { Db } from "@crm/db";
 import {
 	DEFAULT_AGENT_MODEL,
+	deferContextDevKey,
 	maskKey,
 	readAgentModel,
 	readArchiveRetentionDays,
+	readContextDevDeferredAt,
 	readContextDevKey,
 	writeAgentModel,
 	writeArchiveRetentionDays,
@@ -86,9 +88,21 @@ export class SettingsService {
 	}
 
 	async researchKey(): Promise<ResearchKeySettings> {
-		const key = await readContextDevKey(this.db);
+		const [key, deferredAt] = await Promise.all([
+			readContextDevKey(this.db),
+			readContextDevDeferredAt(this.db),
+		]);
 
-		return { configured: key !== null, hint: key ? maskKey(key) : null };
+		return {
+			configured: key !== null,
+			hint: key ? maskKey(key) : null,
+			deferred: deferredAt !== null,
+		};
+	}
+
+	async deferResearchKey(): Promise<ResearchKeySettings> {
+		await deferContextDevKey(this.db, new Date());
+		return this.researchKey();
 	}
 
 	async setResearchKey(apiKey: string): Promise<ResearchKeySettings> {

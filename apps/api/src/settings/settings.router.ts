@@ -63,6 +63,14 @@ export class SettingsRouter {
 		return this.settings.setResearchKey(input.apiKey);
 	}
 
+	@Mutation({
+		output: researchKeyOutput,
+		meta: restMeta("POST", "/settings/research-key/defer", ["Settings"]),
+	})
+	async deferResearchKey() {
+		return this.settings.deferResearchKey();
+	}
+
 	@Query({
 		output: archiveRetentionOutput,
 		meta: restMeta("GET", "/settings/archive-retention", ["Settings"]),

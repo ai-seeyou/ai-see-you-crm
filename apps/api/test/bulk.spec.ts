@@ -23,12 +23,13 @@ const agent = {
 	companyCreated: async () => undefined,
 	companyRequested: async () => true,
 	withCrmEvents: withDiscardedCrmEvents,
+	fieldBackfillRecords: async () => ({ queued: 0, merged: 0 }),
 } as unknown as AgentTriggerService;
 
 const stamp = new ActivityStampService(db);
 const queue = new AgentQueueService(db);
 const conversion = new ConversionService(db);
-const directory = new CompanyDirectoryService(agent);
+const directory = new CompanyDirectoryService(db);
 
 const fields = new FieldsService(db, agent);
 const contacts = new ContactsService(
@@ -255,7 +256,7 @@ describe("moving a selection of deals to a stage", () => {
 				where: { id: deal.id },
 				select: { stage: true },
 			}),
-		).toEqual({ stage: "DEMO_BOOKED" });
+		).toEqual({ stage: "IDENTIFIED" });
 	});
 
 	it("writes the one reason onto every deal's timeline", async () => {

@@ -32,6 +32,18 @@ export function ResearchForm() {
 		}),
 	);
 
+	const defer = useMutation(
+		trpc.settings.deferResearchKey.mutationOptions({
+			onSuccess: () => {
+				router.refresh();
+				router.replace("/");
+			},
+			onError: (error) => toast.error(error.message),
+		}),
+	);
+
+	const busy = save.isPending || defer.isPending;
+
 	return (
 		<form
 			onSubmit={(event) => {
@@ -70,9 +82,19 @@ export function ResearchForm() {
 				</Field>
 			</FieldGroup>
 
-			<Button type="submit" disabled={save.isPending}>
+			<Button type="submit" disabled={busy}>
 				{save.isPending ? <Spinner data-icon="inline-start" /> : null}
 				Continue
+			</Button>
+
+			<Button
+				type="button"
+				variant="ghost"
+				disabled={busy}
+				onClick={() => defer.mutate()}
+			>
+				{defer.isPending ? <Spinner data-icon="inline-start" /> : null}
+				Skip for now
 			</Button>
 		</form>
 	);

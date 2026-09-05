@@ -1,11 +1,12 @@
 import {
 	type ContactBriefSections,
 	type Db,
+	ExternalRecordType,
 	type FactEvidence,
 	FactStatus,
 	type Prisma,
 	Prisma as PrismaNamespace,
-	type RecordSource,
+	RecordSource,
 } from "@crm/db";
 import type { FieldDefinitionWithOptions } from "@crm/db/fields";
 import {
@@ -282,7 +283,7 @@ export class ContactsService {
 			input.companyId ??
 			(email
 				? await this.companies.companyForEmail(email, {
-						ownerId: input.ownerId,
+						source: RecordSource.MANUAL,
 					})
 				: null);
 
@@ -415,6 +416,9 @@ export class ContactsService {
 
 				await tx.agentTask.deleteMany({ where: { contactId: id } });
 				await tx.agentEvent.deleteMany({ where: { contactId: id } });
+				await tx.externalRef.deleteMany({
+					where: { recordType: ExternalRecordType.CONTACT, recordId: id },
+				});
 
 				const contact = await tx.contact.delete({
 					where: { id },

@@ -23,11 +23,12 @@ const agent = {
 	contactCreated: async () => true,
 	companyCreated: async () => undefined,
 	withCrmEvents: withDiscardedCrmEvents,
+	fieldBackfillRecords: async () => ({ queued: 0, merged: 0 }),
 	companyRequested: async () => true,
 } as unknown as AgentTriggerService;
 
 const stamp = new ActivityStampService(db);
-const directory = new CompanyDirectoryService(agent);
+const directory = new CompanyDirectoryService(db);
 const log = new EnrichmentLogService(db, stamp);
 const match = new MailboxMatchService(db, directory, agent, log);
 const threads = new ThreadWriterService(db, match, stamp);

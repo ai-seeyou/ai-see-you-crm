@@ -14,6 +14,7 @@ const otherDomain = `elsewhere-${suffix}.test`;
 
 const agent = {
 	withCrmEvents: withDiscardedCrmEvents,
+	fieldBackfillRecords: async () => ({ queued: 0, merged: 0 }),
 } as unknown as AgentTriggerService;
 
 const deals = new DealsService(

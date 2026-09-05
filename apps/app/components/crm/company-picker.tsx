@@ -15,13 +15,14 @@ import { cn } from "@crm/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { type Ref, useId, useState } from "react";
 import { PROPERTY_LABEL, PROPERTY_ROW } from "@/components/detail-sheet";
+import { BUSINESS } from "@/lib/labels";
 import { useTRPC } from "@/lib/trpc/client";
 
 export function CompanyPicker({
 	id,
 	value,
 	onValueChange,
-	placeholder = "Choose a company",
+	placeholder = `Choose a ${BUSINESS.oneLower}`,
 	none,
 	selected,
 	disabled,
@@ -78,8 +79,10 @@ export function CompanyPicker({
 			selectedOption={current}
 			disabled={disabled}
 			placeholder={placeholder}
-			searchPlaceholder="Search companies…"
-			empty={companies.isFetching ? "Searching…" : "No company matches."}
+			searchPlaceholder={`Search ${BUSINESS.manyLower}…`}
+			empty={
+				companies.isFetching ? "Searching…" : `No ${BUSINESS.oneLower} matches.`
+			}
 			search={text}
 			onSearchChange={setText}
 			stale={stale}
@@ -117,14 +120,16 @@ export function CompanyMenuSearch({
 		>
 			<CommandInput
 				ref={inputRef}
-				placeholder="Search companies…"
+				placeholder={`Search ${BUSINESS.manyLower}…`}
 				value={text}
 				onValueChange={setText}
 				autoFocus
 			/>
 			<CommandList>
 				<CommandEmpty>
-					{companies.isFetching ? "Searching…" : "No company matches."}
+					{companies.isFetching
+						? "Searching…"
+						: `No ${BUSINESS.oneLower} matches.`}
 				</CommandEmpty>
 				<CommandGroup>
 					{none && !query.trim() ? (
@@ -158,7 +163,7 @@ export function CompanyMenuSearch({
 }
 
 export function InlineCompanyField({
-	label = "Company",
+	label = BUSINESS.one,
 	value,
 	onSave,
 	saving = false,

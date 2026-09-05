@@ -1,4 +1,4 @@
-import type { Db } from "@crm/db";
+import type { Db, EntityType } from "@crm/db";
 import { Injectable } from "@nestjs/common";
 import { InjectDatabase } from "../database/database.constants";
 
@@ -7,6 +7,7 @@ export type SearchHit = {
 	id: string;
 	label: string;
 	detail: string | null;
+	entityType: EntityType | null;
 	iconUrl: string | null;
 	iconDarkUrl: string | null;
 	iconTone: string | null;
@@ -37,6 +38,7 @@ export class SearchService {
 					id: true,
 					name: true,
 					domain: true,
+					entityType: true,
 					iconUrl: true,
 					iconDarkUrl: true,
 					iconTone: true,
@@ -88,6 +90,7 @@ export class SearchService {
 						id: company.id,
 						label: company.name,
 						detail: company.domain,
+						entityType: company.entityType,
 						iconUrl: company.iconUrl,
 						iconDarkUrl: company.iconDarkUrl,
 						iconTone: company.iconTone,
@@ -102,6 +105,7 @@ export class SearchService {
 							[contact.firstName, contact.lastName].filter(Boolean).join(" ") ||
 							(contact.email ?? "Unnamed"),
 						detail: contact.company?.name ?? contact.email,
+						entityType: null,
 						iconUrl: null,
 						iconDarkUrl: null,
 						iconTone: null,
@@ -114,6 +118,7 @@ export class SearchService {
 						id: deal.id,
 						label: deal.name,
 						detail: deal.company.name,
+						entityType: null,
 						iconUrl: deal.company.iconUrl,
 						iconDarkUrl: deal.company.iconDarkUrl,
 						iconTone: deal.company.iconTone,

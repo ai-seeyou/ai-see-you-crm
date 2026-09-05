@@ -27,6 +27,7 @@ import { parseAsString, useQueryStates } from "nuqs";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { DEAL_STAGE_OPTIONS, NEEDS_A_REASON } from "@/lib/deal-stage";
+import { OPPORTUNITY } from "@/lib/labels";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -135,7 +136,7 @@ export function CloseReasonDialog() {
 	};
 
 	const setStage = useStageMutation(() => {
-		toast.success("Deal closed.");
+		toast.success(`${OPPORTUNITY.one} closed.`);
 		close();
 	});
 

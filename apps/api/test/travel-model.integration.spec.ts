@@ -112,6 +112,7 @@ async function clean(): Promise<void> {
 		where: { email: { endsWith: `@${SHARED_DOMAIN}` } },
 	});
 	await db.company.deleteMany({ where: { id: { in: companyIds } } });
+	await db.user.deleteMany({ where: { id: `user-${suffix}` } });
 }
 
 beforeAll(async () => {

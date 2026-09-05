@@ -37,6 +37,7 @@ import { useOpenRecord } from "@/components/crm/record-sheet/record-stack";
 import { LocalRelativeTime } from "@/components/local-date-time";
 import { activityLabel } from "@/lib/activity-presentation";
 import { dealStageColor } from "@/lib/deal-stage";
+import { BUSINESS, OPEN_OPPORTUNITIES, OPPORTUNITY } from "@/lib/labels";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -46,7 +47,7 @@ import { SalesDashboard } from "./sales-dashboard";
 
 const CELL = "px-3 py-2.5 align-middle";
 const OPEN_COLUMNS: SimpleTableColumn[] = [
-	{ id: "deal", header: "Deal" },
+	{ id: "deal", header: OPPORTUNITY.one },
 	{
 		id: "stage",
 		header: "Stage",
@@ -70,13 +71,13 @@ const ACTIVITY_COLUMNS: SimpleTableColumn[] = [
 	{ id: "activity", header: "Activity" },
 	{
 		id: "company",
-		header: "Company",
+		header: BUSINESS.one,
 		width: "w-44",
 		className: "hidden md:table-cell",
 	},
 	{
 		id: "deal",
-		header: "Deal",
+		header: OPPORTUNITY.one,
 		width: "w-48",
 		className: "hidden lg:table-cell",
 	},
@@ -134,13 +135,13 @@ export function DashboardSummary() {
 			<div className="grid gap-6 @3xl/page-content:grid-cols-2">
 				<Card className="min-w-0">
 					<CardHeader>
-						<CardTitle>Deals in progress</CardTitle>
+						<CardTitle>{OPPORTUNITY.many} in progress</CardTitle>
 						<CardDescription>
-							The largest open deals, and how long each has sat in its stage
+							{`The largest open ${OPPORTUNITY.manyLower}, and how long each has sat in its stage`}
 						</CardDescription>
 						<CardAction>
 							<Button asChild variant="contrast" size="sm">
-								<Link href={workspaceUrl("/deals")}>Open deals</Link>
+								<Link href={workspaceUrl("/deals")}>{OPEN_OPPORTUNITIES}</Link>
 							</Button>
 						</CardAction>
 					</CardHeader>
@@ -274,7 +275,9 @@ export function DashboardSummary() {
 					</CardDescription>
 					<CardAction>
 						<Button asChild variant="contrast" size="sm">
-							<Link href={workspaceUrl("/companies")}>All companies</Link>
+							<Link href={workspaceUrl("/companies")}>
+								All {BUSINESS.manyLower}
+							</Link>
 						</Button>
 					</CardAction>
 				</CardHeader>

@@ -10,6 +10,7 @@ import {
 	AccordionItem,
 	AccordionTrigger,
 } from "@crm/ui/components/accordion";
+import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
 import { EmptyCellValue } from "@crm/ui/components/empty-cell";
 import {
@@ -54,6 +55,7 @@ import {
 import { LocalDateTime, LocalRelativeDate } from "@/components/local-date-time";
 import { factsByField } from "@/lib/contact-facts";
 import { ENRICHMENT_POLL_MS, isEnriching } from "@/lib/enrichment-status";
+import { BUSINESS, CONTACT, OPPORTUNITY } from "@/lib/labels";
 import { savingField } from "@/lib/pending-field";
 import { hasContactLinks } from "@/lib/social-links";
 import { useCrmCache } from "@/lib/trpc/cache";
@@ -62,6 +64,7 @@ import type { RouterOutputs } from "@/lib/trpc/types";
 import { RecordActions } from "./record-actions";
 import { DealAmount, MetaLine, RecordSheetFrame } from "./record-parts";
 import { useOpenRecord, useRecordSheetView } from "./record-stack";
+import { ContactResponsibleFor } from "./responsible-panels";
 
 type Contact = RouterOutputs["contacts"]["byId"];
 
@@ -74,7 +77,7 @@ const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
 };
 
 const DEAL_COLUMNS = [
-	{ id: "deal", header: "Deal", width: "w-[32%]", className: "pl-5" },
+	{ id: "deal", header: OPPORTUNITY.one, width: "w-[32%]", className: "pl-5" },
 	{ id: "role", header: "Role", width: "w-[16%]" },
 	{ id: "stage", header: "Stage", width: "w-[22%]" },
 	{
@@ -89,7 +92,12 @@ const DEAL_COLUMNS = [
 export function ContactSheet({ contactId }: { contactId: string }) {
 	const trpc = useTRPC();
 	const cache = useCrmCache();
-	const { tab, setTab } = useRecordSheetView("overview");
+	const {
+		tab,
+		setTab,
+		form: adding,
+		setForm: setAdding,
+	} = useRecordSheetView("overview");
 
 	const query = useQuery({
 		...trpc.contacts.byId.queryOptions({ id: contactId }),
@@ -120,8 +128,21 @@ export function ContactSheet({ contactId }: { contactId: string }) {
 					content: <ContactOverview contact={contact} />,
 				},
 				{
+					value: "responsible",
+					label: "Responsible for",
+					count: contact.responsibleFor.length,
+					content: (
+						<ContactResponsibleFor
+							contact={contact}
+							adding={adding === "responsible"}
+							onAdd={() => setAdding("responsible")}
+							onDone={() => setAdding(null)}
+						/>
+					),
+				},
+				{
 					value: "deals",
-					label: "Deals",
+					label: OPPORTUNITY.many,
 					count: contact.deals.length,
 					content: <ContactDeals contact={contact} />,
 				},
@@ -143,7 +164,7 @@ export function ContactSheet({ contactId }: { contactId: string }) {
 		<RecordSheetFrame
 			loading={query.isPending}
 			error={query.error?.message ?? null}
-			title={contact ? contactName(contact) : "Contact"}
+			title={contact ? contactName(contact) : CONTACT.one}
 			description={
 				contact ? (
 					<MetaLine parts={[contact.title, contact.company?.name]} />
@@ -207,7 +228,7 @@ export function ContactSheet({ contactId }: { contactId: string }) {
 						<RecordActions
 							record={{ kind: "contact", id: contact.id }}
 							name={contactName(contact)}
-							consequence={`Their notes, agent conversations and everything the agent found go too; emails and meetings stay filed against the company.${contact.email ? ` The sync will not bring ${contact.email} back — only adding them yourself will.` : ""}`}
+							consequence={`Their notes, agent conversations and everything the agent found go too; emails and meetings stay filed against the ${BUSINESS.oneLower}.${contact.email ? ` The sync will not bring ${contact.email} back, only adding them yourself will.` : ""}`}
 							archivedAt={contact.archivedAt}
 						/>
 					</>
@@ -216,9 +237,12 @@ export function ContactSheet({ contactId }: { contactId: string }) {
 			stats={
 				contact ? (
 					<DetailSheetStats>
-						<DetailSheetStat label="Company">
+						<DetailSheetStat label="Employer">
 							{contact.company ? (
-								<CompanyStat company={contact.company} />
+								<CompanyStat
+									company={contact.company}
+									alsoResponsibleFor={contact.responsibleFor.length}
+								/>
 							) : (
 								<EmptyCellValue />
 							)}
@@ -262,26 +286,33 @@ export function ContactSheet({ contactId }: { contactId: string }) {
 
 function CompanyStat({
 	company,
+	alsoResponsibleFor,
 }: {
 	company: NonNullable<Contact["company"]>;
+	alsoResponsibleFor: number;
 }) {
 	const openRecord = useOpenRecord();
 
 	return (
-		<button
-			type="button"
-			onClick={() => openRecord({ kind: "company", id: company.id })}
-			className="flex min-w-0 items-center gap-2 underline-offset-2 hover:underline"
-		>
-			<EntityLogo
-				src={company.iconUrl}
-				darkSrc={company.iconDarkUrl}
-				tone={company.iconTone as EntityLogoTone | null | undefined}
-				name={company.name}
-				size="xs"
-			/>
-			<span className="truncate">{company.name}</span>
-		</button>
+		<span className="flex min-w-0 items-center gap-2">
+			<button
+				type="button"
+				onClick={() => openRecord({ kind: "company", id: company.id })}
+				className="flex min-w-0 items-center gap-2 underline-offset-2 hover:underline"
+			>
+				<EntityLogo
+					src={company.iconUrl}
+					darkSrc={company.iconDarkUrl}
+					tone={company.iconTone as EntityLogoTone | null | undefined}
+					name={company.name}
+					size="xs"
+				/>
+				<span className="truncate">{company.name}</span>
+			</button>
+			{alsoResponsibleFor > 0 ? (
+				<Badge variant="outline">+{alsoResponsibleFor}</Badge>
+			) : null}
+		</span>
 	);
 }
 
@@ -384,10 +415,11 @@ function ContactOverview({ contact }: { contact: Contact }) {
 						{...agentProps("githubUrl")}
 					/>
 					<InlineCompanyField
+						label="Employer"
 						value={contact.company?.id ?? NONE}
 						company={contact.company}
 						saving={isSaving("companyId")}
-						none={{ value: NONE, label: "No company" }}
+						none={{ value: NONE, label: `No ${BUSINESS.oneLower}` }}
 						onSave={(companyId) =>
 							save({ companyId: companyId === NONE ? null : companyId })
 						}

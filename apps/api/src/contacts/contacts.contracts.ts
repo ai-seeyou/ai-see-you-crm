@@ -1,4 +1,5 @@
 import {
+	ContactRoleType,
 	DealStage,
 	EnrichmentStatus,
 	FactBand,
@@ -6,7 +7,12 @@ import {
 	RecordSource,
 } from "@crm/db";
 import { FIELD_ENTITIES, FIELD_TYPES } from "@crm/db/fields";
+import { enumFacet } from "@crm/validation/enum-facet";
 import { z } from "zod";
+import {
+	contactAssignmentOutput,
+	contactRoleType,
+} from "../assignments/assignments.contracts";
 import { bulkIdsInput } from "../crm/bulk";
 import { recordFieldValues } from "../fields/fields.contracts";
 import { activityFacetInput, listInput } from "../trpc/list-input";
@@ -18,6 +24,7 @@ export const contactListInput = listInput.extend({
 	title: z.array(z.string()).default([]),
 	seniority: z.array(z.string()).default([]),
 	persona: z.array(z.string()).default([]),
+	roleType: enumFacet(Object.values(ContactRoleType), "role"),
 	activity: activityFacetInput.default([]),
 	fields: z.record(z.string(), z.array(z.string())).default({}),
 	archived: z.boolean().default(false),
@@ -59,6 +66,21 @@ export const contactUpdateArgs = z.object({
 });
 
 export const contactIdInput = z.object({ id: z.string() });
+
+export const contactOptionsInput = z.object({
+	q: z.string().default(""),
+});
+
+export const contactOptionOutput = z.array(
+	z.object({
+		id: z.string(),
+		name: z.string(),
+		email: z.string().nullable(),
+		title: z.string().nullable(),
+		imageUrl: z.string().nullable(),
+		employer: z.string().nullable(),
+	}),
+);
 
 export const contactBulkInput = bulkIdsInput;
 
@@ -142,6 +164,8 @@ export const contactRowOutput = z.object({
 	),
 	company: contactCompanyOutput.nullable(),
 	owner: contactOwnerOutput.nullable(),
+	roleTypes: z.array(contactRoleType),
+	responsibleForCount: z.number(),
 	lastActivityAt: z.string().nullable(),
 	createdAt: z.string(),
 	archivedAt: z.string().nullable(),
@@ -257,6 +281,7 @@ export const contactByIdOutput = z.object({
 	relationship: contactRelationshipOutput,
 	isPrimaryContact: z.boolean(),
 	deals: z.array(contactDealOutput),
+	responsibleFor: z.array(contactAssignmentOutput),
 });
 
 export const contactBasicOutput = z.object({

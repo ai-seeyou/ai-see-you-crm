@@ -1,13 +1,22 @@
-import { DealStage, EnrichmentStatus, RecordSource } from "@crm/db";
+import { DealStage, EnrichmentStatus, EntityType, RecordSource } from "@crm/db";
 import { FIELD_TYPES } from "@crm/db/fields";
+import { enumFacet } from "@crm/validation/enum-facet";
 import { z } from "zod";
+import { companyAssignmentOutput } from "../assignments/assignments.contracts";
 import { bulkIdsInput } from "../crm/bulk";
 import { fieldEntity, recordFieldValues } from "../fields/fields.contracts";
+import { relationshipEdgeOutput } from "../relationships/relationships.contracts";
 import { activityFacetInput, listInput } from "../trpc/list-input";
+
+export const companyEntityType = z.enum(
+	Object.values(EntityType) as [EntityType, ...EntityType[]],
+);
 
 export const companyListInput = listInput.extend({
 	owner: z.array(z.string()).default([]),
 	industry: z.array(z.string()).default([]),
+	vertical: z.array(z.string()).default([]),
+	entityType: enumFacet(Object.values(EntityType), "business type"),
 	enrichment: z.array(z.string()).default([]),
 	source: z.array(z.string()).default([]),
 	activity: activityFacetInput.default([]),
@@ -38,6 +47,8 @@ const companyUpdateInput = z.object({
 	email: z.string().optional(),
 	linkedinUrl: z.string().optional(),
 	ownerId: z.string().nullable().optional(),
+	verticalId: z.string().nullable().optional(),
+	entityType: companyEntityType.optional(),
 	fields: recordFieldValues.optional(),
 });
 
@@ -88,6 +99,12 @@ const ownerSummaryOutput = z.object({
 	image: z.string().nullable(),
 });
 
+const companyVerticalOutput = z.object({
+	id: z.string(),
+	key: z.string(),
+	label: z.string(),
+});
+
 const companyFieldOptionOutput = z.object({
 	id: z.string(),
 	label: z.string(),
@@ -123,6 +140,8 @@ export const companyRowOutput = z.object({
 	logoUrl: z.string().nullable(),
 	brandColor: z.string().nullable(),
 	industry: z.string().nullable(),
+	entityType: companyEntityType,
+	vertical: companyVerticalOutput.nullable(),
 	enrichmentStatus: companyEnrichmentStatus,
 	queued: z.boolean(),
 	source: companyRecordSource,
@@ -187,6 +206,9 @@ export const companyDetailOutput = z.object({
 	brandColor: z.string().nullable(),
 	industry: z.string().nullable(),
 	subIndustry: z.string().nullable(),
+	entityType: companyEntityType,
+	verticalId: z.string().nullable(),
+	vertical: companyVerticalOutput.nullable(),
 	city: z.string().nullable(),
 	stateCode: z.string().nullable(),
 	country: z.string().nullable(),
@@ -212,6 +234,11 @@ export const companyDetailOutput = z.object({
 	primaryContact: companyDetailPrimaryContactOutput.nullable(),
 	reportingCurrency: z.string(),
 	deals: z.array(companyDetailDealOutput),
+	relationships: z.object({
+		outgoing: z.array(relationshipEdgeOutput),
+		incoming: z.array(relationshipEdgeOutput),
+	}),
+	assignments: z.array(companyAssignmentOutput),
 });
 
 export const companyOptionOutput = z.array(

@@ -24,6 +24,8 @@ import {
 	contactListInput,
 	contactListOutput,
 	contactNameOutput,
+	contactOptionOutput,
+	contactOptionsInput,
 	contactUpdateArgs,
 	decideFactOutput,
 	factDecisionInput,
@@ -44,6 +46,15 @@ export class ContactsRouter {
 	})
 	async list(@Input() input: z.infer<typeof contactListInput>) {
 		return this.contacts.list(input);
+	}
+
+	@Query({
+		input: contactOptionsInput,
+		output: contactOptionOutput,
+		meta: restMeta("GET", "/contacts/options", ["Contacts"]),
+	})
+	async options(@Input("q") q: string) {
+		return this.contacts.options(q);
 	}
 
 	@Query({

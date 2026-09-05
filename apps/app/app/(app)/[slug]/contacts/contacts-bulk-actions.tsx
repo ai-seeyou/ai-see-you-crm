@@ -22,6 +22,7 @@ import {
 	reportBulk,
 } from "@/components/crm/bulk-actions";
 import { CompanyMenuSearch } from "@/components/crm/company-picker";
+import { NO_BUSINESS } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -62,7 +63,10 @@ export function ContactsBulkActions({
 		trpc.contacts.bulkSetCompany.mutationOptions({
 			onSuccess: async (result) => {
 				await cache.contact();
-				reportBulk(result, (count) => `${contacts(count)} moved.`);
+				reportBulk(
+					result,
+					(count) => `${contacts(count)} moved to a new employer.`,
+				);
 				onDone();
 			},
 			onError,
@@ -169,7 +173,7 @@ export function ContactsBulkActions({
 				onSelect={(ownerId) => assignOwner.mutate({ ids, ownerId })}
 			/>
 			<DropdownMenuSub>
-				<DropdownMenuSubTrigger>Move to company</DropdownMenuSubTrigger>
+				<DropdownMenuSubTrigger>Change employer</DropdownMenuSubTrigger>
 				<DropdownMenuSubContent
 					className="w-64 p-0"
 					onFocus={(event) => {
@@ -179,7 +183,7 @@ export function ContactsBulkActions({
 					}}
 				>
 					<CompanyMenuSearch
-						none="No company"
+						none={NO_BUSINESS}
 						inputRef={companySearch}
 						onSelect={(companyId) => {
 							setMenuOpen(false);

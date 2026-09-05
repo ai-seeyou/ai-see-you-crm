@@ -1,6 +1,7 @@
 "use client";
 
 import Archive from "@carbon/icons-react/es/Archive";
+import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
 import {
 	DataTable,
@@ -25,6 +26,8 @@ import { SavedViewsMenu } from "@/components/data-table/saved-views-menu";
 import { useTableQuery } from "@/components/data-table/use-table-query";
 import { LocalRelativeTime } from "@/components/local-date-time";
 import { ACTIVITY_FACET_OPTIONS } from "@/lib/activity-recency";
+import { CONTACT_ROLE_OPTIONS, contactRoleLabel } from "@/lib/contact-role";
+import { BUSINESS } from "@/lib/labels";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { ContactsBulkActions } from "./contacts-bulk-actions";
@@ -79,10 +82,31 @@ const COLUMNS: DataTableColumn<ContactRow>[] = [
 	},
 	{
 		id: "company",
-		header: "Company",
+		header: "Employer",
 		sortable: true,
 		width: "w-[18%]",
-		cell: (row) => <CompanyCell company={row.company} />,
+		cell: (row) => (
+			<span className="flex min-w-0 items-center gap-2">
+				<CompanyCell company={row.company} />
+				{row.responsibleForCount > 0 ? (
+					<Badge variant="outline">+{row.responsibleForCount}</Badge>
+				) : null}
+			</span>
+		),
+	},
+	{
+		id: "roles",
+		header: "Roles",
+		width: "w-[16%]",
+		hideBelow: "lg",
+		cell: (row) =>
+			row.roleTypes.length > 0 ? (
+				<span className="truncate">
+					{row.roleTypes.map(contactRoleLabel).join(", ")}
+				</span>
+			) : (
+				<EmptyCellValue />
+			),
 	},
 	{
 		id: "owner",
@@ -206,17 +230,26 @@ export function ContactsTable() {
 			].filter((option) => (facetCounts?.owner?.[option.value] ?? 0) > 0),
 		},
 		{
+			id: "roleType",
+			label: "Role",
+			options: CONTACT_ROLE_OPTIONS.filter(
+				(option) => (facetCounts?.roleType?.[option.value] ?? 0) > 0,
+			),
+		},
+		{
 			id: "company",
-			label: "Company",
+			label: "Employer",
 			searchable: true,
 			search: companyText,
 			onSearchChange: setCompanyText,
 			stale: companies.isFetching || companyText.trim() !== companyQuery.trim(),
-			empty: companies.isFetching ? "Searching…" : "No company matches.",
+			empty: companies.isFetching
+				? "Searching…"
+				: `No ${BUSINESS.oneLower} matches.`,
 			options: [
 				...(companyQuery.trim()
 					? []
-					: [{ value: "none", label: "No company" }]),
+					: [{ value: "none", label: `No ${BUSINESS.oneLower}` }]),
 				...(companies.data ?? []).map((company) => ({
 					value: company.id,
 					label: company.name,
@@ -266,7 +299,11 @@ export function ContactsTable() {
 	return (
 		<DataTable
 			query={query}
-			search={<ListSearch placeholder="Search by name, email or company…" />}
+			search={
+				<ListSearch
+					placeholder={`Search by name, email or ${BUSINESS.oneLower}…`}
+				/>
+			}
 			actions={
 				<>
 					<SavedViewsMenu entity="CONTACT" table={table} />

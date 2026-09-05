@@ -20,6 +20,7 @@ import { Icon } from "@crm/ui/components/icon";
 import Link from "next/link";
 import { Suspense } from "react";
 import { NewAgentDialog } from "@/components/agent-builder/new-agent-dialog";
+import { OPPORTUNITY } from "@/lib/labels";
 import { requireSession } from "@/lib/session";
 import { getServerQueryClient, getServerTrpc } from "@/lib/trpc/server";
 import { ConnectionPage, ConnectionPageLoading } from "../connection-page";
@@ -45,9 +46,18 @@ const never = [
 ];
 
 const suggestions = [
-	["When a deal is created", "Post the deal to an approved sales channel."],
-	["When a deal is won", "Tell an approved channel that the deal closed."],
-	["When a deal reopens", "Notify one approved channel or teammate."],
+	[
+		`When an ${OPPORTUNITY.oneLower} is created`,
+		`Post the ${OPPORTUNITY.oneLower} to an approved sales channel.`,
+	],
+	[
+		`When an ${OPPORTUNITY.oneLower} is won`,
+		`Tell an approved channel that the ${OPPORTUNITY.oneLower} closed.`,
+	],
+	[
+		`When an ${OPPORTUNITY.oneLower} reopens`,
+		"Notify one approved channel or teammate.",
+	],
 ];
 
 type SlackConnectionPageProps = {

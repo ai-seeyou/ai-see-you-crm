@@ -22,6 +22,7 @@ import { StatusIndicator } from "@crm/ui/components/status-indicator";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { toast } from "sonner";
+import { BUSINESS } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -52,9 +53,9 @@ export function ResearchKey() {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Company research</CardTitle>
+				<CardTitle>{BUSINESS.one} research</CardTitle>
 				<CardDescription>
-					Enter your Context API key so our agents can research every company in
+					{`Enter your Context API key so our agents can research every ${BUSINESS.oneLower} in`}{" "}
 					the CRM.
 				</CardDescription>
 

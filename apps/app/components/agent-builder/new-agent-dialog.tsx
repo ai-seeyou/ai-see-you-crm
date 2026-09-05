@@ -29,6 +29,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useSlackChannels } from "@/components/slack/use-slack-channels";
 import { handoffBrief, handoffResources } from "@/lib/agent-handoff";
+import { OPPORTUNITY } from "@/lib/labels";
 import { useTRPC } from "@/lib/trpc/client";
 import { useWorkspaceUrl } from "@/lib/use-workspace-url";
 
@@ -129,7 +130,7 @@ export function NewAgentDialog({ children }: { children: React.ReactNode }) {
 						<Textarea
 							id="agent-job"
 							onChange={(event) => setJob(event.target.value)}
-							placeholder="A week before a renewal, gather the account history and post a short brief for whoever owns the deal."
+							placeholder={`A week before a renewal, gather the account history and post a short brief for whoever owns the ${OPPORTUNITY.oneLower}.`}
 							rows={3}
 							value={job}
 						/>

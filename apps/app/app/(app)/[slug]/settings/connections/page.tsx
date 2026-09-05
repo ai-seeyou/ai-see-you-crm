@@ -6,6 +6,7 @@ import { Spinner } from "@crm/ui/components/spinner";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BUSINESS, CONTACT, OPPORTUNITY } from "@/lib/labels";
 import { requireSession } from "@/lib/session";
 import { getServerQueryClient, getServerTrpc } from "@/lib/trpc/server";
 import { AddConnectionDialog } from "./add-connection-dialog";
@@ -109,7 +110,7 @@ async function ConnectionsSettingsPageContent({
 							Nothing is connected yet
 						</h1>
 						<p className="text-muted-foreground text-sm leading-relaxed">
-							Right now every deal, contact and note has to be typed in by hand.
+							{`Right now every ${OPPORTUNITY.oneLower}, ${CONTACT.oneLower} and note has to be typed in by hand.`}
 							Connect a tool and the CRM starts filling itself in from the work
 							your team already does.
 						</p>
@@ -118,7 +119,7 @@ async function ConnectionsSettingsPageContent({
 						<StarterRow
 							logo={GoogleLogo}
 							name="Google Workspace"
-							description="File email and meetings against the right company"
+							description={`File email and meetings against the right ${BUSINESS.oneLower}`}
 							href={`/${slug}/settings/connections/google`}
 						/>
 						<StarterRow
@@ -130,7 +131,7 @@ async function ConnectionsSettingsPageContent({
 						<StarterRow
 							logo={MicrosoftLogo}
 							name="Microsoft 365"
-							description="File Outlook email against the right company"
+							description={`File Outlook email against the right ${BUSINESS.oneLower}`}
 							href={`/${slug}/settings/connections/microsoft`}
 						/>
 					</div>

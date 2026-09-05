@@ -24,6 +24,7 @@ import { ListSearch } from "@/components/data-table/list-search";
 import { useTableQuery } from "@/components/data-table/use-table-query";
 import { LocalDay, LocalRelativeTime } from "@/components/local-date-time";
 import { DEAL_STAGE_OPTIONS } from "@/lib/deal-stage";
+import { BUSINESS, OPPORTUNITY } from "@/lib/labels";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import { DealsBulkActions } from "./deals-bulk-actions";
@@ -34,7 +35,7 @@ type DealRow = RouterOutputs["deals"]["list"]["rows"][number];
 const COLUMNS: DataTableColumn<DealRow>[] = [
 	{
 		id: "name",
-		header: "Deal",
+		header: OPPORTUNITY.one,
 		sortable: true,
 		hideable: false,
 		width: "w-[24%]",
@@ -42,7 +43,7 @@ const COLUMNS: DataTableColumn<DealRow>[] = [
 	},
 	{
 		id: "company",
-		header: "Company",
+		header: BUSINESS.one,
 		sortable: true,
 		width: "w-[18%]",
 		cell: (row) => <CompanyCell company={row.company} />,
@@ -230,7 +231,11 @@ export function DealsTable() {
 	return (
 		<DataTable
 			query={query}
-			search={<ListSearch placeholder="Search deals by name or company…" />}
+			search={
+				<ListSearch
+					placeholder={`Search ${OPPORTUNITY.manyLower} by name or ${BUSINESS.oneLower}…`}
+				/>
+			}
 			actions={
 				<Button
 					variant={input.archived ? "contrast" : "outline"}
@@ -249,7 +254,7 @@ export function DealsTable() {
 			facets={facets}
 			tabs={{
 				id: "status",
-				allLabel: "All deals",
+				allLabel: `All ${OPPORTUNITY.manyLower}`,
 				options: [
 					{ value: "open", label: "Open" },
 					{ value: "closed", label: "Closed" },
@@ -271,7 +276,9 @@ export function DealsTable() {
 			onRowHover={(row) => prefetchRecord({ kind: "deal", id: row.id })}
 			onRowClick={(row) => openRecord({ kind: "deal", id: row.id })}
 			empty={
-				input.archived ? "No archived deals." : "No deals match this view."
+				input.archived
+					? `No archived ${OPPORTUNITY.manyLower}.`
+					: `No ${OPPORTUNITY.manyLower} match this view.`
 			}
 			meta={
 				input.archived || openPipelineCents === null ? undefined : (

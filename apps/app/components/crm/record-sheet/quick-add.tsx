@@ -16,10 +16,11 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { contactName } from "@/components/crm/contact-name";
+import { OPPORTUNITY } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
-function QuickAddForm({
+export function QuickAddForm({
 	submitLabel,
 	pending,
 	ready,
@@ -182,8 +183,8 @@ export function AttachDealContact({
 				await cache.deal(dealId);
 				toast.success(
 					person
-						? `${contactName(person)} is on the deal.`
-						: "Added to the deal.",
+						? `${contactName(person)} is on the ${OPPORTUNITY.oneLower}.`
+						: `Added to the ${OPPORTUNITY.oneLower}.`,
 				);
 				onDone();
 			},
@@ -201,7 +202,7 @@ export function AttachDealContact({
 
 	return (
 		<QuickAddForm
-			submitLabel="Add to deal"
+			submitLabel={`Add to ${OPPORTUNITY.oneLower}`}
 			pending={attach.isPending}
 			ready={contactId !== ""}
 			onCancel={onDone}
@@ -277,7 +278,9 @@ export function QuickAddDeal({
 
 	const submit = () => {
 		if (!owner) {
-			toast.error("Could not work out who should own this deal.");
+			toast.error(
+				`Could not work out who should own this ${OPPORTUNITY.oneLower}.`,
+			);
 			return;
 		}
 
@@ -302,7 +305,7 @@ export function QuickAddDeal({
 
 	return (
 		<QuickAddForm
-			submitLabel="Create deal"
+			submitLabel={`Create ${OPPORTUNITY.oneLower}`}
 			pending={create.isPending}
 			ready={name.trim() !== ""}
 			onCancel={onDone}

@@ -19,6 +19,7 @@ import {
 	type EveMessagePart,
 } from "eve/react";
 import { z } from "zod";
+import { BUSINESS, OPPORTUNITY } from "@/lib/labels";
 
 export type TranscriptItem =
 	| { kind: "said"; id: string; mine: boolean; text: string }
@@ -58,8 +59,8 @@ type ToolVerbs = Record<string, string>;
 
 const VERBS: ToolVerbs = {
 	read_crm_history: "Read our emails and meetings with them",
-	read_company_history: "Read everything we have on the company",
-	read_deal_history: "Read the deal and where it has been",
+	read_company_history: `Read everything we have on the ${BUSINESS.oneLower}`,
+	read_deal_history: `Read the ${OPPORTUNITY.oneLower} and where it has been`,
 	search_crm: "Looked the record up in the CRM",
 	resolve_linkedin_profile: "Searched for their LinkedIn profile",
 	get_linkedin_profile: "Read a LinkedIn profile",
@@ -72,11 +73,11 @@ const VERBS: ToolVerbs = {
 	write_brief: "Wrote the background",
 	write_workspace_profile: "Wrote up who we are",
 	research_person: "Researched them on the web",
-	research_company: "Read the company's site",
-	enrich_company: "Looked up the company",
+	research_company: `Read the ${BUSINESS.oneLower}'s site`,
+	enrich_company: `Looked up the ${BUSINESS.oneLower}`,
 	schedule_recheck: "Decided when to look again",
 	record_job_change: "Raised a job change",
-	list_deals: "Reviewed the deal pipeline",
+	list_deals: `Reviewed the ${OPPORTUNITY.oneLower} pipeline`,
 	list_outstanding_work: "Looked for outstanding work",
 	set_chat_title: "Named this chat",
 	list_fields: "Read what this workspace tracks",

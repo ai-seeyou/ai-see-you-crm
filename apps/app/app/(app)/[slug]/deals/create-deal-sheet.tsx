@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { CompanyPicker } from "@/components/crm/company-picker";
 import { useOpenRecord } from "@/components/crm/record-sheet/record-stack";
 import { dealStageLabel, OPEN_STAGES } from "@/lib/deal-stage";
+import { BUSINESS, NEW_OPPORTUNITY } from "@/lib/labels";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -47,7 +48,7 @@ function AddButton(props: ComponentProps<typeof Button>) {
 	return (
 		<Button {...props}>
 			<Icon icon={Add} data-icon="inline-start" />
-			New deal
+			{NEW_OPPORTUNITY}
 		</Button>
 	);
 }
@@ -115,7 +116,7 @@ function CreateDealForm({ companyId }: { companyId?: string }) {
 			</SheetTrigger>
 			<SheetContent side="right">
 				<SheetHeader>
-					<SheetTitle>New deal</SheetTitle>
+					<SheetTitle>{NEW_OPPORTUNITY}</SheetTitle>
 					<SheetDescription>
 						Every deal belongs to a company and has someone's name against it.
 					</SheetDescription>
@@ -154,7 +155,9 @@ function CreateDealForm({ companyId }: { companyId?: string }) {
 						</Field>
 
 						<Field>
-							<FieldLabel htmlFor="create-deal-company">Company</FieldLabel>
+							<FieldLabel htmlFor="create-deal-company">
+								{BUSINESS.one}
+							</FieldLabel>
 							<CompanyPicker
 								id="create-deal-company"
 								value={company}

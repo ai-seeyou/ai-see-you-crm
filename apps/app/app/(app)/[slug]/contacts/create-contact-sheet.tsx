@@ -29,6 +29,7 @@ import { type ComponentProps, Suspense, useId, useState } from "react";
 import { toast } from "sonner";
 import { CompanyPicker } from "@/components/crm/company-picker";
 import { useOpenRecord } from "@/components/crm/record-sheet/record-stack";
+import { BUSINESS, NO_BUSINESS } from "@/lib/labels";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -167,12 +168,14 @@ function CreateContactForm({ companyId }: { companyId?: string }) {
 						</Field>
 
 						<Field>
-							<FieldLabel htmlFor="create-contact-company">Company</FieldLabel>
+							<FieldLabel htmlFor="create-contact-company">
+								{BUSINESS.one}
+							</FieldLabel>
 							<CompanyPicker
 								id="create-contact-company"
 								value={company}
 								onValueChange={setCompany}
-								none={{ value: NONE, label: "No company" }}
+								none={{ value: NONE, label: NO_BUSINESS }}
 							/>
 						</Field>
 

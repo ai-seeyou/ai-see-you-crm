@@ -1,6 +1,8 @@
 import {
+	AssignmentScope,
 	type Db,
 	type EnrichmentStatus,
+	type EntityType,
 	ExternalRecordType,
 	type Prisma,
 	Prisma as PrismaNamespace,
@@ -18,6 +20,10 @@ import { AgentQueueService } from "../agent/agent-queue.service";
 import { AgentTriggerService } from "../agent/agent-trigger.service";
 import { ARCHIVE } from "../archive/archive-config";
 import {
+	COMPANY_ASSIGNMENT_SELECT,
+	serializeCompanyAssignment,
+} from "../assignments/assignment-rows";
+import {
 	ActivityStampService,
 	type StampTargets,
 } from "../crm/activity-stamp.service";
@@ -26,6 +32,10 @@ import { blankToNull, toCents } from "../crm/values";
 import { ConversionService } from "../currency/conversion.service";
 import { InjectDatabase } from "../database/database.constants";
 import { FieldsService } from "../fields/fields.service";
+import {
+	RELATIONSHIP_EDGE_SELECT,
+	serializeEdge,
+} from "../relationships/relationship-edge";
 import {
 	activityFacetCounts,
 	activityFilter,
@@ -37,6 +47,7 @@ import {
 	ownerFilter,
 	paginate,
 	resolveOrderBy,
+	splitSentinel,
 } from "../trpc/list-input";
 import type {
 	CompanyBulkOwnerInput,
@@ -55,10 +66,23 @@ const OWNER_SELECT = {
 	image: true,
 } as const;
 
+function verticalFilter(
+	values: string[],
+): Prisma.CompanyWhereInput | undefined {
+	if (values.length === 0) return undefined;
+
+	const { ids, includesSentinel } = splitSentinel(values, FACET_UNASSIGNED);
+	if (includesSentinel && ids.length === 0) return { verticalId: null };
+	if (!includesSentinel) return { verticalId: { in: ids } };
+	return { OR: [{ verticalId: { in: ids } }, { verticalId: null }] };
+}
+
 const SORTABLE: OrderByColumns<Prisma.CompanyOrderByWithRelationInput> = {
 	name: (dir) => ({ name: dir }),
 	domain: (dir) => ({ domain: dir }),
 	industry: (dir) => ({ industry: dir }),
+	entityType: (dir) => ({ entityType: dir }),
+	vertical: (dir) => ({ vertical: { label: dir } }),
 	createdAt: (dir) => ({ createdAt: dir }),
 	contacts: (dir) => ({ contacts: { _count: dir } }),
 	deals: (dir) => ({ deals: { _count: dir } }),
@@ -104,12 +128,20 @@ export class CompaniesService {
 					logoUrl: true,
 					brandColor: true,
 					industry: true,
+					entityType: true,
+					vertical: { select: { id: true, key: true, label: true } },
 					enrichmentStatus: true,
 					source: true,
 					owner: { select: OWNER_SELECT },
 					_count: {
 						select: {
 							contacts: true,
+							assignments: {
+								where: {
+									scope: AssignmentScope.RESPONSIBLE_FOR,
+									validTo: null,
+								},
+							},
 							deals: { where: { stage: { in: [...OPEN_DEAL_STAGES] } } },
 						},
 					},
@@ -139,11 +171,13 @@ export class CompaniesService {
 				logoUrl: row.logoUrl,
 				brandColor: row.brandColor,
 				industry: row.industry,
+				entityType: row.entityType,
+				vertical: row.vertical,
 				enrichmentStatus: row.enrichmentStatus,
 				queued: queued.has(row.id),
 				source: row.source,
 				owner: row.owner,
-				contactCount: row._count.contacts,
+				contactCount: row._count.contacts + row._count.assignments,
 				openDealCount: row._count.deals,
 				lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
 				createdAt: row.createdAt.toISOString(),
@@ -172,6 +206,9 @@ export class CompaniesService {
 				brandColor: true,
 				industry: true,
 				subIndustry: true,
+				entityType: true,
+				verticalId: true,
+				vertical: { select: { id: true, key: true, label: true } },
 				city: true,
 				stateCode: true,
 				country: true,
@@ -225,6 +262,28 @@ export class CompaniesService {
 						owner: { select: OWNER_SELECT },
 					},
 				},
+				relationsFrom: {
+					where: { validTo: null },
+					orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+					select: RELATIONSHIP_EDGE_SELECT,
+				},
+				relationsTo: {
+					where: { validTo: null },
+					orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+					select: RELATIONSHIP_EDGE_SELECT,
+				},
+				assignments: {
+					where: {
+						validTo: null,
+						scope: AssignmentScope.RESPONSIBLE_FOR,
+					},
+					orderBy: [
+						{ roleType: "asc" },
+						{ contact: { lastName: "asc" } },
+						{ contact: { firstName: "asc" } },
+					],
+					select: COMPANY_ASSIGNMENT_SELECT,
+				},
 			},
 		});
 
@@ -238,6 +297,9 @@ export class CompaniesService {
 			enrichedAt,
 			createdAt,
 			archivedAt,
+			relationsFrom,
+			relationsTo,
+			assignments,
 			...rest
 		} = company;
 
@@ -259,6 +321,11 @@ export class CompaniesService {
 				baseAmountCents: toCents(deal.baseAmount),
 				expectedCloseDate: deal.expectedCloseDate?.toISOString() ?? null,
 			})),
+			relationships: {
+				outgoing: relationsFrom.map((edge) => serializeEdge(edge, "outgoing")),
+				incoming: relationsTo.map((edge) => serializeEdge(edge, "incoming")),
+			},
+			assignments: assignments.map(serializeCompanyAssignment),
 		};
 	}
 
@@ -330,6 +397,12 @@ export class CompaniesService {
 		if (input.ownerId !== undefined) {
 			data.owner = input.ownerId
 				? { connect: { id: input.ownerId } }
+				: { disconnect: true };
+		}
+		if (input.entityType !== undefined) data.entityType = input.entityType;
+		if (input.verticalId !== undefined) {
+			data.vertical = input.verticalId
+				? { connect: { id: input.verticalId } }
 				: { disconnect: true };
 		}
 
@@ -646,6 +719,13 @@ export class CompaniesService {
 
 		if (input.industry.length > 0)
 			and.push({ industry: { in: input.industry } });
+
+		const vertical = verticalFilter(input.vertical);
+		if (vertical) and.push(vertical);
+
+		if (input.entityType.length > 0) {
+			and.push({ entityType: { in: input.entityType } });
+		}
 		if (input.enrichment.length > 0) {
 			and.push({
 				enrichmentStatus: { in: input.enrichment as EnrichmentStatus[] },
@@ -669,37 +749,57 @@ export class CompaniesService {
 			AND: [this.searchFilter(input.q), archivedFilter(input.archived)],
 		};
 
-		const [owners, industries, enrichment, sources, activity, fieldFacets] =
-			await Promise.all([
-				this.db.company.groupBy({
-					by: ["ownerId"],
-					where,
-					_count: { _all: true },
-				}),
-				this.db.company.groupBy({
-					by: ["industry"],
-					where,
-					_count: { _all: true },
-				}),
-				this.db.company.groupBy({
-					by: ["enrichmentStatus"],
-					where,
-					_count: { _all: true },
-				}),
-				this.db.company.groupBy({
-					by: ["source"],
-					where,
-					_count: { _all: true },
-				}),
-				activityFacetCounts((activityWhere) =>
-					this.db.company.count({ where: { AND: [where, activityWhere] } }),
-				),
-				this.fields.filterFacetCounts("COMPANY", where, filterableFields),
-			]);
+		const [
+			owners,
+			industries,
+			verticals,
+			entityTypes,
+			enrichment,
+			sources,
+			activity,
+			fieldFacets,
+		] = await Promise.all([
+			this.db.company.groupBy({
+				by: ["ownerId"],
+				where,
+				_count: { _all: true },
+			}),
+			this.db.company.groupBy({
+				by: ["industry"],
+				where,
+				_count: { _all: true },
+			}),
+			this.db.company.groupBy({
+				by: ["verticalId"],
+				where,
+				_count: { _all: true },
+			}),
+			this.db.company.groupBy({
+				by: ["entityType"],
+				where,
+				_count: { _all: true },
+			}),
+			this.db.company.groupBy({
+				by: ["enrichmentStatus"],
+				where,
+				_count: { _all: true },
+			}),
+			this.db.company.groupBy({
+				by: ["source"],
+				where,
+				_count: { _all: true },
+			}),
+			activityFacetCounts((activityWhere) =>
+				this.db.company.count({ where: { AND: [where, activityWhere] } }),
+			),
+			this.fields.filterFacetCounts("COMPANY", where, filterableFields),
+		]);
 
 		return {
 			owner: countsByKey(owners, "ownerId", FACET_UNASSIGNED),
 			industry: countsByKey(industries, "industry"),
+			vertical: countsByKey(verticals, "verticalId", FACET_UNASSIGNED),
+			entityType: countsByKey(entityTypes, "entityType"),
 			enrichment: countsByKey(enrichment, "enrichmentStatus"),
 			source: countsByKey(sources, "source"),
 			activity,

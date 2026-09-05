@@ -16,10 +16,11 @@ import { useOpenRecord } from "@/components/crm/record-sheet/record-stack";
 import { LocalDay } from "@/components/local-date-time";
 import type { DealListItem, DealListResult } from "@/lib/agent-transcript";
 import { DEAL_STAGE_OPTIONS } from "@/lib/deal-stage";
+import { BUSINESS, OPPORTUNITY } from "@/lib/labels";
 
 const COLUMNS: SimpleTableColumn[] = [
-	{ id: "deal", header: "Deal", width: "w-[20%]" },
-	{ id: "company", header: "Company", width: "w-[18%]" },
+	{ id: "deal", header: OPPORTUNITY.one, width: "w-[20%]" },
+	{ id: "company", header: BUSINESS.one, width: "w-[18%]" },
 	{ id: "stage", header: "Stage", width: "w-[18%]" },
 	{
 		id: "amount",
@@ -143,13 +144,13 @@ function tableTitle(result: DealListResult): string {
 		result.criteria.status === "all" ? "" : `${result.criteria.status} `;
 	const stale = result.criteria.inactiveForDays === null ? "" : "stale ";
 	return count === 0
-		? "No matching deals"
-		: `${count} ${stale}${status}deal${count === 1 ? "" : "s"}`;
+		? `No matching ${OPPORTUNITY.manyLower}`
+		: `${count} ${stale}${status}${count === 1 ? OPPORTUNITY.oneLower : OPPORTUNITY.manyLower}`;
 }
 
 function tableMeta(result: DealListResult): string {
 	const details = [
-		`${result.deals.length} deal${result.deals.length === 1 ? "" : "s"}`,
+		`${result.deals.length} ${result.deals.length === 1 ? OPPORTUNITY.oneLower : OPPORTUNITY.manyLower}`,
 		pipelineTotal(result.deals),
 		result.criteria.inactiveForDays === null
 			? null

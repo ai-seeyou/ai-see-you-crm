@@ -11,8 +11,15 @@ node_modules
 .env.*
 !.env.example
 
-# Testing
+# Testing. The pattern is unanchored, so it matches a directory called "coverage"
+# at any depth. COVERAGE is a view in this product, so two directories of real
+# source carry that name and both have to be excepted by hand. One of them was
+# missed and the branch did not compile from a fresh clone. The brackets in
+# [slug] are escaped because gitignore reads them as a character class, and an
+# unescaped negation silently does nothing.
 coverage
+!apps/api/src/coverage
+!apps/app/app/(app)/\[slug\]/coverage
 
 # Turbo
 .turbo

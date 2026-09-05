@@ -10,6 +10,7 @@ import {
 	PageShellLoading,
 	PageShellTitle,
 } from "@/components/page-shell";
+import { BUSINESS } from "@/lib/labels";
 import { requireSession } from "@/lib/session";
 import { HydrateClient } from "@/lib/trpc/hydrate";
 import { getServerQueryClient, getServerTrpc } from "@/lib/trpc/server";
@@ -18,7 +19,7 @@ import { CompaniesTable } from "./companies-table";
 import { CreateCompanySheet } from "./create-company-sheet";
 
 export const metadata: Metadata = {
-	title: "Companies",
+	title: BUSINESS.many,
 };
 
 export default function CompaniesPage({
@@ -28,9 +29,9 @@ export default function CompaniesPage({
 		<PageShell className="min-h-0">
 			<PageShellHeader>
 				<PageShellHeading>
-					<PageShellTitle>Companies</PageShellTitle>
+					<PageShellTitle>{BUSINESS.many}</PageShellTitle>
 					<PageShellDescription>
-						Every account in the pipeline.
+						Every travel business we track.
 					</PageShellDescription>
 				</PageShellHeading>
 				<PageShellActions>

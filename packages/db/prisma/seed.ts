@@ -276,7 +276,7 @@ const LOST_REASONS = [
 	"Went with an incumbent vendor",
 	"No budget this cycle",
 	"Timeline slipped to next year",
-	"Not a fit — no compliance requirement yet",
+	"Not a fit, no requirement yet",
 ] as const;
 
 const NOTE_BODIES = [
@@ -350,7 +350,7 @@ async function seedOwners(): Promise<string[]> {
 		return existing.map((user) => user.id);
 	}
 
-	console.log("No users yet — creating placeholder sales reps.");
+	console.log("No users yet, creating placeholder sales reps.");
 	const created = await Promise.all(
 		OWNERS.map((owner) =>
 			db.user.upsert({
@@ -494,6 +494,7 @@ async function upsertField(
 	type: FieldType,
 	position: number,
 	options: readonly string[] = [],
+	showOnFilter = false,
 ): Promise<SeededField> {
 	const key = fieldKeyFromLabel(label);
 	const definition = await db.fieldDefinition.upsert({
@@ -504,7 +505,7 @@ async function upsertField(
 			label,
 			type,
 			showOnTable: false,
-			showOnFilter: false,
+			showOnFilter,
 			agentFilled: type !== "USER" && type !== "NUMBER",
 			position,
 			options: {
@@ -514,6 +515,9 @@ async function upsertField(
 				})),
 			},
 		},
+		// The travel field definitions are created by migration 20260905060000, which
+		// owns showOnFilter. Writing it here on every re-seed would overwrite a
+		// choice somebody made in the field editor.
 		update: {},
 		include: { options: true },
 	});
@@ -541,8 +545,9 @@ async function seedCompanyFields(): Promise<SeededFieldSet> {
 			FieldType.SELECT,
 			0,
 			LIFECYCLE_STAGES,
+			true,
 		),
-		upsertField("COMPANY", "Region", FieldType.SELECT, 1, REGIONS),
+		upsertField("COMPANY", "Region", FieldType.SELECT, 1, REGIONS, true),
 		upsertField("COMPANY", "Chain scale", FieldType.SELECT, 2, CHAIN_SCALES),
 		upsertField(
 			"COMPANY",
@@ -714,7 +719,7 @@ async function seedRates(): Promise<number> {
 
 	if (seedBase !== "USD") {
 		console.log(
-			`Reporting currency is ${seedBase} — seeding a converted figure only for ` +
+			`Reporting currency is ${seedBase}, seeding a converted figure only for ` +
 				`deals already in ${seedBase}; the rates cron converts the rest.`,
 		);
 	}
@@ -795,8 +800,8 @@ async function seedDeals(
 					id,
 					name:
 						n === 0
-							? `${company.name} — Comp AI`
-							: `${company.name} — expansion`,
+							? `${company.name} distribution`
+							: `${company.name} expansion`,
 					description: pick(DEAL_DESCRIPTIONS),
 					companyId: company.id,
 					ownerId,
@@ -859,7 +864,7 @@ async function seedActivities(
 ): Promise<number> {
 	const existing = await db.activity.count();
 	if (existing > 0) {
-		console.log(`Activities already seeded (${existing}) — skipping.`);
+		console.log(`Activities already seeded (${existing}), skipping.`);
 		return existing;
 	}
 

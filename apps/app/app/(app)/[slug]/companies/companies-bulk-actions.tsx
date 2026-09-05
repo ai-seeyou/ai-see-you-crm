@@ -18,11 +18,12 @@ import {
 	BulkOwnerMenu,
 	reportBulk,
 } from "@/components/crm/bulk-actions";
+import { BUSINESS } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
 function companies(count: number): string {
-	return formatCount(count, "company", "companies");
+	return formatCount(count, BUSINESS.oneLower, BUSINESS.manyLower);
 }
 
 export function CompaniesBulkActions({

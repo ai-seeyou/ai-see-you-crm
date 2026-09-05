@@ -1,8 +1,10 @@
 "use client";
 
 import Building from "@carbon/icons-react/es/Building";
+import ChartRelationship from "@carbon/icons-react/es/ChartRelationship";
 import Close from "@carbon/icons-react/es/Close";
 import Dashboard from "@carbon/icons-react/es/Dashboard";
+import ListChecked from "@carbon/icons-react/es/ListChecked";
 import Partnership from "@carbon/icons-react/es/Partnership";
 import Settings from "@carbon/icons-react/es/Settings";
 import UserMultiple from "@carbon/icons-react/es/UserMultiple";
@@ -28,6 +30,7 @@ import { useMemo } from "react";
 import { AgentBuilderSidebar } from "@/components/agent-builder/agent-builder-sidebar";
 import { usePrefetchSection } from "@/components/crm/section-prefetch";
 import { useMobileNav } from "@/components/mobile-nav";
+import { BUSINESS, CONTACT, OPPORTUNITY } from "@/lib/labels";
 import { useWorkspaceUrl } from "@/lib/use-workspace-url";
 
 type RailItem = {
@@ -41,6 +44,7 @@ type RailItem = {
 
 const ITEMS: RailItem[] = [
 	{ title: "Overview", href: "/", icon: Dashboard, match: "exact" },
+	{ title: "Today", href: "/today", icon: ListChecked, match: "prefix" },
 	{
 		title: "Chat",
 		href: "/chat",
@@ -49,14 +53,30 @@ const ITEMS: RailItem[] = [
 		match: "prefix",
 		related: ["/agents"],
 	},
-	{ title: "Companies", href: "/companies", icon: Building, match: "prefix" },
 	{
-		title: "Contacts",
+		title: BUSINESS.many,
+		href: "/companies",
+		icon: Building,
+		match: "prefix",
+	},
+	{
+		title: CONTACT.many,
 		href: "/contacts",
 		icon: UserMultiple,
 		match: "prefix",
 	},
-	{ title: "Deals", href: "/deals", icon: Partnership, match: "prefix" },
+	{
+		title: OPPORTUNITY.many,
+		href: "/deals",
+		icon: Partnership,
+		match: "prefix",
+	},
+	{
+		title: "Coverage",
+		href: "/coverage",
+		icon: ChartRelationship,
+		match: "prefix",
+	},
 	{ title: "Settings", href: "/settings", icon: Settings, match: "prefix" },
 ];
 

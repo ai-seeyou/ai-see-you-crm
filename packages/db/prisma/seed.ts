@@ -494,6 +494,7 @@ async function upsertField(
 	type: FieldType,
 	position: number,
 	options: readonly string[] = [],
+	showOnFilter = false,
 ): Promise<SeededField> {
 	const key = fieldKeyFromLabel(label);
 	const definition = await db.fieldDefinition.upsert({
@@ -504,7 +505,7 @@ async function upsertField(
 			label,
 			type,
 			showOnTable: false,
-			showOnFilter: false,
+			showOnFilter,
 			agentFilled: type !== "USER" && type !== "NUMBER",
 			position,
 			options: {
@@ -514,7 +515,7 @@ async function upsertField(
 				})),
 			},
 		},
-		update: {},
+		update: { showOnFilter },
 		include: { options: true },
 	});
 
@@ -541,8 +542,9 @@ async function seedCompanyFields(): Promise<SeededFieldSet> {
 			FieldType.SELECT,
 			0,
 			LIFECYCLE_STAGES,
+			true,
 		),
-		upsertField("COMPANY", "Region", FieldType.SELECT, 1, REGIONS),
+		upsertField("COMPANY", "Region", FieldType.SELECT, 1, REGIONS, true),
 		upsertField("COMPANY", "Chain scale", FieldType.SELECT, 2, CHAIN_SCALES),
 		upsertField(
 			"COMPANY",

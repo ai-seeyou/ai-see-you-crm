@@ -32,6 +32,17 @@ export type CrmCache = {
 	removedMany(records: RemovedRecords): Promise<void>;
 	conversationRemoved(id: string): Promise<void>;
 	activity(options?: Options): Promise<void>;
+	relationship(
+		companyId: string,
+		otherCompanyId?: string,
+		options?: Options,
+	): Promise<void>;
+	assignment(
+		contactId: string,
+		companyId: string,
+		options?: Options,
+	): Promise<void>;
+	domainReviews(options?: Options): Promise<void>;
 	google(options?: Options): Promise<void>;
 	microsoft(options?: Options): Promise<void>;
 	settings(options?: Options): Promise<void>;
@@ -78,6 +89,11 @@ export function useCrmCache(): CrmCache {
 		trpc.search.quick.queryKey(),
 	];
 
+	const viewKeys = () => [
+		trpc.today.summary.queryKey(),
+		trpc.coverage.gaps.queryKey(),
+	];
+
 	const removeRecords = (kind: RecordKind, ids: string[]): Promise<void> => {
 		const byId = {
 			company: trpc.companies.byId,
@@ -107,7 +123,12 @@ export function useCrmCache(): CrmCache {
 		}
 
 		return run(
-			[...listKeys(), ...activityKeys(), trpc.dashboard.summary.queryKey()],
+			[
+				...listKeys(),
+				...activityKeys(),
+				...viewKeys(),
+				trpc.dashboard.summary.queryKey(),
+			],
 			[],
 		);
 	};
@@ -173,6 +194,7 @@ export function useCrmCache(): CrmCache {
 				[
 					...listKeys(),
 					...activityKeys(),
+					...viewKeys(),
 					trpc.contacts.byId.queryKey(),
 					trpc.deals.byId.queryKey(),
 					trpc.dashboard.summary.queryKey(),
@@ -190,6 +212,7 @@ export function useCrmCache(): CrmCache {
 				[
 					...listKeys(),
 					...activityKeys(),
+					...viewKeys(),
 					trpc.companies.byId.queryKey(),
 					trpc.deals.byId.queryKey(),
 					trpc.deals.contactOptions.queryKey(),
@@ -209,6 +232,38 @@ export function useCrmCache(): CrmCache {
 					trpc.dashboard.summary.queryKey(),
 					trpc.currency.settings.queryKey(),
 				],
+				options,
+			),
+
+		relationship: (companyId, otherCompanyId, options) =>
+			run(
+				[
+					trpc.companies.byId.queryKey({ id: companyId }),
+					...(otherCompanyId
+						? [trpc.companies.byId.queryKey({ id: otherCompanyId })]
+						: []),
+					trpc.relationships.forCompany.pathKey(),
+				],
+				[...listKeys(), ...viewKeys()],
+				options,
+			),
+
+		assignment: (contactId, companyId, options) =>
+			run(
+				[
+					trpc.contacts.byId.queryKey({ id: contactId }),
+					trpc.companies.byId.queryKey({ id: companyId }),
+					trpc.assignments.forContact.pathKey(),
+					trpc.assignments.forCompany.pathKey(),
+				],
+				[...listKeys(), ...viewKeys()],
+				options,
+			),
+
+		domainReviews: (options) =>
+			run(
+				[trpc.domainReviews.list.pathKey()],
+				[...listKeys(), ...viewKeys(), trpc.companies.byId.queryKey()],
 				options,
 			),
 

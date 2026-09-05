@@ -20,7 +20,7 @@ import { OPPORTUNITY } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
-function QuickAddForm({
+export function QuickAddForm({
 	submitLabel,
 	pending,
 	ready,

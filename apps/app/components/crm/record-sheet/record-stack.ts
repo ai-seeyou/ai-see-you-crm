@@ -16,13 +16,20 @@ export type RecordKind = (typeof RECORD_KINDS)[number];
 
 export type RecordRef = { kind: RecordKind; id: string };
 
-const RECORD_FORMS = ["contact", "deal"] as const;
+const RECORD_FORMS = [
+	"contact",
+	"deal",
+	"relationship",
+	"responsible",
+] as const;
 
 export type RecordForm = (typeof RECORD_FORMS)[number];
 
 const FORM_TAB = {
 	contact: "contacts",
 	deal: "deals",
+	relationship: "relationships",
+	responsible: "responsible",
 } satisfies Record<RecordForm, string>;
 
 const params = {

@@ -5,6 +5,7 @@ import Partnership from "@carbon/icons-react/es/Partnership";
 import Star from "@carbon/icons-react/es/Star";
 import StarFilled from "@carbon/icons-react/es/StarFilled";
 import UserMultiple from "@carbon/icons-react/es/UserMultiple";
+import { EntityType } from "@crm/db/enums";
 import type { FieldValueJson } from "@crm/db/fields";
 import { Button } from "@crm/ui/components/button";
 import { EmptyCellValue } from "@crm/ui/components/empty-cell";
@@ -55,6 +56,15 @@ import {
 import { LocalDay } from "@/components/local-date-time";
 import { OPEN_STAGES } from "@/lib/deal-stage";
 import { ENRICHMENT_POLL_MS, isEnriching } from "@/lib/enrichment-status";
+import { ENTITY_TYPE_OPTIONS, entityTypeLabel } from "@/lib/entity-type";
+import {
+	ADD_CONTACT,
+	BUSINESS,
+	CONTACT,
+	NEW_OPPORTUNITY,
+	OPEN_OPPORTUNITIES,
+	OPPORTUNITY,
+} from "@/lib/labels";
 import { savingField } from "@/lib/pending-field";
 import { hasCompanyLinks } from "@/lib/social-links";
 import { useCrmCache } from "@/lib/trpc/cache";
@@ -70,6 +80,8 @@ import {
 	RecordSheetFrame,
 } from "./record-parts";
 import { useOpenRecord, useRecordSheetView } from "./record-stack";
+import { CompanyRelationships } from "./relationships-panel";
+import { CompanyResponsible } from "./responsible-panels";
 
 type Company = RouterOutputs["companies"]["byId"];
 type CompanyDeal = Company["deals"][number];
@@ -78,7 +90,8 @@ const UNASSIGNED = "unassigned";
 
 function pendingFields(company: Company): string[] {
 	const missing: string[] = [];
-	if (!company.industry) missing.push("industry");
+	if (!company.verticalId) missing.push("vertical");
+	if (company.entityType === EntityType.OTHER) missing.push("type");
 	if (!company.description) missing.push("description");
 	if (!hasCompanyLinks(company)) missing.push("social links");
 	return missing;
@@ -90,12 +103,12 @@ function companyConsequence(company: Company): string {
 
 	const gone =
 		deals > 0
-			? `${deals === 1 ? "Its one deal" : `All ${deals} of its deals`} and everything filed against the account go too.`
-			: "Everything filed against the account goes too.";
+			? `${deals === 1 ? `Its one ${OPPORTUNITY.oneLower}` : `All ${deals} of its ${OPPORTUNITY.manyLower}`} and everything filed against it go too.`
+			: "Everything filed against it goes too.";
 
 	const kept =
 		contacts > 0
-			? ` ${contacts === 1 ? "The one person" : `The ${contacts} people`} who work there stay in the CRM, without a company.`
+			? ` ${contacts === 1 ? "The one person" : `The ${contacts} people`} who work there stay in the CRM, without a ${BUSINESS.oneLower}.`
 			: "";
 
 	return gone + kept;
@@ -110,7 +123,7 @@ const CONTACT_COLUMNS = [
 ];
 
 const DEAL_COLUMNS = [
-	{ id: "deal", header: "Deal", width: "w-[32%]", className: "pl-5" },
+	{ id: "deal", header: OPPORTUNITY.one, width: "w-[32%]", className: "pl-5" },
 	{ id: "stage", header: "Stage", width: "w-[24%]" },
 	{
 		id: "amount",
@@ -177,7 +190,7 @@ export function CompanySheet({ companyId }: { companyId: string }) {
 				},
 				{
 					value: "contacts",
-					label: "Contacts",
+					label: CONTACT.many,
 					count: company.contacts.length,
 					content: (
 						<CompanyContacts
@@ -189,8 +202,29 @@ export function CompanySheet({ companyId }: { companyId: string }) {
 					),
 				},
 				{
+					value: "relationships",
+					label: "Relationships",
+					count:
+						company.relationships.outgoing.length +
+						company.relationships.incoming.length,
+					content: (
+						<CompanyRelationships
+							company={company}
+							adding={adding === "relationship"}
+							onAdd={() => setAdding("relationship")}
+							onDone={() => setAdding(null)}
+						/>
+					),
+				},
+				{
+					value: "responsible",
+					label: "People responsible",
+					count: company.assignments.length,
+					content: <CompanyResponsible company={company} />,
+				},
+				{
 					value: "deals",
-					label: "Deals",
+					label: OPPORTUNITY.many,
 					count: company.deals.length,
 					content: (
 						<CompanyDeals
@@ -219,14 +253,14 @@ export function CompanySheet({ companyId }: { companyId: string }) {
 		<RecordSheetFrame
 			loading={query.isPending}
 			error={query.error?.message ?? null}
-			title={company?.name ?? "Company"}
+			title={company?.name ?? BUSINESS.one}
 			description={
 				company ? (
 					<MetaLine
 						lead={
 							<DomainLink domain={company.domain} website={company.website} />
 						}
-						parts={[location, company.industry]}
+						parts={[location, entityTypeLabel(company.entityType)]}
 					/>
 				) : undefined
 			}
@@ -278,7 +312,7 @@ export function CompanySheet({ companyId }: { companyId: string }) {
 								</span>
 							) : null}
 						</DetailSheetStat>
-						<DetailSheetStat label="Open deals">
+						<DetailSheetStat label={OPEN_OPPORTUNITIES}>
 							<span className="tabular-nums">{openDeals.length}</span>
 						</DetailSheetStat>
 						<DetailSheetStat label="Next close">
@@ -302,6 +336,9 @@ function CompanyOverview({ company }: { company: Company }) {
 	const cache = useCrmCache();
 
 	const users = useQuery(trpc.users.list.queryOptions());
+	const verticals = useQuery(
+		trpc.verticals.list.queryOptions({ includeArchived: false }),
+	);
 
 	const update = useMutation(
 		trpc.companies.update.mutationOptions({
@@ -387,6 +424,28 @@ function CompanyOverview({ company }: { company: Company }) {
 								onSave={(country) => save({ country })}
 							/>
 							<InlineSelectField
+								label="Vertical"
+								value={company.verticalId ?? UNASSIGNED}
+								options={[
+									{ value: UNASSIGNED, label: "Unassigned" },
+									...(verticals.data ?? []).map((vertical) => ({
+										value: vertical.id,
+										label: vertical.label,
+									})),
+								]}
+								onSave={(verticalId) =>
+									save({
+										verticalId: verticalId === UNASSIGNED ? null : verticalId,
+									})
+								}
+							/>
+							<InlineSelectField
+								label="Type"
+								value={company.entityType}
+								options={ENTITY_TYPE_OPTIONS}
+								onSave={(entityType) => save({ entityType })}
+							/>
+							<InlineSelectField
 								label="Owner"
 								value={company.owner?.id ?? UNASSIGNED}
 								options={[
@@ -461,12 +520,12 @@ function CompanyContacts({
 				{adding ? null : (
 					<DetailSheetEmpty
 						icon={UserMultiple}
-						title="No contacts yet"
-						description={`Everyone you talk to at ${company.name} lives here — add the first person and their calls, emails and notes hang off them.`}
+						title={`No ${CONTACT.manyLower} yet`}
+						description={`Everyone employed by ${company.name} lives here. Somebody who covers this ${BUSINESS.oneLower} from a group office belongs under People responsible.`}
 						action={
 							<Button variant="outline" size="sm" onClick={onAdd}>
 								<Icon icon={Add} data-icon="inline-start" />
-								Add contact
+								{ADD_CONTACT}
 							</Button>
 						}
 					/>
@@ -545,7 +604,7 @@ function CompanyContacts({
 				})}
 
 				<AddRow
-					label="Add contact"
+					label={ADD_CONTACT}
 					columns={CONTACT_COLUMNS.length}
 					onClick={onAdd}
 				/>
@@ -583,12 +642,12 @@ function CompanyDeals({
 				{adding ? null : (
 					<DetailSheetEmpty
 						icon={Partnership}
-						title="No deals yet"
+						title={`No ${OPPORTUNITY.manyLower} yet`}
 						description={`Nothing is being sold to ${company.name} right now. Open one and it joins the pipeline and the forecast.`}
 						action={
 							<Button variant="outline" size="sm" onClick={onAdd}>
 								<Icon icon={Add} data-icon="inline-start" />
-								New deal
+								{NEW_OPPORTUNITY}
 							</Button>
 						}
 					/>
@@ -633,7 +692,7 @@ function CompanyDeals({
 				))}
 
 				<AddRow
-					label="New deal"
+					label={NEW_OPPORTUNITY}
 					columns={DEAL_COLUMNS.length}
 					onClick={onAdd}
 				/>

@@ -376,8 +376,9 @@ async function seedCompanies(
 
 	for (const company of COMPANIES) {
 		const row = await db.company.upsert({
-			where: { domain: company.domain },
+			where: { id: `seed-company-${slug(company.name)}` },
 			create: {
+				id: `seed-company-${slug(company.name)}`,
 				name: company.name,
 				domain: company.domain,
 				website: `https://${company.domain}`,

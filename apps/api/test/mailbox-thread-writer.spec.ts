@@ -27,7 +27,7 @@ const agent = {
 } as unknown as AgentTriggerService;
 
 const stamp = new ActivityStampService(db);
-const directory = new CompanyDirectoryService(agent);
+const directory = new CompanyDirectoryService(db);
 const log = new EnrichmentLogService(db, stamp);
 const match = new MailboxMatchService(db, directory, agent, log);
 const threads = new ThreadWriterService(db, match, stamp);

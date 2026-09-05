@@ -121,7 +121,7 @@ export class MailboxMatchService {
 		];
 
 		const known = await this.db.company.findMany({
-			where: { domain: { in: domains } },
+			where: { domain: { in: domains }, archivedAt: null },
 			select: { id: true, domain: true },
 		});
 
@@ -134,7 +134,8 @@ export class MailboxMatchService {
 		const domain = dominantDomain(external, knownDomains);
 		if (!domain) return { companyId: null, contactId: null, external };
 
-		const existing = known.find((company) => company.domain === domain);
+		const matches = known.filter((company) => company.domain === domain);
+		const existing = matches.length === 1 ? matches[0] : undefined;
 		if (existing) {
 			return {
 				companyId: existing.id,
@@ -149,10 +150,10 @@ export class MailboxMatchService {
 			return { companyId: null, contactId: null, external };
 		}
 
-		return this.create(external, domain, request);
+		return this.raiseForReview(external, domain, request);
 	}
 
-	private async create(
+	private async raiseForReview(
 		external: Participant[],
 		domain: string,
 		request: MatchRequest,
@@ -163,48 +164,25 @@ export class MailboxMatchService {
 
 		if (!lead) return { companyId: null, contactId: null, external };
 
-		const companyId = await this.companies.companyForEmail(lead.email, {
-			ownerId: request.ownerId,
-		});
-		if (!companyId) {
-			return { companyId: null, contactId: null, external };
-		}
-
-		await this.db.company.update({
-			where: { id: companyId },
-			data: { source: request.source },
+		await this.companies.companyForEmail(lead.email, {
+			source: request.source,
 		});
 
-		const contactId = await this.createContact(
-			external,
-			domain,
-			companyId,
-			request,
-		);
-
-		await this.log.record({
-			companyId,
-			subject: "Company added from your inbox",
-			body:
-				`Created because you ${request.source === "CALENDAR" ? "met" : "emailed"} ` +
-				`someone at ${domain}.`,
-			meta: { source: request.source, domain },
-		});
+		const contactId = await this.createContact(external, domain, null, request);
 
 		this.logger.log({
-			message: "Company auto-created from mailbox sync",
-			companyId,
+			message: "Sending domain left unfiled for review",
 			domain,
 			source: request.source,
 		});
 
-		return { companyId, contactId, external };
+		return { companyId: null, contactId, external };
 	}
 
 	private async createContact(
 		external: Participant[],
 		domain: string,
-		companyId: string,
+		companyId: string | null,
 		request: MatchRequest,
 	): Promise<string | null> {
 		const person = external.find(

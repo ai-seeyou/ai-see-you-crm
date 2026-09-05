@@ -281,11 +281,7 @@ export class ContactsService {
 
 		const companyId =
 			input.companyId ??
-			(email
-				? await this.companies.companyForEmail(email, {
-						ownerId: input.ownerId,
-					})
-				: null);
+			(email ? await this.companies.companyForEmail(email) : null);
 
 		const contact = await this.agent.withCrmEvents(async (tx, emit) => {
 			await this.allowAgain(tx, email);

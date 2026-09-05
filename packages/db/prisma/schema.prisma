@@ -29,6 +29,7 @@ model User {
   activities     Activity[]          @relation("ActivityAuthor")
   mailboxSyncs   MailboxSync[]
   factDecisions  ContactFact[]       @relation("FactDecider")
+  domainReviews  DomainReview[]      @relation("DomainReviewDecider")
   conversations  AgentConversation[] @relation("ConversationOwner")
   fieldValues    FieldValue[]        @relation("FieldValueUser")
   savedViews     SavedView[]         @relation("SavedViewOwner")
@@ -277,6 +278,46 @@ enum AgentResponseRating {
   DOWN
 }
 
+enum DomainReviewStatus {
+  PROPOSED
+  APPLIED
+  DISMISSED
+}
+
+enum DomainReviewReason {
+  UNRECOGNISED
+  AMBIGUOUS
+}
+
+model DomainReview {
+  id     String @id @default(cuid())
+  domain String
+
+  email  String?
+  reason DomainReviewReason
+  status DomainReviewStatus @default(PROPOSED)
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  source    RecordSource @default(EMAIL)
+  seenCount Int          @default(1)
+
+  decidedById String?
+  decidedBy   User?     @relation("DomainReviewDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt   DateTime?
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([domain], map: "domain_review_open_key", where: { status: "PROPOSED" })
+  @@index([status, lastSeenAt])
+  @@map("domainReview")
+}
+
 enum ExternalRecordType {
   COMPANY
   CONTACT
@@ -478,6 +519,7 @@ model Company {
 
   contacts       Contact[]            @relation("CompanyContacts")
   assignments    ContactAssignment[]
+  domainReviews  DomainReview[]
   relationsFrom  EntityRelationship[] @relation("EntityRelationshipFrom")
   relationsTo    EntityRelationship[] @relation("EntityRelationshipTo")
   conversations  AgentConversation[]
@@ -489,7 +531,7 @@ model Company {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  @@unique([domain], map: "company_domain_active_key", where: { archivedAt: null })
+  @@index([domain])
   @@index([ownerId])
   @@index([name])
   @@index([lastActivityAt])

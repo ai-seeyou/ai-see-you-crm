@@ -90,8 +90,8 @@ beforeAll(async () => {
 	});
 
 	const company = await db.company.upsert({
-		where: { domain },
-		create: { name: `Money Co ${suffix}`, domain },
+		where: { id: `money-co-${suffix}` },
+		create: { id: `money-co-${suffix}`, name: `Money Co ${suffix}`, domain },
 		update: {},
 		select: { id: true },
 	});

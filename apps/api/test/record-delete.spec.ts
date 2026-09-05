@@ -31,7 +31,7 @@ const agent = {
 	companyRequested: async () => true,
 } as unknown as AgentTriggerService;
 
-const directory = new CompanyDirectoryService(agent);
+const directory = new CompanyDirectoryService(db);
 const log = new EnrichmentLogService(db, stamp);
 const queue = new AgentQueueService(db);
 const conversion = new ConversionService(db);

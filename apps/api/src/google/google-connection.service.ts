@@ -199,16 +199,22 @@ export class GoogleConnectionService {
 
 		if (!options.purge) return { domain: normalised, purged: 0 };
 
-		const company = await this.db.company.findUnique({
+		const companies = await this.db.company.findMany({
 			where: { domain: normalised },
 			select: { id: true },
 		});
 
-		if (!company) return { domain: normalised, purged: 0 };
+		if (companies.length === 0) return { domain: normalised, purged: 0 };
+
+		const companyIds = companies.map((company) => company.id);
 
 		const [threads, events] = await this.db.$transaction([
-			this.db.emailThread.deleteMany({ where: { companyId: company.id } }),
-			this.db.calendarEvent.deleteMany({ where: { companyId: company.id } }),
+			this.db.emailThread.deleteMany({
+				where: { companyId: { in: companyIds } },
+			}),
+			this.db.calendarEvent.deleteMany({
+				where: { companyId: { in: companyIds } },
+			}),
 		]);
 
 		await this.stamp.recomputeAll();

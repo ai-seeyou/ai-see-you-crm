@@ -28,7 +28,7 @@ const agent = {
 const stamp = new ActivityStampService(db);
 const queue = new AgentQueueService(db);
 const conversion = new ConversionService(db);
-const directory = new CompanyDirectoryService(agent);
+const directory = new CompanyDirectoryService(db);
 
 const fields = new FieldsService(db, agent);
 const contacts = new ContactsService(

@@ -6,7 +6,7 @@ import {
 	expect,
 	it,
 } from "bun:test";
-import { db } from "@crm/db";
+import { DomainReviewReason, DomainReviewStatus, db } from "@crm/db";
 import {
 	CONTACT_CAP_REASON,
 	CONTACTS_PER_HOUR,
@@ -37,7 +37,7 @@ const agent = {
 
 const stamp = new ActivityStampService(db);
 const counters = new TrackingCounterService(db);
-const directory = new CompanyDirectoryService(agent);
+const directory = new CompanyDirectoryService(db);
 const filing = new TrackingFilingService(db, counters, directory, agent, stamp);
 
 let userId: string;
@@ -78,6 +78,7 @@ async function clean() {
 	});
 	await db.contact.deleteMany({ where: { email: { endsWith: `@${domain}` } } });
 	await db.contact.deleteMany({ where: { email: `free-${suffix}@gmail.com` } });
+	await db.domainReview.deleteMany({ where: { domain } });
 	await db.company.deleteMany({ where: { domain } });
 	await db.suppressedContact.deleteMany({
 		where: { email: { endsWith: `@${domain}` } },
@@ -168,7 +169,7 @@ describe("filing a form submission", () => {
 		expect(contact?.source).toBe("TRACKING");
 	});
 
-	it("files a work address and queues the agent once", async () => {
+	it("files a work address on an unfiled domain, and raises it for review", async () => {
 		const email = `dana@${domain}`;
 		const { outcome, stored } = await submit(email);
 
@@ -181,8 +182,44 @@ describe("filing a form submission", () => {
 			select: { companyId: true, firstName: true },
 		});
 
-		expect(contact?.companyId).toBeTruthy();
+		expect(contact?.companyId).toBeNull();
 		expect(contact?.firstName).toBe("Dana");
+
+		const review = await db.domainReview.findFirst({
+			where: { domain },
+			select: { reason: true, status: true, seenCount: true },
+		});
+
+		expect(review?.reason).toBe(DomainReviewReason.UNRECOGNISED);
+		expect(review?.status).toBe(DomainReviewStatus.PROPOSED);
+		expect(review?.seenCount).toBe(1);
+	});
+
+	it("files a work address against the business that already owns the domain", async () => {
+		await db.domainReview.deleteMany({ where: { domain } });
+		const company = await db.company.create({
+			data: { name: "Visitors Hotel Group", domain },
+			select: { id: true },
+		});
+		const email = `erin@${domain}`;
+
+		const { outcome } = await submit(email, "Erin Shaw");
+
+		expect(outcome.filed).toBe(true);
+
+		const contact = await db.contact.findUnique({
+			where: { email },
+			select: { companyId: true },
+		});
+
+		expect(contact?.companyId).toBe(company.id);
+
+		const review = await db.domainReview.findFirst({
+			where: { domain },
+			select: { id: true },
+		});
+
+		expect(review).toBeNull();
 	});
 
 	it("writes one note when the same submission is filed twice at once", async () => {

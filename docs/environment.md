@@ -84,15 +84,13 @@ list fails closed.** Parsed on demand. `packages/auth/src/workspace.ts`.
   collides with any neighbour on a shared parent domain, silently: sign-in completes,
   the row is written, every reader resolves `null`. **Changing it signs everybody out.**
 
-## `IS_MARKETING` — landing page flag, off by default
+## `IS_MARKETING`: removed
 
-`"true"` serves `app/(landing)` at `/`; anything else sends a signed-out visitor to
-`/sign-in`, because the page markets *this* product.
+Upstream used this to serve its product marketing site at `/`. The page, its
+components, `isMarketing()` and the `passThroughEnv` entry are all gone in this fork.
+A signed-out visitor at `/` is always sent to `/sign-in`.
 
-- **Only the literal `true`** (same shape as `PRISMA_LOG_QUERIES`).
-- **It decides one thing**: what a stranger at `/` sees.
-- **`isMarketing()` (`apps/app/lib/env.ts`) reads per request**, so a config change
-  needs no rebuild. Declared in `apps/app/turbo.json` `passThroughEnv`.
+**Do not add it back.** There is nothing for it to switch on.
 
 ## Typed, validated env
 
@@ -182,26 +180,24 @@ feature is only ever wrong), **no `GOOGLE_WORKSPACE_DOMAIN`** (`ALLOWED_SIGN_IN`
 says who is internal — two sources is how a colleague becomes a lead), **no
 `GMAIL_BACKFILL_DAYS`**, **no `OUTLOOK_BACKFILL_DAYS`**, **no rate provider variable**.
 
-## Telemetry is on, and turning it off is one variable
+## Telemetry: permanently off, not a variable
 
-`CRM_TELEMETRY_DISABLED="1"` — or `DO_NOT_TRACK=1`, honoured identically — and nothing
-is sent. No client is constructed, so there is no queue waiting to flush later.
+Upstream shipped this on by default with `CRM_TELEMETRY_DISABLED="1"` (or
+`DO_NOT_TRACK=1`) as the way to turn it off. In this fork it is off in code and has no
+destination, and the variable is the third layer rather than the only one.
 
-- **Server side only**, `posthog-node` in the API and the agent. **`posthog-js`
-  appears once, on the `trycrm.ai` landing page**, and nowhere a record can be
-  reached: autocapture on a CRM would lift contact names and deal amounts out of
-  somebody else's database. That one import is gated on
-  `window.location.hostname`, not on `IS_MARKETING` — turning the landing page on
-  for your own domain never loads it. `docs/telemetry.md`.
-- **There is no variable for the destination.** The project key and host are
-  constants in `packages/telemetry/src/project.ts`. A `phc_` key is write-only —
-  it can send events and read nothing back — so making it configurable would
-  only imply it were a secret. Edit the constants to point somewhere else.
-- **The install ID is a row, not a file** — `install`, one row, UUID written by
-  the migration. Vercel's filesystem is ephemeral, so `~/.crm/telemetry-id`
-  would count containers.
-- Declared in `env.validation.ts` as optional, like everything else here. Every
-  event and the never-sent list are in **`docs/telemetry.md`**.
+- `HARD_DISABLED` in `packages/telemetry/src/disabled.ts` does not read the
+  environment, so no missing variable can turn reporting back on.
+- `packages/telemetry/src/project.ts` has a blank PostHog key and host, so there is no
+  destination to send to.
+- `CRM_TELEMETRY_DISABLED="1"` is set in `.env.example` and in CI anyway.
+
+`posthog-node` stays a dependency of `packages/telemetry` and is never constructed.
+`posthog-js` is gone: it existed only on upstream's marketing page, which is removed.
+
+`packages/telemetry/test/no-egress.spec.ts` is the check, and it needs no database.
+Read `docs/telemetry.md` for what the code would send if it were enabled, which is
+what an upstream merge could reintroduce.
 
 ## Not env vars
 

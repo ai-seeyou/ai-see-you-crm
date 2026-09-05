@@ -1,7 +1,6 @@
 import { AUTH_COOKIE_PREFIX } from "@crm/auth/cookies";
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
-import { isMarketing } from "@/lib/env";
 import {
 	ONBOARDING_PATH,
 	RESEARCH_PATH,
@@ -37,7 +36,7 @@ export async function proxy(request: NextRequest) {
 
 	if (isUngated(pathname)) return NextResponse.next();
 
-	// Both answers, every time, and concurrently — so the gate costs one round
+	// Both answers, every time, and concurrently, so the gate costs one round
 	// trip rather than two, and neither answer can be stale.
 	const [workspace, research] = await Promise.all([
 		readWorkspaceGate(request),
@@ -74,8 +73,11 @@ function isUnder(pathname: string, prefix: string): boolean {
 	return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-function isPublic(pathname: string): boolean {
-	return pathname === LANDING_PATH && isMarketing();
+// The AI See You CRM is an internal application with no public page. Upstream
+// served a marketing site at "/" behind IS_MARKETING; that page and that flag
+// are gone, so a signed-out visitor is always sent to sign in.
+function isPublic(_pathname: string): boolean {
+	return false;
 }
 
 function isUngated(pathname: string): boolean {

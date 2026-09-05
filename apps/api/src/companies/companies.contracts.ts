@@ -1,5 +1,6 @@
 import { DealStage, EnrichmentStatus, EntityType, RecordSource } from "@crm/db";
 import { FIELD_TYPES } from "@crm/db/fields";
+import { enumFacet } from "@crm/validation/enum-facet";
 import { z } from "zod";
 import { companyAssignmentOutput } from "../assignments/assignments.contracts";
 import { bulkIdsInput } from "../crm/bulk";
@@ -15,7 +16,7 @@ export const companyListInput = listInput.extend({
 	owner: z.array(z.string()).default([]),
 	industry: z.array(z.string()).default([]),
 	vertical: z.array(z.string()).default([]),
-	entityType: z.array(z.string()).default([]),
+	entityType: enumFacet(Object.values(EntityType), "business type"),
 	enrichment: z.array(z.string()).default([]),
 	source: z.array(z.string()).default([]),
 	activity: activityFacetInput.default([]),

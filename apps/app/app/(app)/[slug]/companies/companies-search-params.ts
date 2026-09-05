@@ -1,3 +1,4 @@
+import { EntityType } from "@crm/db/enums";
 import { createListSearchParams } from "@/components/data-table/list-search-params";
 
 export const companiesSearchParams = createListSearchParams({
@@ -11,4 +12,5 @@ export const companiesSearchParams = createListSearchParams({
 		"enrichment",
 		"activity",
 	] as const,
+	facetValues: { entityType: Object.values(EntityType) },
 });

@@ -931,7 +931,7 @@ export class ContactsService {
 			and.push({
 				assignments: {
 					some: {
-						roleType: { in: input.roleType as ContactRoleType[] },
+						roleType: { in: input.roleType },
 						validTo: null,
 					},
 				},

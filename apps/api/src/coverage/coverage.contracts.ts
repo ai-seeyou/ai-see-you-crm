@@ -52,6 +52,7 @@ export const coverageOutput = z.object({
 	targetFieldKey: z.string(),
 	targetLabels: z.array(z.string()),
 	truncated: z.boolean(),
+	examined: z.number(),
 	summary: z.object({
 		targets: z.number(),
 		covered: z.number(),

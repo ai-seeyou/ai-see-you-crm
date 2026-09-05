@@ -1,4 +1,5 @@
 import {
+	ContactRoleType,
 	DealStage,
 	EnrichmentStatus,
 	FactBand,
@@ -6,6 +7,7 @@ import {
 	RecordSource,
 } from "@crm/db";
 import { FIELD_ENTITIES, FIELD_TYPES } from "@crm/db/fields";
+import { enumFacet } from "@crm/validation/enum-facet";
 import { z } from "zod";
 import {
 	contactAssignmentOutput,
@@ -22,7 +24,7 @@ export const contactListInput = listInput.extend({
 	title: z.array(z.string()).default([]),
 	seniority: z.array(z.string()).default([]),
 	persona: z.array(z.string()).default([]),
-	roleType: z.array(z.string()).default([]),
+	roleType: enumFacet(Object.values(ContactRoleType), "role"),
 	activity: activityFacetInput.default([]),
 	fields: z.record(z.string(), z.array(z.string())).default({}),
 	archived: z.boolean().default(false),

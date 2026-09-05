@@ -231,7 +231,7 @@ export function TodayView() {
 					}
 					shown={today.overdueTasks.length}
 					total={counts.overdueTasks}
-					empty="Nothing overdue."
+					empty={mine ? "Nothing overdue for you." : "Nothing overdue."}
 					columns={TASK_COLUMNS}
 				>
 					{today.overdueTasks.map((task) => (
@@ -249,7 +249,7 @@ export function TodayView() {
 					description={`Follow-ups due in the next ${thresholds.followUpWithinDays} days`}
 					shown={today.followUps.length}
 					total={counts.followUps}
-					empty="Nothing due."
+					empty={mine ? "Nothing due for you." : "Nothing due."}
 					columns={TASK_COLUMNS}
 				>
 					{today.followUps.map((task) => (
@@ -267,7 +267,7 @@ export function TodayView() {
 					description={`Open ${OPPORTUNITY.manyLower} with nothing on them for ${thresholds.opportunityStaleAfterDays} days`}
 					shown={today.staleOpportunities.length}
 					total={counts.staleOpportunities}
-					empty={`No ${OPPORTUNITY.oneLower} has gone quiet.`}
+					empty={`No ${OPPORTUNITY.oneLower}${mine ? " of yours" : ""} has gone quiet.`}
 					columns={QUIET_COLUMNS}
 				>
 					{today.staleOpportunities.map((deal) => (
@@ -299,7 +299,7 @@ export function TodayView() {
 					description={`Inbound email in the last ${thresholds.replySinceDays} days`}
 					shown={today.replies.length}
 					total={counts.replies}
-					empty="Nobody has replied."
+					empty={mine ? "Nobody has replied to you." : "Nobody has replied."}
 					columns={REPLY_COLUMNS}
 				>
 					{today.replies.map((reply) => (

@@ -1,5 +1,6 @@
 import { EntityType, RecordSource, RelationshipType } from "@crm/db";
 import { relationshipEvidence } from "@crm/validation/relationship-evidence";
+import { pastOrPresent } from "@crm/validation/temporal";
 import { z } from "zod";
 
 export const relationshipType = z.enum(
@@ -58,7 +59,7 @@ export const relationshipCreateInput = z.object({
 	toCompanyId: z.string(),
 	type: relationshipType,
 	note: z.string().optional(),
-	validFrom: z.iso.datetime().optional(),
+	validFrom: pastOrPresent.optional(),
 	evidence: relationshipEvidence.optional(),
 });
 

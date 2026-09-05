@@ -184,10 +184,7 @@ describe("the business list facets", () => {
 		expect(without.rows.map((row) => row.id)).toEqual([groupId]);
 	});
 
-	// Lifecycle stage and region are FieldDefinition rows, not columns. This
-	// confirms the inherited custom-field pipeline already answers them, so
-	// Phase 3 does not rebuild it.
-	it("already filters and counts lifecycle stage and region, with no new code", async () => {
+	it("already filters and counts lifecycle stage and region, because they are FieldDefinition rows and not columns", async () => {
 		const listed = await companies.list({ ...listArgs, q: TAG });
 
 		expect(listed.facetCounts["field:lifecycle_stage"]?.[targetOptionId]).toBe(

@@ -724,7 +724,7 @@ export class CompaniesService {
 		if (vertical) and.push(vertical);
 
 		if (input.entityType.length > 0) {
-			and.push({ entityType: { in: input.entityType as EntityType[] } });
+			and.push({ entityType: { in: input.entityType } });
 		}
 		if (input.enrichment.length > 0) {
 			and.push({

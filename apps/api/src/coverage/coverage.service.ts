@@ -10,6 +10,7 @@ const EMPTY = {
 	targetFieldKey: COVERAGE.target.fieldKey,
 	targetLabels: [...COVERAGE.target.optionLabels],
 	truncated: false,
+	examined: 0,
 	summary: { targets: 0, covered: 0, gaps: 0 },
 	rows: [],
 };
@@ -23,6 +24,11 @@ export class CoverageService {
 		if (!target) return EMPTY;
 
 		const where = this.buildWhere(input, target);
+
+		// The summary counts the population, not the page. Counting the page made
+		// both numbers understate the moment the target list passed the cap, and a
+		// coverage figure that quietly shrinks is worse than no figure.
+		const total = await this.db.company.count({ where });
 
 		const companies = await this.db.company.findMany({
 			where,
@@ -110,8 +116,9 @@ export class CoverageService {
 			targetFieldKey: COVERAGE.target.fieldKey,
 			targetLabels: [...COVERAGE.target.optionLabels],
 			truncated,
+			examined: rows.length,
 			summary: {
-				targets: rows.length,
+				targets: total,
 				covered: rows.filter((row) => row.covered).length,
 				gaps: rows.filter((row) => !row.covered).length,
 			},

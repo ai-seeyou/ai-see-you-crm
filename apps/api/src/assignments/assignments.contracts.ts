@@ -1,4 +1,5 @@
 import { AssignmentScope, ContactRoleType, EntityType } from "@crm/db";
+import { pastOrPresent } from "@crm/validation/temporal";
 import { z } from "zod";
 import { MAX_BULK_IDS } from "../crm/bulk";
 
@@ -90,7 +91,7 @@ export const assignInput = z.object({
 	companyId: z.string(),
 	roleType: contactRoleType,
 	title: z.string().optional(),
-	validFrom: z.iso.datetime().optional(),
+	validFrom: pastOrPresent.optional(),
 });
 
 export type AssignInput = z.infer<typeof assignInput>;
@@ -103,7 +104,7 @@ export const assignManyInput = z.object({
 		.max(MAX_BULK_IDS, "Too many businesses at once, do a page at a time."),
 	roleType: contactRoleType,
 	title: z.string().optional(),
-	validFrom: z.iso.datetime().optional(),
+	validFrom: pastOrPresent.optional(),
 });
 
 export type AssignManyInput = z.infer<typeof assignManyInput>;

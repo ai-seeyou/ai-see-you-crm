@@ -1,5 +1,10 @@
 import { type Db, DomainReviewStatus, type EntityType } from "@crm/db";
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from "@nestjs/common";
 import { CompaniesService } from "../companies/companies.service";
 import { InjectDatabase } from "../database/database.constants";
 import type {
@@ -64,12 +69,14 @@ export class DomainReviewsService {
 	async fileToCompany(input: DomainReviewFileInput, actingUserId: string) {
 		const review = await this.require(input.id);
 
-		const company = await this.db.company.findUnique({
-			where: { id: input.companyId },
+		const company = await this.db.company.findFirst({
+			where: { id: input.companyId, archivedAt: null },
 			select: { id: true },
 		});
 		if (!company) {
-			throw new NotFoundException(`No business with id ${input.companyId}.`);
+			throw new NotFoundException(
+				`No business with id ${input.companyId}. An archived business cannot take a domain.`,
+			);
 		}
 
 		return this.file(review.id, review.domain, input.companyId, actingUserId);
@@ -80,6 +87,19 @@ export class DomainReviewsService {
 		actingUserId: string,
 	) {
 		const review = await this.require(input.id);
+
+		// Phase 2 dropped domain uniqueness, so nothing at the database stops a retry
+		// or the REST door making a second business on the same domain. If one
+		// already owns it, file to that one rather than making a rival.
+		const owner = await this.db.company.findFirst({
+			where: { domain: review.domain, archivedAt: null },
+			select: { id: true },
+			orderBy: { createdAt: "asc" },
+		});
+
+		if (owner) {
+			return this.file(review.id, review.domain, owner.id, actingUserId);
+		}
 
 		const created = await this.companies.create({
 			name: input.name,
@@ -128,14 +148,26 @@ export class DomainReviewsService {
 		actingUserId: string,
 	) {
 		const filed = await this.db.$transaction(async (tx) => {
-			const review = await tx.domainReview.update({
-				where: { id },
+			// Conditional on the status, so two people deciding at once produce one
+			// decision rather than the second quietly overwriting the first.
+			const claimed = await tx.domainReview.updateMany({
+				where: { id, status: DomainReviewStatus.PROPOSED },
 				data: {
 					status: DomainReviewStatus.APPLIED,
 					companyId,
 					decidedById: actingUserId,
 					decidedAt: new Date(),
 				},
+			});
+
+			if (claimed.count === 0) {
+				throw new ConflictException(
+					`${domain} was decided by somebody else while you were deciding it.`,
+				);
+			}
+
+			const review = await tx.domainReview.findUniqueOrThrow({
+				where: { id },
 				select: { id: true, domain: true, status: true, companyId: true },
 			});
 
@@ -161,6 +193,9 @@ export class DomainReviewsService {
 		return { ...filed.review, contactsMoved: filed.moved };
 	}
 
+	// A review is decided once. Without this, filing an already filed domain to a
+	// second business overwrote the first decision and the person who made it, and
+	// split one domain's contacts across two businesses with nothing to say so.
 	private async require(id: string) {
 		const review = await this.db.domainReview.findUnique({
 			where: { id },
@@ -168,6 +203,13 @@ export class DomainReviewsService {
 		});
 		if (!review) {
 			throw new NotFoundException(`No domain review with id ${id}.`);
+		}
+		if (review.status !== DomainReviewStatus.PROPOSED) {
+			throw new ConflictException(
+				review.status === DomainReviewStatus.APPLIED
+					? `${review.domain} is already filed. Move the people instead, or raise it again by adding it as a business.`
+					: `${review.domain} was already dismissed.`,
+			);
 		}
 		return review;
 	}

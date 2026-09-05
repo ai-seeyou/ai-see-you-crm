@@ -72,6 +72,11 @@ export type ListTableConfig<TTab extends string, TFacet extends string> = {
 	tabId?: TTab;
 	facetIds?: readonly TFacet[];
 	facetDefaults?: Partial<Record<TFacet, string[]>>;
+	// A facet backed by a database enum names its values here. Anything else in
+	// the URL is dropped rather than sent on, because the server refuses a value
+	// the enum does not have and a stale bookmark would otherwise be an error
+	// page, or worse, a silent empty list.
+	facetValues?: Partial<Record<TFacet, readonly string[]>>;
 };
 
 export type ListSearchParams<TTab extends string, TFacet extends string> = {
@@ -97,6 +102,7 @@ export function createListSearchParams<
 		tabId,
 		facetIds = [],
 		facetDefaults,
+		facetValues,
 	} = config;
 
 	assertUnreservedSearchParamKeys(
@@ -133,7 +139,11 @@ export function createListSearchParams<
 
 		const selectedFacets: Record<string, string[]> = {};
 		for (const id of facetIds) {
-			selectedFacets[id] = values[id] ?? facetDefaults?.[id] ?? [];
+			const chosen = values[id] ?? facetDefaults?.[id] ?? [];
+			const allowed = facetValues?.[id];
+			selectedFacets[id] = allowed
+				? chosen.filter((value) => allowed.includes(value))
+				: chosen;
 		}
 
 		return {

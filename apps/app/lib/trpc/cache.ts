@@ -263,7 +263,12 @@ export function useCrmCache(): CrmCache {
 		domainReviews: (options) =>
 			run(
 				[trpc.domainReviews.list.pathKey()],
-				[...listKeys(), ...viewKeys(), trpc.companies.byId.queryKey()],
+				[
+					...listKeys(),
+					...viewKeys(),
+					trpc.companies.byId.queryKey(),
+					trpc.contacts.byId.queryKey(),
+				],
 				options,
 			),
 

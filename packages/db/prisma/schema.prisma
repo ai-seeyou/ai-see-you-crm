@@ -277,6 +277,53 @@ enum AgentResponseRating {
   DOWN
 }
 
+enum AssignmentScope {
+  EMPLOYER
+  RESPONSIBLE_FOR
+}
+
+enum ContactRoleType {
+  GENERAL_MANAGER
+  REVENUE
+  DISTRIBUTION
+  COMMERCIAL
+  MARKETING
+  DIGITAL
+  OWNER
+  EXECUTIVE
+  PROCUREMENT
+  OTHER
+}
+
+model ContactAssignment {
+  id String @id @default(cuid())
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  roleType  ContactRoleType @default(OTHER)
+  title     String?
+  scope     AssignmentScope
+  isPrimary Boolean         @default(false)
+
+  validFrom DateTime?
+  validTo   DateTime?
+
+  source   RecordSource @default(MANUAL)
+  evidence Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([contactId, companyId, scope], map: "contact_assignment_current_key", where: { validTo: null })
+  @@unique([contactId], map: "contact_assignment_primary_key", where: { isPrimary: true, validTo: null })
+  @@index([companyId, roleType])
+  @@index([contactId, isPrimary])
+  @@map("contactAssignment")
+}
+
 enum RelationshipType {
   BELONGS_TO
   BRAND_OF
@@ -387,6 +434,7 @@ model Company {
   archivedAt     DateTime?
 
   contacts       Contact[]            @relation("CompanyContacts")
+  assignments    ContactAssignment[]
   relationsFrom  EntityRelationship[] @relation("EntityRelationshipFrom")
   relationsTo    EntityRelationship[] @relation("EntityRelationshipTo")
   conversations  AgentConversation[]
@@ -453,16 +501,17 @@ model Contact {
   lastActivityAt DateTime?
   archivedAt     DateTime?
 
+  assignments     ContactAssignment[]
   deals           DealContact[]
   activities      Activity[]
   emailThreads    EmailThread[]
   calendarEvents  CalendarEvent[]
   eventAttendance CalendarAttendee[]
   fieldValues     FieldValue[]
-  visitors        TrackedVisitor[]   @relation("VisitorContact")
-  submissions     FormSubmission[]   @relation("SubmissionContact")
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  visitors        TrackedVisitor[]    @relation("VisitorContact")
+  submissions     FormSubmission[]    @relation("SubmissionContact")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@unique([email], map: "contact_email_active_key", where: { archivedAt: null })
   @@index([companyId])

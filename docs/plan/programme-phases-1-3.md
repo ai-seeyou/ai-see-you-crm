@@ -42,6 +42,19 @@ every question of design.
 - A local session comes from `apps/api/scripts/dev-session.ts`. It needs no
   Google OAuth client, so UI verification does not wait on one.
 
+Two local environment facts, both discovered the hard way:
+
+- **The local Postgres must run in UTC.** `docker-compose.yml` and CI both use the
+  `postgres:17-alpine` image, which is UTC. A Homebrew cluster inherits the
+  machine's zone. Prisma maps `DateTime` to `timestamp(3)`, which has no zone, so
+  a `NOW()` written by raw SQL lands ten hours ahead of a date written by Prisma
+  and `apps/agent/test/keyless-brand.integration.spec.ts` fails on a comparison
+  that is correct. Fix: `ALTER SYSTEM SET timezone = 'UTC'` then reload.
+- **`.env` needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, even fake ones.**
+  `apps/api/test/auth.e2e.spec.ts` asserts the sign-in page offers Google. CI sets
+  placeholder values for this reason. Without them the suite fails locally and
+  passes in CI.
+
 ### 1b, deployed. Blocked on three founder credentials
 
 The code is ready. The blockers are account access, not engineering:

@@ -8,6 +8,10 @@ import { DISPATCH } from "./dispatch-config";
 import { markRunning, settle } from "./enrichment";
 import { collapsing, runLimited } from "./pool";
 import { runPortrait } from "./portrait";
+import {
+	productionRefreshPayload,
+	runProductionRefresh,
+} from "./production-refresh";
 import { runSlackChannelJoin } from "./slack-join-task";
 import { runSlackPeopleMatch } from "./slack-people";
 import { staleTaskSweep } from "./stale-tasks";
@@ -124,6 +128,17 @@ async function handleDirect(task: LeasedTask): Promise<void> {
 			queued === 1
 				? "Queued 1 matching agent run."
 				: `Queued ${queued} matching agent runs.`,
+		);
+		return;
+	}
+
+	if (task.kind === "production-refresh") {
+		await completeTask(
+			task.id,
+			await runProductionRefresh(
+				task.id,
+				productionRefreshPayload(task.payload),
+			),
 		);
 		return;
 	}

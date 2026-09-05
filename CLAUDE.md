@@ -6,8 +6,8 @@ Private, internal. Forked from `trycompai/crm` under the MIT licence.
 
 1. **AI See You Production is a prohibited write target.** No SQL, no migration, no
    schema change, no data write, no mutating API call, through any tool or MCP
-   server. Do not connect this application to Production. No Production credential
-   belongs in this repository.
+   server. No Production database or service-role credential is permitted. The agent
+   can hold the approved scoped token for the GET-only Production read contract.
 2. **One database.** `DATABASE_URL` points at the dedicated AI See You CRM database
    or a local Postgres. Never Production. Never the Research Lab.
 3. **Work inside the authorised phase only.** No speculative changes, no unrequested

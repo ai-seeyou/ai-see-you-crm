@@ -355,6 +355,8 @@ model ExternalRef {
 
   confirmedAt DateTime?
   lastSeenAt  DateTime?
+  staleAt     DateTime?
+  reviewReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -362,7 +364,84 @@ model ExternalRef {
   @@unique([system, recordType, externalId])
   @@unique([system, recordType, recordId])
   @@index([recordType, recordId])
+  @@index([system, staleAt])
   @@map("externalRef")
+}
+
+enum ProductionImportStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model ProductionSnapshot {
+  productionId String @id
+  entityKind   String
+  name         String
+  destination String?
+  destinationId String?
+  destinationSlug String?
+  city         String?
+  region       String?
+  country      String?
+  payload      Json
+  fetchedAt    DateTime
+  staleAfter   DateTime
+
+  @@index([staleAfter])
+  @@map("productionSnapshot")
+}
+
+model ProductionImportState {
+  id              String   @id
+  cursor          String?
+  snapshot        String?
+  destination     String?
+  updatedSince    DateTime?
+  runId           String?
+  createdCount    Int      @default(0)
+  updatedCount    Int      @default(0)
+  unchangedCount  Int      @default(0)
+  exceptionCount  Int      @default(0)
+  sourceWatermark DateTime?
+  lastCompletedAt DateTime?
+  updatedAt       DateTime @updatedAt
+
+  @@map("productionImportState")
+}
+
+model ProductionImportRun {
+  id                String                 @id @default(cuid())
+  scope             String
+  leaseOwner        String
+  heartbeatAt       DateTime
+  status            ProductionImportStatus @default(RUNNING)
+  destination       String?
+  dryRun            Boolean
+  fullReconciliation Boolean                @default(false)
+  sourceWatermark   DateTime?
+  qualifyingCount   Int?
+  fetchedCount      Int                    @default(0)
+  createdCount      Int                    @default(0)
+  updatedCount      Int                    @default(0)
+  unchangedCount    Int                    @default(0)
+  exceptionCount    Int                    @default(0)
+  chainIdCount      Int                    @default(0)
+  missingChainCount Int                    @default(0)
+  reviewCount       Int                    @default(0)
+  staleRefCount     Int                    @default(0)
+  readRequestCount  Int                    @default(0)
+  boundaryEvidence Json?
+  reviewItems       Json?
+  destinations      Int?
+  countries         Int?
+  error             String?
+  startedAt         DateTime               @default(now())
+  completedAt       DateTime?
+
+  @@index([startedAt])
+  @@unique([scope], map: "production_import_run_active_key", where: { status: "RUNNING" })
+  @@map("productionImportRun")
 }
 
 enum AssignmentScope {
@@ -701,6 +780,7 @@ model AgentTask {
   @@index([contactId])
   @@index([dealId])
   @@index([kind, subject], where: { finishedAt: null })
+  @@unique([kind, subject], map: "agent_task_production_refresh_active_key", where: { finishedAt: null, kind: "production-refresh" })
   @@map("agentTask")
 }
 

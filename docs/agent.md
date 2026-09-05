@@ -49,8 +49,13 @@ agent and the API both need it.
 
 | | Kinds | How | Per tick |
 | --- | --- | --- | --- |
-| **Visible** | `brand`, `portrait` | Directly — no `receive`, no model | 60, six at a time |
+| **Visible** | `brand`, `portrait`, integration tasks | Directly, no `receive`, no model | 60, six at a time |
 | **Research** | everything else | One eve session per row | 12 |
+
+`production-refresh` uses the direct lane. The daily schedule only queues its durable
+task. The task imports incremental changes through the scoped GET-only contract. A
+weekly task performs a full reconciliation and marks missing Production references
+for review. It never calls Production with a mutating method.
 
 **Neither visible kind has anything to decide**, and through a session they queued
 behind sixty LLM runs for 25 minutes (`test/lanes.integration.spec.ts`). **The row says

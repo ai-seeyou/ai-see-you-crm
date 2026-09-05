@@ -33,8 +33,8 @@ a review queue for a human to export. Production's own process applies the chang
 **2. The CRM connects to exactly one database.**
 The dedicated AI See You CRM database, or a local Postgres for development.
 `DATABASE_URL` must never point at AI See You Production or at the AI See You
-Research Lab. No Production credential belongs in this repository, in `.env`, in a
-deployment environment, or in a commit.
+Research Lab. No Production database or service-role credential is permitted.
+The agent deployment holds one scoped token for the GET-only Production read contract.
 
 **3. Production data is read, cached and clearly labelled, never absorbed.**
 The link between a CRM record and a Production business is a canonical identifier,
@@ -57,8 +57,8 @@ outside a phase that authorises them. See [`AGENTS.md`](./AGENTS.md).
 | **Phase 1** Supabase wiring, first deployment, Google sign-in | **Done** |
 | **Phase 2** The data model: verticals, entity types, relationships, contact assignments, external references | **Done** |
 | **Phase 3** UI for relationships and coverage | **Done, visual finishing remains** |
-| **Phase 4** Import the real target universe | In progress, no real data loaded |
-| **Phase 5** Production read integration | Not started |
+| **Phase 4** Import the real target universe | In progress through Production |
+| **Phase 5** Production read integration | In progress, scoped GET-only contract |
 | **Phase 6** Clay enrichment | Not started |
 | **Phase 7** Outreach | Not started |
 

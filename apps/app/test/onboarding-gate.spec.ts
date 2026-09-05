@@ -10,17 +10,9 @@ const SLUG = "comp-ai";
 
 const realFetch = globalThis.fetch;
 
-const realMarketing = process.env.IS_MARKETING;
-
 afterEach(() => {
 	globalThis.fetch = realFetch;
-	marketing(realMarketing);
 });
-
-function marketing(value: string | undefined) {
-	if (value === undefined) delete process.env.IS_MARKETING;
-	else process.env.IS_MARKETING = value;
-}
 
 function stub(handler: (url: string) => Promise<Response>) {
 	globalThis.fetch = ((input: string | URL | Request) =>
@@ -156,10 +148,8 @@ describe("readResearchGate", () => {
 });
 
 describe("proxy", () => {
-	it("shows a stranger the landing page and nothing behind it", async () => {
-		marketing("true");
-
-		expect(redirectedTo(await proxy(request("/")))).toBeNull();
+	it("shows a stranger nothing at all, and sends them to sign in", async () => {
+		expect(redirectedTo(await proxy(request("/")))).toBe("/sign-in");
 		expect(redirectedTo(await proxy(request("/sign-in")))).toBeNull();
 		expect(redirectedTo(await proxy(request(`/${SLUG}`)))).toBe("/sign-in");
 		expect(redirectedTo(await proxy(request(`/${SLUG}/companies`)))).toBe(
@@ -167,15 +157,7 @@ describe("proxy", () => {
 		);
 	});
 
-	it("sends a stranger to sign in when the install has no landing page", async () => {
-		marketing(undefined);
-
-		expect(redirectedTo(await proxy(request("/")))).toBe("/sign-in");
-		expect(redirectedTo(await proxy(request("/sign-in")))).toBeNull();
-	});
-
 	it("never aims a redirect at the sign-in page itself", async () => {
-		marketing(undefined);
 		setup({ onboarded: false, configured: false });
 
 		expect(redirectedTo(await proxy(request("/sign-in")))).toBeNull();
@@ -187,15 +169,12 @@ describe("proxy", () => {
 		).toBeNull();
 	});
 
-	it("reads the flag on every request, and only the literal true turns it on", async () => {
-		marketing("false");
+	it("has no flag that can open the root up, whatever the environment says", async () => {
+		process.env.IS_MARKETING = "true";
 		expect(redirectedTo(await proxy(request("/")))).toBe("/sign-in");
 
-		marketing("1");
+		delete process.env.IS_MARKETING;
 		expect(redirectedTo(await proxy(request("/")))).toBe("/sign-in");
-
-		marketing("true");
-		expect(redirectedTo(await proxy(request("/")))).toBeNull();
 	});
 
 	it("ignores a neighbour's cookie from the parent domain", async () => {

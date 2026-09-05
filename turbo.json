@@ -4,6 +4,7 @@
 	"globalEnv": ["NODE_ENV"],
 	"globalPassThroughEnv": [
 		"DATABASE_URL",
+		"DATABASE_CA_CERT",
 		"DIRECT_DATABASE_URL",
 		"POSTGRES_URL_NON_POOLING",
 		"DATABASE_URL_UNPOOLED",

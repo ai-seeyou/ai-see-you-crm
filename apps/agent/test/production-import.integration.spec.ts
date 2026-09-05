@@ -17,6 +17,7 @@ import {
 	queueSydneyProductionDryRun,
 	runProductionRefresh,
 } from "../agent/lib/production-refresh";
+import { readSydneyProductionProof } from "../agent/lib/sydney-production-proof";
 
 const suffix = (process.env.TEST_RUN_ID ?? crypto.randomUUID())
 	.replace(/[^a-z0-9]/gi, "")
@@ -447,6 +448,10 @@ describe("Production hotel import database behavior", () => {
 				dryRun: true,
 				qualifyingCount: 228,
 				boundaryEvidence: {
+					contractVersion: "1",
+					httpMethod: "GET",
+					readRequests: 1,
+					clientEvidence: "GET_ONLY_HTTP_CLIENT",
 					manifestSnapshot: "2026-09-05T01:00:00.000Z",
 				},
 				completedAt: new Date(),
@@ -542,5 +547,86 @@ describe("Production hotel import database behavior", () => {
 			if (priorToken === undefined) delete process.env.PRODUCTION_READ_TOKEN;
 			else process.env.PRODUCTION_READ_TOKEN = priorToken;
 		}
+	});
+
+	it("reports only sanitized Sydney proof aggregates", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: { scope: "qualifying-hotels:sydney" },
+		});
+		const startedAt = new Date("2026-09-05T01:00:00.000Z");
+		const completedAt = new Date("2026-09-05T01:00:02.500Z");
+		await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: completedAt,
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: true,
+				qualifyingCount: 228,
+				createdCount: 0,
+				updatedCount: 0,
+				boundaryEvidence: {
+					contractVersion: "1",
+					httpMethod: "GET",
+					readRequests: 1,
+					clientEvidence: "GET_ONLY_HTTP_CLIENT",
+					manifestSnapshot: "2026-09-05T01:00:00.000Z",
+				},
+				startedAt,
+				completedAt,
+			},
+		});
+		await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Sydney proof",
+				payload: {
+					fullReconciliation: false,
+					destination: "sydney",
+					expectedCount: 228,
+					dryRun: true,
+				},
+				priority: 600,
+				budget: 0,
+				dueAt: startedAt,
+				startedAt,
+				finishedAt: completedAt,
+				subject: "production-hotel-universe-proving:sydney:dry-run",
+			},
+		});
+		expect(await readSydneyProductionProof()).toEqual({
+			runStatus: "COMPLETED",
+			qualifyingCount: 228,
+			destination: "sydney",
+			dryRun: true,
+			manifestValid: true,
+			businessWriteCountEvidence: 0,
+			taskState: "FINISHED",
+			runtimeMs: 2500,
+		});
+	});
+
+	it("rejects incomplete Sydney boundary evidence", async () => {
+		await db.productionImportRun.deleteMany({
+			where: { scope: "qualifying-hotels:sydney" },
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: true,
+				qualifyingCount: 228,
+				boundaryEvidence: {
+					manifestSnapshot: "2026-09-05T01:00:00.000Z",
+				},
+				completedAt: new Date(),
+			},
+		});
+		expect((await readSydneyProductionProof()).manifestValid).toBe(false);
 	});
 });

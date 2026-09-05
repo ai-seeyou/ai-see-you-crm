@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import {
 	AssignmentScope,
 	ContactRoleType,
+	DomainReviewReason,
+	DomainReviewStatus,
 	db,
 	EntityType,
 	ExternalRecordType,
@@ -9,13 +11,41 @@ import {
 	MatchActor,
 	RelationshipType,
 } from "@crm/db";
+import { AgentQueueService } from "../src/agent/agent-queue.service";
+import type { AgentTriggerService } from "../src/agent/agent-trigger.service";
+import { CompaniesService } from "../src/companies/companies.service";
+import { CompanyDirectoryService } from "../src/companies/company-directory.service";
+import type { FaviconService } from "../src/companies/favicon.service";
 import { ContactAssignmentService } from "../src/contacts/contact-assignment.service";
+import { ActivityStampService } from "../src/crm/activity-stamp.service";
+import { ConversionService } from "../src/currency/conversion.service";
+import { FieldsService } from "../src/fields/fields.service";
+import { withDiscardedCrmEvents } from "./agent-trigger.stub";
 
 const suffix = process.env.TEST_RUN_ID ?? "travel-model";
 const SHARED_DOMAIN = `accor-${suffix}.test`;
 const OWN_DOMAIN = `novotel-brisbane-${suffix}.test`;
 
+const agent = {
+	contactCreated: async () => true,
+	companyCreated: async () => undefined,
+	companyRequested: async () => true,
+	withCrmEvents: withDiscardedCrmEvents,
+	fieldBackfillRecords: async () => ({ queued: 0, merged: 0 }),
+} as unknown as AgentTriggerService;
+
 const assignments = new ContactAssignmentService(db);
+const directory = new CompanyDirectoryService(db);
+const fields = new FieldsService(db, agent);
+const companies = new CompaniesService(
+	db,
+	agent,
+	new AgentQueueService(db),
+	{ backfill: async () => undefined } as unknown as FaviconService,
+	new ActivityStampService(db),
+	new ConversionService(db),
+	fields,
+);
 
 async function created(
 	data: Parameters<typeof db.externalRef.create>[0]["data"],
@@ -35,13 +65,23 @@ type Ids = {
 let ids: Ids;
 let hotelVerticalId: string;
 
+// Through CompaniesService, not through Prisma. The guard that refused a second
+// business on one corporate domain lived in the service, so a test that wrote
+// straight to the table proved the schema and missed the product.
 async function company(
 	name: string,
 	entityType: EntityType,
 	domain: string | null,
 ): Promise<string> {
-	const row = await db.company.create({
-		data: { name, entityType, domain, verticalId: hotelVerticalId },
+	const created = await companies.create({
+		name,
+		domain: domain ?? undefined,
+		ownerId: null,
+	});
+
+	const row = await db.company.update({
+		where: { id: created.id },
+		data: { entityType, verticalId: hotelVerticalId },
 		select: { id: true },
 	});
 	return row.id;
@@ -391,6 +431,157 @@ describe("canonical external references", () => {
 				matchedBy: MatchActor.IMPORT,
 			}),
 		).rejects.toThrow();
+	});
+});
+
+describe("an unfiled sending domain", () => {
+	it("files nobody's business by guess, and raises the domain for review", async () => {
+		const domain = `unfiled-${suffix}.test`;
+		await db.domainReview.deleteMany({ where: { domain } });
+
+		const companyId = await directory.companyForEmail(`gm@${domain}`);
+
+		expect(companyId).toBeNull();
+		expect(await db.company.count({ where: { domain } })).toBe(0);
+
+		const review = await db.domainReview.findFirst({
+			where: { domain },
+			select: { reason: true, status: true, seenCount: true },
+		});
+
+		expect(review?.status).toBe(DomainReviewStatus.PROPOSED);
+		expect(review?.reason).toBe(DomainReviewReason.UNRECOGNISED);
+
+		await directory.companyForEmail(`revenue@${domain}`);
+		const seenAgain = await db.domainReview.findFirst({
+			where: { domain },
+			select: { seenCount: true },
+		});
+
+		expect(seenAgain?.seenCount).toBe(2);
+		await db.domainReview.deleteMany({ where: { domain } });
+	});
+
+	it("stays dismissed once a human has dismissed it", async () => {
+		const domain = `dismissed-${suffix}.test`;
+		await db.domainReview.deleteMany({ where: { domain } });
+
+		await directory.companyForEmail(`gm@${domain}`);
+		await db.domainReview.updateMany({
+			where: { domain },
+			data: { status: DomainReviewStatus.DISMISSED },
+		});
+
+		await directory.companyForEmail(`revenue@${domain}`);
+
+		const rows = await db.domainReview.findMany({
+			where: { domain },
+			select: { status: true },
+		});
+
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.status).toBe(DomainReviewStatus.DISMISSED);
+		await db.domainReview.deleteMany({ where: { domain } });
+	});
+
+	it("names the ambiguity when several businesses share the domain", async () => {
+		const match = await directory.companyForDomain(SHARED_DOMAIN);
+
+		expect(match.companyId).toBeNull();
+		expect(match.reason).toBe(DomainReviewReason.AMBIGUOUS);
+	});
+});
+
+describe("the travel field definitions", () => {
+	it("exist in any database the migrations built, not only a seeded one", async () => {
+		const definitions = await db.fieldDefinition.findMany({
+			where: { entity: "COMPANY", archivedAt: null },
+			select: { key: true, showOnFilter: true },
+			orderBy: { position: "asc" },
+		});
+
+		expect(definitions.map((row) => row.key)).toEqual([
+			"lifecycle_stage",
+			"region",
+			"chain_scale",
+			"distribution_model",
+			"priority",
+			"lead_source",
+			"relationship_owner",
+		]);
+
+		const lifecycle = definitions.find((row) => row.key === "lifecycle_stage");
+		const region = definitions.find((row) => row.key === "region");
+
+		expect(lifecycle?.showOnFilter).toBe(true);
+		expect(region?.showOnFilter).toBe(true);
+	});
+
+	it("carries the lifecycle stages the coverage view depends on", async () => {
+		const options = await db.fieldOption.findMany({
+			where: { field: { entity: "COMPANY", key: "lifecycle_stage" } },
+			select: { label: true },
+			orderBy: { position: "asc" },
+		});
+
+		expect(options.map((row) => row.label)).toEqual([
+			"Target",
+			"Contacted",
+			"Engaged",
+			"Opportunity",
+			"Customer",
+			"Dormant",
+			"Not a fit",
+		]);
+	});
+
+	it("has retired the inherited SaaS fields", async () => {
+		const retired = await db.fieldDefinition.findMany({
+			where: {
+				entity: "COMPANY",
+				key: {
+					in: [
+						"account_type",
+						"segment",
+						"territory",
+						"icp_fit_score",
+						"bdr_owner",
+					],
+				},
+			},
+			select: { key: true, archivedAt: true },
+		});
+
+		for (const row of retired) {
+			expect(row.archivedAt).not.toBeNull();
+		}
+	});
+});
+
+describe("a contact moved by a writer that never calls a service", () => {
+	it("still gets its employer assignment moved, because the rule is in the database", async () => {
+		await db.contact.update({
+			where: { id: ids.director },
+			data: { companyId: ids.sofitelSydney },
+		});
+
+		const current = await db.contactAssignment.findMany({
+			where: {
+				contactId: ids.director,
+				scope: AssignmentScope.EMPLOYER,
+				validTo: null,
+			},
+			select: { companyId: true, isPrimary: true },
+		});
+
+		expect(current).toHaveLength(1);
+		expect(current[0]?.companyId).toBe(ids.sofitelSydney);
+		expect(current[0]?.isPrimary).toBe(true);
+
+		await db.contact.update({
+			where: { id: ids.director },
+			data: { companyId: ids.group },
+		});
 	});
 });
 

@@ -26,7 +26,7 @@ import { useMutation } from "@tanstack/react-query";
 import { parseAsString, useQueryStates } from "nuqs";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { DEAL_STAGE_OPTIONS, LOSING_STAGES } from "@/lib/deal-stage";
+import { DEAL_STAGE_OPTIONS, NEEDS_A_REASON } from "@/lib/deal-stage";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -98,7 +98,7 @@ export function DealStageMenu({
 					onValueChange={(next) => {
 						const chosen = next as DealStage;
 						if (chosen === stage) return;
-						if (LOSING_STAGES.includes(chosen)) {
+						if (NEEDS_A_REASON.includes(chosen)) {
 							void setCloseParams({
 								[SEARCH_PARAM.dialog.closeDeal]: dealId,
 								[SEARCH_PARAM.dialog.closeStage]: chosen,

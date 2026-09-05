@@ -49,11 +49,13 @@ import { useTRPC } from "@/lib/trpc/client";
 const SOURCES = {
 	calendar: {
 		label: "Meetings",
-		autoCreate: "Add the company and contact when you meet someone new",
+		autoCreate:
+			"Add the contact when you meet someone new, and raise their business for review",
 	},
 	gmail: {
 		label: "Email",
-		autoCreate: "Add the company and contact when you reply to someone new",
+		autoCreate:
+			"Add the contact when you reply to someone new, and raise their business for review",
 	},
 } as const;
 

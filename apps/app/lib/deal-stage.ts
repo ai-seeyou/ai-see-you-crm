@@ -1,3 +1,7 @@
+import {
+	LOSING_DEAL_STAGES,
+	STAGES_NEEDING_A_REASON,
+} from "@crm/db/deal-stage";
 import { DealStage } from "@crm/db/enums";
 import type { StatusTone } from "@crm/ui/components/status-indicator";
 
@@ -12,15 +16,14 @@ export const OPEN_STAGES: readonly DealStage[] = [
 
 export const WON_STAGE = DealStage.LIVE;
 
-export const LOSING_STAGES: readonly DealStage[] = [
-	DealStage.CLOSED_LOST,
-	DealStage.DORMANT,
-];
+export const LOSING_STAGES: readonly DealStage[] = LOSING_DEAL_STAGES;
+
+export const NEEDS_A_REASON: readonly DealStage[] = STAGES_NEEDING_A_REASON;
 
 const ORDER: readonly DealStage[] = [
 	...OPEN_STAGES,
 	WON_STAGE,
-	...LOSING_STAGES,
+	...STAGES_NEEDING_A_REASON,
 ];
 
 type StagePresentation = { label: string; tone: StatusTone };

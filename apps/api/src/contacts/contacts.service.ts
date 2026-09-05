@@ -6,7 +6,7 @@ import {
 	FactStatus,
 	type Prisma,
 	Prisma as PrismaNamespace,
-	type RecordSource,
+	RecordSource,
 } from "@crm/db";
 import type { FieldDefinitionWithOptions } from "@crm/db/fields";
 import {
@@ -281,7 +281,11 @@ export class ContactsService {
 
 		const companyId =
 			input.companyId ??
-			(email ? await this.companies.companyForEmail(email) : null);
+			(email
+				? await this.companies.companyForEmail(email, {
+						source: RecordSource.MANUAL,
+					})
+				: null);
 
 		const contact = await this.agent.withCrmEvents(async (tx, emit) => {
 			await this.allowAgain(tx, email);

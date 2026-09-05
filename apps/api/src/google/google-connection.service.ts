@@ -199,21 +199,35 @@ export class GoogleConnectionService {
 
 		if (!options.purge) return { domain: normalised, purged: 0 };
 
+		// A thread is purged by who is on it, not by which business it was filed
+		// against. Since an unrecognised sending domain raises a review instead of
+		// inventing a business, a thread from that domain carries no companyId at
+		// all, and purging by companyId deleted nothing at all.
 		const companies = await this.db.company.findMany({
 			where: { domain: normalised },
 			select: { id: true },
 		});
-
-		if (companies.length === 0) return { domain: normalised, purged: 0 };
-
 		const companyIds = companies.map((company) => company.id);
+		const suffix = `@${normalised}`;
 
 		const [threads, events] = await this.db.$transaction([
 			this.db.emailThread.deleteMany({
-				where: { companyId: { in: companyIds } },
+				where: {
+					OR: [
+						{ companyId: { in: companyIds } },
+						{ messages: { some: { fromEmail: { endsWith: suffix } } } },
+						{ contact: { email: { endsWith: suffix } } },
+					],
+				},
 			}),
 			this.db.calendarEvent.deleteMany({
-				where: { companyId: { in: companyIds } },
+				where: {
+					OR: [
+						{ companyId: { in: companyIds } },
+						{ attendees: { some: { email: { endsWith: suffix } } } },
+						{ contact: { email: { endsWith: suffix } } },
+					],
+				},
 			}),
 		]);
 

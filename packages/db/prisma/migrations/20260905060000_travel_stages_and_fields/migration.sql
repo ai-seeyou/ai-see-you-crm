@@ -83,8 +83,10 @@ SET "filters" = jsonb_set(
 WHERE v."filters" #> '{filters,stage}' IS NOT NULL
   AND jsonb_typeof(v."filters" #> '{filters,stage}') = 'array';
 
--- Retire the inherited B2B SaaS company fields. They are archived, not deleted,
--- because a value somebody typed is theirs and an archived definition still reads.
+-- Retire the inherited B2B SaaS company fields. They are archived, not deleted, so
+-- the values are still in the database and a definition can be brought back by
+-- clearing archivedAt. Nothing reads an archived definition today, so those values
+-- are invisible in the product until something does.
 UPDATE "fieldDefinition"
 SET "archivedAt" = NOW(), "showOnTable" = false, "showOnFilter" = false, "updatedAt" = NOW()
 WHERE "entity" = 'COMPANY'

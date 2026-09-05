@@ -40,7 +40,8 @@ import { isSyncing, SYNC_POLL_MS } from "@/lib/sync-status";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
-const AUTO_CREATE = "Add the company and contact when you reply to someone new";
+const AUTO_CREATE =
+	"Add the contact when you reply to someone new, and raise their business for review";
 
 const CONNECT_ERRORS = new Map([
 	[

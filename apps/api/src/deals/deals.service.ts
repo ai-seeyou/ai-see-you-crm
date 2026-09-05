@@ -9,8 +9,8 @@ import { normalizeCurrency } from "@crm/db/currency";
 import {
 	CLOSED_DEAL_STAGES,
 	isClosedStage,
-	LOSING_DEAL_STAGES,
 	OPEN_DEAL_STAGES,
+	STAGES_NEEDING_A_REASON,
 } from "@crm/db/deal-stage";
 import type { FieldDefinitionWithOptions } from "@crm/db/fields";
 import {
@@ -85,7 +85,7 @@ const CONTACT_SELECT = {
 	imageUrl: true,
 } as const;
 
-const LOSING = new Set<DealStage>(LOSING_DEAL_STAGES);
+const NEEDS_A_REASON = new Set<DealStage>(STAGES_NEEDING_A_REASON);
 
 const SORTABLE: OrderByColumns<Prisma.DealOrderByWithRelationInput[]> = {
 	name: (dir) => [{ name: dir }],
@@ -495,7 +495,7 @@ export class DealsService {
 					now: null,
 				};
 			}
-			if (LOSING.has(input.stage) && !closedReason) {
+			if (NEEDS_A_REASON.has(input.stage) && !closedReason) {
 				throw new BadRequestException(
 					"Say why it was lost — a closed-lost deal with no reason teaches nobody anything.",
 				);
@@ -699,7 +699,7 @@ export class DealsService {
 	): Promise<BulkResult> {
 		const closedReason = input.closedReason?.trim();
 
-		if (LOSING.has(input.stage) && !closedReason) {
+		if (NEEDS_A_REASON.has(input.stage) && !closedReason) {
 			throw new BadRequestException(
 				"Say why they were lost — a closed-lost deal with no reason teaches nobody anything.",
 			);

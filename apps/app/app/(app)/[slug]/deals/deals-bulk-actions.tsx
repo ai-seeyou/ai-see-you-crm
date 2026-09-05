@@ -33,7 +33,7 @@ import {
 	BulkOwnerMenu,
 	reportBulk,
 } from "@/components/crm/bulk-actions";
-import { DEAL_STAGE_OPTIONS, LOSING_STAGES } from "@/lib/deal-stage";
+import { DEAL_STAGE_OPTIONS, NEEDS_A_REASON } from "@/lib/deal-stage";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -172,7 +172,7 @@ export function DealsBulkActions({
 								<DropdownMenuItem
 									key={option.value}
 									onSelect={() => {
-										if (LOSING_STAGES.includes(option.value)) {
+										if (NEEDS_A_REASON.includes(option.value)) {
 											setClosing(option.value);
 											return;
 										}

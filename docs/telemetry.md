@@ -1,3 +1,22 @@
+> # This install sends nothing.
+>
+> **AI See You CRM reports no telemetry to anyone.** Upstream's daily rollup to
+> Comp AI's PostHog project is disabled three times over:
+>
+> 1. `HARD_DISABLED` in `packages/telemetry/src/disabled.ts`, which does not read
+>    the environment, so no missing variable can turn it back on.
+> 2. Blank PostHog key and host in `packages/telemetry/src/project.ts`, so there is
+>    no destination.
+> 3. `CRM_TELEMETRY_DISABLED=1` in `.env.example` and in CI.
+>
+> `packages/telemetry/test/no-egress.spec.ts` proves it and needs no database.
+>
+> The document below is upstream's, kept because it is the accurate record of what
+> the code would send if it were enabled, and therefore of what an upstream merge
+> could reintroduce. Read it as a description of a disabled subsystem.
+
+---
+
 # Telemetry
 
 What this install reports about itself, in full. The decisions behind it are in

@@ -209,6 +209,7 @@ beforeAll(async () => {
 					snippet: "Happy to talk next week.",
 					recipients: [],
 					sentAt: new Date(Date.now() - DAY_MS),
+					syncedByUserId: userId,
 				},
 			},
 		},
@@ -303,6 +304,40 @@ describe("TODAY", () => {
 		const reply = summary.replies.find((row) => row.threadId === replyThreadId);
 		expect(reply?.fromEmail).toBe(`guest@${DOMAIN}`);
 		expect(reply?.company?.id).toBe(gappedId);
+	});
+
+	it("leaves out a reply that arrived in somebody else's mailbox", async () => {
+		const stranger = await db.user.upsert({
+			where: { email: `stranger-${suffix}@example.test` },
+			create: {
+				id: `wsc-stranger-${suffix}`,
+				name: "Another Rep",
+				email: `stranger-${suffix}@example.test`,
+			},
+			update: {},
+			select: { id: true },
+		});
+
+		await db.emailMessage.updateMany({
+			where: { threadId: replyThreadId },
+			data: { syncedByUserId: stranger.id },
+		});
+
+		const mine = await today.summary(userId, { scope: "me" });
+		const everyone = await today.summary(userId, { scope: "everyone" });
+
+		expect(mine.replies.map((reply) => reply.threadId)).not.toContain(
+			replyThreadId,
+		);
+		expect(everyone.replies.map((reply) => reply.threadId)).toContain(
+			replyThreadId,
+		);
+
+		await db.emailMessage.updateMany({
+			where: { threadId: replyThreadId },
+			data: { syncedByUserId: userId },
+		});
+		await db.user.deleteMany({ where: { id: stranger.id } });
 	});
 
 	it("stops naming an opportunity once it has activity again", async () => {

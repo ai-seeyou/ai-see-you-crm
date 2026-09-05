@@ -6,13 +6,14 @@ import { z } from "zod";
 //
 // It only holds while the dates describe the past. A validFrom in the future
 // reads as current before it starts, and a validTo in the future frees the
-// uniqueness slot while still reading as ended. Both are refused here, at the
-// boundary, rather than making every reader carry a clock.
+// uniqueness slot while still reading as ended, which lets a second current row
+// exist. Both dates are refused here, at the boundary, rather than making every
+// reader carry a clock.
 export const pastOrPresent = z.iso
 	.datetime()
 	.refine(
 		(value) => new Date(value).getTime() <= Date.now(),
-		"A record cannot start in the future. Record it when it starts.",
+		"That date is in the future. Record it when it happens.",
 	);
 
 export type PastOrPresent = z.infer<typeof pastOrPresent>;

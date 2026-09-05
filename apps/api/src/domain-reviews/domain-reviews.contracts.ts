@@ -89,4 +89,8 @@ export const domainReviewDecisionOutput = z.object({
 	status: domainReviewStatus,
 	companyId: z.string().nullable(),
 	contactsMoved: z.number(),
+	// Set when the caller asked to create a business and an existing one already
+	// owned the domain, so the name and type they typed were not used. Saying so
+	// is the difference between a helpful redirect and a silent one.
+	takenBy: z.string().nullable().default(null),
 });

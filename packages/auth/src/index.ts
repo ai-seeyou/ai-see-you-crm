@@ -41,7 +41,6 @@ export {
 	MICROSOFT_PROVIDER_ID,
 	MICROSOFT_SYNC_SCOPES,
 	mailboxGrantsNeeded,
-	needsMailboxGrant,
 	OUTLOOK_MAIL_SCOPE,
 	parseScopes,
 	REQUIRED_SCOPES,

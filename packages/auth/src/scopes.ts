@@ -24,7 +24,9 @@ export const SYNC_SCOPES_FOR = {
 	[MICROSOFT_PROVIDER_ID]: MICROSOFT_SYNC_SCOPES,
 } satisfies Record<MailboxProviderId, readonly string[]>;
 
-export const REQUIRED_SCOPES = [...IDENTITY_SCOPES, ...SYNC_SCOPES] as const;
+// Sign-in asks for identity and nothing else. This used to include SYNC_SCOPES,
+// which stopped being true when mailbox access became a separate decision.
+export const REQUIRED_SCOPES = [...IDENTITY_SCOPES] as const;
 
 const GRAPH_SCOPE_PREFIX = "https://graph.microsoft.com/";
 
@@ -69,29 +71,30 @@ export function signsInWithMicrosoft(
 	return signsInOnlyWith(accounts, MICROSOFT_PROVIDER_ID);
 }
 
+// Which mailbox providers this person could still grant on. It reads the mailbox
+// rows and ignores everything else: testing that EVERY row was a mailbox meant a
+// rep who linked Slack was told they had nothing outstanding, and /grant-access
+// then bounced them away from the only page that offers the grant. That was
+// nearly unreachable while sign-in always granted the sync scopes. It is not now.
 export function mailboxGrantsNeeded(
 	accounts: readonly SignInAccount[],
 ): MailboxProviderId[] {
-	const everyRowIsAMailbox =
-		accounts.length > 0 &&
-		accounts.every((account) => isMailboxProvider(account.providerId));
+	const mailboxes = accounts.filter((account) =>
+		isMailboxProvider(account.providerId),
+	);
 
-	if (!everyRowIsAMailbox) return [];
+	if (mailboxes.length === 0) return [];
 
-	const granted = accounts.some((account) =>
+	const granted = mailboxes.some((account) =>
 		hasSyncScopes(account.providerId, account.scope),
 	);
 	if (granted) return [];
 
 	return [
 		...new Set(
-			accounts.map((account) => account.providerId).filter(isMailboxProvider),
+			mailboxes.map((account) => account.providerId).filter(isMailboxProvider),
 		),
 	];
-}
-
-export function needsMailboxGrant(accounts: readonly SignInAccount[]): boolean {
-	return mailboxGrantsNeeded(accounts).length > 0;
 }
 
 export function parseScopes(scope: string | null | undefined): Set<string> {

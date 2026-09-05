@@ -88,18 +88,28 @@ export class DomainReviewsService {
 	) {
 		const review = await this.require(input.id);
 
-		// Phase 2 dropped domain uniqueness, so nothing at the database stops a retry
-		// or the REST door making a second business on the same domain. If one
-		// already owns it, file to that one rather than making a rival.
+		// Phase 2 dropped domain uniqueness, so nothing at the database stops a
+		// retry, the REST door, or two people at once making a second business on
+		// one domain. The review is claimed before anything is created, so a second
+		// caller is refused before it builds an orphan, and if a business already
+		// owns the domain we file to that one rather than making a rival.
 		const owner = await this.db.company.findFirst({
 			where: { domain: review.domain, archivedAt: null },
-			select: { id: true },
+			select: { id: true, name: true },
 			orderBy: { createdAt: "asc" },
 		});
 
 		if (owner) {
-			return this.file(review.id, review.domain, owner.id, actingUserId);
+			const filed = await this.file(
+				review.id,
+				review.domain,
+				owner.id,
+				actingUserId,
+			);
+			return { ...filed, takenBy: owner.name };
 		}
+
+		await this.claim(review.id, review.domain, actingUserId);
 
 		const created = await this.companies.create({
 			name: input.name,
@@ -114,7 +124,7 @@ export class DomainReviewsService {
 			});
 		}
 
-		return this.file(review.id, review.domain, created.id, actingUserId);
+		return this.attach(review.id, review.domain, created.id);
 	}
 
 	async dismiss(id: string, actingUserId: string) {
@@ -141,6 +151,61 @@ export class DomainReviewsService {
 	// The contacts already sitting on this domain with no business move with the
 	// decision. Their employer assignment follows, because the database trigger on
 	// Contact.companyId writes it. Do not write contactAssignment here.
+	// Take the review before anything is created. Two callers racing to make a
+	// business for the same domain both found no owner, both created one, and only
+	// then did one lose the claim, leaving its business behind with nobody's name
+	// on it. The loser is now refused before it builds anything.
+	private async claim(
+		id: string,
+		domain: string,
+		actingUserId: string,
+	): Promise<void> {
+		const claimed = await this.db.domainReview.updateMany({
+			where: { id, status: DomainReviewStatus.PROPOSED },
+			data: {
+				status: DomainReviewStatus.APPLIED,
+				decidedById: actingUserId,
+				decidedAt: new Date(),
+			},
+		});
+
+		if (claimed.count === 0) {
+			throw new ConflictException(
+				`${domain} was decided by somebody else while you were deciding it.`,
+			);
+		}
+	}
+
+	private async attach(id: string, domain: string, companyId: string) {
+		const attached = await this.db.$transaction(async (tx) => {
+			const review = await tx.domainReview.update({
+				where: { id },
+				data: { companyId },
+				select: { id: true, domain: true, status: true, companyId: true },
+			});
+
+			const moved = await tx.contact.updateMany({
+				where: {
+					companyId: null,
+					archivedAt: null,
+					email: { endsWith: `@${domain}`, mode: "insensitive" },
+				},
+				data: { companyId },
+			});
+
+			return { review, moved: moved.count };
+		});
+
+		this.logger.log({
+			message: "Sending domain filed to a new business",
+			domain,
+			companyId,
+			contactsMoved: attached.moved,
+		});
+
+		return { ...attached.review, contactsMoved: attached.moved };
+	}
+
 	private async file(
 		id: string,
 		domain: string,

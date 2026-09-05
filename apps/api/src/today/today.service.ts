@@ -94,12 +94,17 @@ export class TodayService {
 			],
 		};
 
+		// Scoped like the other three panels. A reply belongs to whoever's mailbox
+		// synced it, so "me" means the replies that arrived in this rep's mailbox.
+		// Unscoped, the empty state read "Nobody has replied to you" over a query
+		// that had never asked whose replies they were.
 		const replyWhere: Prisma.EmailThreadWhereInput = {
 			lastMessageAt: { gte: replySince },
 			messages: {
 				some: {
 					direction: EmailDirection.INBOUND,
 					sentAt: { gte: replySince },
+					syncedByUserId: mine ? actingUserId : undefined,
 				},
 			},
 		};

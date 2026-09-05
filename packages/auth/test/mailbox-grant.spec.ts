@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 import {
 	MICROSOFT_SYNC_SCOPES,
 	mailboxGrantsNeeded,
-	needsMailboxGrant,
 	SYNC_SCOPES,
 	signsInWithGoogle,
 	signsInWithMicrosoft,
@@ -11,78 +10,87 @@ import {
 const GRANTED = SYNC_SCOPES.join(",");
 const GRANTED_MICROSOFT = MICROSOFT_SYNC_SCOPES.join(",");
 
-describe("who has to grant a mailbox", () => {
-	it("walls someone who signed in with Google and granted neither scope", () => {
+describe("which mailbox providers are still outstanding", () => {
+	it("names Google when neither scope was granted", () => {
 		expect(
-			needsMailboxGrant([{ providerId: "google", scope: "openid,email" }]),
-		).toBe(true);
+			mailboxGrantsNeeded([{ providerId: "google", scope: "openid,email" }]),
+		).toEqual(["google"]);
 	});
 
-	it("walls someone whose granular consent dropped one of them", () => {
+	it("names Google when granular consent dropped one of them", () => {
 		expect(
-			needsMailboxGrant([
+			mailboxGrantsNeeded([
 				{ providerId: "google", scope: `openid,${SYNC_SCOPES[0]}` },
 			]),
-		).toBe(true);
+		).toEqual(["google"]);
 	});
 
-	it("lets a Google account through once both scopes are there", () => {
-		expect(needsMailboxGrant([{ providerId: "google", scope: GRANTED }])).toBe(
-			false,
-		);
-	});
-
-	it("walls someone who signed in with Microsoft and did not grant Mail.Read", () => {
+	it("names nothing once both Google scopes are there", () => {
 		expect(
-			needsMailboxGrant([
+			mailboxGrantsNeeded([{ providerId: "google", scope: GRANTED }]),
+		).toEqual([]);
+	});
+
+	it("names Microsoft when Mail.Read was not granted", () => {
+		expect(
+			mailboxGrantsNeeded([
 				{ providerId: "microsoft", scope: "openid profile email User.Read" },
 			]),
-		).toBe(true);
+		).toEqual(["microsoft"]);
 	});
 
-	it("lets a Microsoft account through once Mail.Read is there", () => {
+	it("names nothing once Mail.Read is there", () => {
 		expect(
-			needsMailboxGrant([
+			mailboxGrantsNeeded([
 				{ providerId: "microsoft", scope: GRANTED_MICROSOFT },
 			]),
-		).toBe(false);
+		).toEqual([]);
 	});
 
-	it("never walls someone who signed in through their own IdP", () => {
-		expect(needsMailboxGrant([{ providerId: "okta", scope: null }])).toBe(
-			false,
+	it("names nothing for somebody who signed in through their own IdP", () => {
+		expect(mailboxGrantsNeeded([{ providerId: "okta", scope: null }])).toEqual(
+			[],
 		);
 	});
 
-	it("never walls an SSO rep who has linked Google and then revoked it", () => {
+	it("still names Google for an SSO rep who linked it and revoked it", () => {
 		expect(
-			needsMailboxGrant([
+			mailboxGrantsNeeded([
 				{ providerId: "okta", scope: null },
 				{ providerId: "google", scope: null },
 			]),
-		).toBe(false);
+		).toEqual(["google"]);
 	});
 
-	it("still lets an SSO rep with Gmail connected through", () => {
+	it("names nothing for an SSO rep with Gmail connected", () => {
 		expect(
-			needsMailboxGrant([
+			mailboxGrantsNeeded([
 				{ providerId: "okta", scope: null },
 				{ providerId: "google", scope: GRANTED },
 			]),
-		).toBe(false);
+		).toEqual([]);
 	});
 
-	it("does not wall an account with no sign-in rows at all", () => {
-		expect(needsMailboxGrant([])).toBe(false);
+	it("names nothing for an account with no sign-in rows at all", () => {
+		expect(mailboxGrantsNeeded([])).toEqual([]);
 	});
 
-	it("asks for nothing more once one of two mailboxes is granted", () => {
+	it("names nothing once one of two mailboxes is granted", () => {
 		expect(
-			needsMailboxGrant([
+			mailboxGrantsNeeded([
 				{ providerId: "google", scope: GRANTED },
 				{ providerId: "microsoft", scope: null },
 			]),
-		).toBe(false);
+		).toEqual([]);
+	});
+
+	it("names Google for a rep who linked Slack and never granted Gmail", () => {
+		expect(
+			mailboxGrantsNeeded([
+				{ providerId: "google", scope: "openid,email" },
+				{ providerId: "slack", scope: "chat:write" },
+			]),
+		).toEqual(["google"]);
 	});
 });
 

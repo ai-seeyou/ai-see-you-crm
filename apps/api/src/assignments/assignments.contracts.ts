@@ -112,7 +112,7 @@ export type AssignManyInput = z.infer<typeof assignManyInput>;
 export const endAssignmentInput = z.object({
 	contactId: z.string(),
 	companyId: z.string(),
-	at: z.iso.datetime().optional(),
+	at: pastOrPresent.optional(),
 });
 
 export type EndAssignmentInput = z.infer<typeof endAssignmentInput>;

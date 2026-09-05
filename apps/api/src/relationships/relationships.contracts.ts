@@ -67,7 +67,7 @@ export type RelationshipCreateInput = z.infer<typeof relationshipCreateInput>;
 
 export const relationshipEndInput = z.object({
 	id: z.string(),
-	at: z.iso.datetime().optional(),
+	at: pastOrPresent.optional(),
 });
 
 export type RelationshipEndInput = z.infer<typeof relationshipEndInput>;

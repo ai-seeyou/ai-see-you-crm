@@ -192,26 +192,27 @@ function ReviewDecision({
 	const nameId = useId();
 	const typeId = useId();
 
-	const settled = async (moved: number) => {
+	const settled = async (moved: number, takenBy: string | null) => {
 		await cache.domainReviews();
+		const people = moved === 1 ? "1 person moved" : `${moved} people moved`;
 		toast.success(
-			moved === 1
-				? `${review.domain} filed, 1 person moved.`
-				: `${review.domain} filed, ${moved} people moved.`,
+			takenBy
+				? `${review.domain} already belongs to ${takenBy}, so it went there. ${people}.`
+				: `${review.domain} filed, ${people}.`,
 		);
 		onSettled();
 	};
 
 	const file = useMutation(
 		trpc.domainReviews.file.mutationOptions({
-			onSuccess: (result) => settled(result.contactsMoved),
+			onSuccess: (result) => settled(result.contactsMoved, result.takenBy),
 			onError: (error) => toast.error(error.message),
 		}),
 	);
 
 	const fileToNew = useMutation(
 		trpc.domainReviews.fileToNew.mutationOptions({
-			onSuccess: (result) => settled(result.contactsMoved),
+			onSuccess: (result) => settled(result.contactsMoved, result.takenBy),
 			onError: (error) => toast.error(error.message),
 		}),
 	);

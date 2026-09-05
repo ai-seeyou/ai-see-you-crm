@@ -146,8 +146,19 @@ General — an admin who cannot redeploy cannot set a variable.
 
 ## Mailbox sync
 
-Always on, on whichever social provider is configured, so there is no extra redirect
-URI beyond the sign-in one. Scopes are requested at sign-in and gated by
+**In the AI See You CRM it is off until somebody turns it on.** Upstream requested
+Gmail and Calendar at sign-in and walled anybody who declined, so signing in and
+handing the CRM a mailbox were one act. They are two decisions and we keep them
+apart: sign-in asks for identity only, nothing walls a rep who has connected no
+mailbox, and Settings, Connections passes `SYNC_SCOPES` to `linkSocial` when
+somebody chooses to connect one. The founder decided this.
+
+The rest of this section describes what happens once a mailbox IS connected, and
+all of it still holds.
+
+Everything below was upstream's design, where sync was always on, on whichever
+social provider is configured, so there is no extra redirect URI beyond the
+sign-in one. Scopes were requested at sign-in and gated by
 `requireMailboxAccess()`, because granular consent lets a user untick one and still
 sign in.
 

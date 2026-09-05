@@ -5,6 +5,7 @@ import {
 	ContactRoleType,
 	DealStage,
 	db,
+	EmailDirection,
 	EntityType,
 } from "@crm/db";
 import { CoverageService } from "../src/coverage/coverage.service";
@@ -25,6 +26,8 @@ let coveredId: string;
 let gappedId: string;
 let staleDealId: string;
 let freshDealId: string;
+let replyThreadId: string;
+let oldThreadId: string;
 let overdueTaskId: string;
 let followUpTaskId: string;
 let completedTaskId: string;
@@ -100,6 +103,9 @@ async function clean(): Promise<void> {
 	});
 	const ids = companies.map((row) => row.id);
 
+	await db.emailThread.deleteMany({
+		where: { rootMessageId: { endsWith: `@${DOMAIN}` } },
+	});
 	await db.activity.deleteMany({ where: { createdById: userId } });
 	await db.deal.deleteMany({ where: { companyId: { in: ids } } });
 	await db.contact.deleteMany({ where: { email: { endsWith: `@${DOMAIN}` } } });
@@ -186,6 +192,53 @@ beforeAll(async () => {
 	});
 	followUpTaskId = followUp.id;
 
+	const replied = await db.emailThread.create({
+		data: {
+			rootMessageId: `wsc-reply-root@${DOMAIN}`,
+			subject: `WSC Reply ${suffix}`,
+			companyId: gappedId,
+			firstMessageAt: new Date(Date.now() - 5 * DAY_MS),
+			lastMessageAt: new Date(Date.now() - DAY_MS),
+			messageCount: 1,
+			messages: {
+				create: {
+					rfcMessageId: `wsc-reply-message@${DOMAIN}`,
+					direction: EmailDirection.INBOUND,
+					fromEmail: `guest@${DOMAIN}`,
+					fromName: "A Buyer",
+					snippet: "Happy to talk next week.",
+					recipients: [],
+					sentAt: new Date(Date.now() - DAY_MS),
+				},
+			},
+		},
+		select: { id: true },
+	});
+	replyThreadId = replied.id;
+
+	const older = new Date(Date.now() - TODAY.replies.sinceMs - 2 * DAY_MS);
+	const old = await db.emailThread.create({
+		data: {
+			rootMessageId: `wsc-old-root@${DOMAIN}`,
+			subject: `WSC Old ${suffix}`,
+			companyId: coveredId,
+			firstMessageAt: older,
+			lastMessageAt: older,
+			messageCount: 1,
+			messages: {
+				create: {
+					rfcMessageId: `wsc-old-message@${DOMAIN}`,
+					direction: EmailDirection.INBOUND,
+					fromEmail: `stale@${DOMAIN}`,
+					recipients: [],
+					sentAt: older,
+				},
+			},
+		},
+		select: { id: true },
+	});
+	oldThreadId = old.id;
+
 	const completed = await db.activity.create({
 		data: {
 			type: ActivityType.TASK,
@@ -237,6 +290,19 @@ describe("TODAY", () => {
 		expect(stale?.quietForDays).toBeGreaterThanOrEqual(
 			summary.thresholds.opportunityStaleAfterDays,
 		);
+	});
+
+	it("returns a reply received inside the window, and not an older one", async () => {
+		const summary = await today.summary(userId, { scope: "me" });
+		const threads = summary.replies.map((reply) => reply.threadId);
+
+		expect(threads).toContain(replyThreadId);
+		expect(threads).not.toContain(oldThreadId);
+		expect(summary.thresholds.replySinceDays).toBe(3);
+
+		const reply = summary.replies.find((row) => row.threadId === replyThreadId);
+		expect(reply?.fromEmail).toBe(`guest@${DOMAIN}`);
+		expect(reply?.company?.id).toBe(gappedId);
 	});
 
 	it("stops naming an opportunity once it has activity again", async () => {

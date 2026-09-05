@@ -3,8 +3,86 @@ import "@crm/env/load";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { type Prisma, PrismaClient } from "./generated/prisma/client";
 
-const connectionString =
+const LOCAL_HOSTS = new Set([
+	"localhost",
+	"127.0.0.1",
+	"::1",
+	"[::1]",
+	"0.0.0.0",
+]);
+
+const rawConnectionString =
 	process.env.NODE_ENV === "test" ? testDatabase() : liveDatabase();
+
+const connection = describeConnection(rawConnectionString);
+
+// Supabase signs its pooler certificate with its own root, which is in no system
+// trust store, so `sslmode=require` fails to verify and the usual fix is
+// `sslmode=no-verify`. That encrypts without authenticating, which is a different
+// thing: the pooler also accepts plaintext, so an unverified client cannot tell a
+// downgrade from a bad day. DATABASE_CA_CERT holds the PEM of the issuing root and
+// the chain is verified against it. The certificate is public, not a secret.
+//
+// `sslmode` is stripped from the connection string when a certificate is present,
+// because node-postgres lets the string win and the verification would not happen.
+// The string keeps it for the Prisma CLI, which has its own connector.
+//
+// A remote database with no certificate is refused rather than connected to
+// insecurely, because the alternative is a silent plaintext connection.
+type DatabaseConnection = {
+	connectionString: string;
+	ssl?: { ca: string; rejectUnauthorized: true };
+};
+
+function describeConnection(url: string): DatabaseConnection {
+	const ca = process.env.DATABASE_CA_CERT?.trim();
+
+	if (!ca) {
+		if (isLocal(url)) return { connectionString: url };
+
+		throw new Error(
+			[
+				`DATABASE_CA_CERT is not set and the database is at ${hostOf(url)}, which is not local.`,
+				"",
+				"The connection would not be verified, and Supabase's pooler accepts",
+				"plaintext, so it could silently be unencrypted. Set DATABASE_CA_CERT to",
+				"the PEM of the root that signs the database's certificate.",
+				"",
+				"For Supabase:",
+				"",
+				"    curl -sS https://supabase-downloads.s3.amazonaws.com/prod/ssl/prod-ca-2021.crt",
+				"",
+			].join("\n"),
+		);
+	}
+
+	return {
+		connectionString: withoutSslMode(url),
+		ssl: { ca, rejectUnauthorized: true },
+	};
+}
+
+function withoutSslMode(url: string): string {
+	try {
+		const parsed = new URL(url);
+		parsed.searchParams.delete("sslmode");
+		return parsed.toString();
+	} catch {
+		return url;
+	}
+}
+
+function isLocal(url: string): boolean {
+	return LOCAL_HOSTS.has(hostOf(url));
+}
+
+function hostOf(url: string): string {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return url;
+	}
+}
 
 function liveDatabase(): string {
 	const url = process.env.DATABASE_URL;
@@ -100,7 +178,7 @@ const logDefinitions: Prisma.LogDefinition[] = [
 
 const createPrismaClient = () => {
 	const client = new PrismaClient({
-		adapter: new PrismaPg({ connectionString }),
+		adapter: new PrismaPg(connection),
 		log: logDefinitions,
 	});
 

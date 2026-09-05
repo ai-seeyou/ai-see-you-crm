@@ -139,7 +139,7 @@ export async function readBusinessStructure(
 
 		if (!company) return { readable: false, reason: MISSING };
 
-		const current = { validTo: null } as const;
+		const current = currentAt(new Date());
 
 		const [
 			partOfRows,
@@ -258,7 +258,7 @@ export async function readContactCoverage(
 	contactId: string,
 ): Promise<ContactCoverage> {
 	try {
-		const current = { validTo: null } as const;
+		const current = currentAt(new Date());
 
 		const [employerRow, coveredRows, coveredTotal] = await Promise.all([
 			db.contactAssignment.findFirst({
@@ -367,8 +367,9 @@ export async function structureForHits(
 	if (companyIds.length === 0) return found;
 
 	try {
+		const current = currentAt(new Date());
 		const rows = await db.entityRelationship.findMany({
-			where: { fromCompanyId: { in: companyIds }, validTo: null },
+			where: { fromCompanyId: { in: companyIds }, ...current },
 			orderBy: [{ type: "asc" }, { toCompany: { name: "asc" } }],
 			select: {
 				fromCompanyId: true,
@@ -405,9 +406,10 @@ export async function employerMoveBlock(
 	if (!fromCompanyId || fromCompanyId === toCompanyId) return null;
 
 	try {
+		const current = currentAt(new Date());
 		const edge = await db.entityRelationship.findFirst({
 			where: {
-				validTo: null,
+				...current,
 				OR: [
 					{ fromCompanyId, toCompanyId },
 					{ fromCompanyId: toCompanyId, toCompanyId: fromCompanyId },
@@ -614,6 +616,15 @@ function suffix(link: EntityLink): string {
 
 function capped<T>(listed: T[], total: number): Capped<T> {
 	return { listed, total, truncated: total > listed.length };
+}
+
+function currentAt(now: Date) {
+	return {
+		AND: [
+			{ OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+			{ OR: [{ validTo: null }, { validTo: { gt: now } }] },
+		],
+	};
 }
 
 function toLink(

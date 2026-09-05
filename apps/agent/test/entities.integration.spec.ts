@@ -4,6 +4,8 @@ import {
 	ContactRoleType,
 	db,
 	EntityType,
+	FactBand,
+	FactStatus,
 	RelationshipType,
 } from "@crm/db";
 import { readCompanyHistory } from "../agent/lib/accounts";
@@ -17,6 +19,7 @@ import {
 } from "../agent/lib/entities";
 import { ENTITY } from "../agent/lib/entity-config";
 import { searchCrm } from "../agent/lib/lookup";
+import { recordJobChange } from "../agent/tools/record_job_change";
 
 const suffix = process.env.TEST_RUN_ID ?? "entities-spec";
 const tag = `Travelspec${suffix.replace(/[^A-Za-z0-9]/g, "")}`;
@@ -32,11 +35,14 @@ let groupId: string;
 let managerId: string;
 let brandId: string;
 let formerManagerId: string;
+let futureManagerId: string;
 let propertyId: string;
 let standaloneId: string;
 let directorId: string;
 let formerDirectorId: string;
+let futureDirectorId: string;
 let moverId: string;
+let userId: string;
 
 async function business(
 	name: string,
@@ -59,6 +65,17 @@ async function business(
 beforeAll(async () => {
 	await cleanup();
 
+	const user = await db.user.create({
+		data: {
+			id: `entity-user-${suffix}`,
+			name: "Entity Test Rep",
+			email: `entity.rep.${suffix}@example.test`,
+			emailVerified: true,
+		},
+		select: { id: true },
+	});
+	userId = user.id;
+
 	const vertical = await db.vertical.create({
 		data: { key: `hotel-${suffix}`, label: "Hotels", position: 900 },
 		select: { id: true },
@@ -77,6 +94,10 @@ beforeAll(async () => {
 	brandId = await business("Sofitel", EntityType.HOTEL_BRAND, { verticalId });
 	formerManagerId = await business(
 		"Mantra Group",
+		EntityType.MANAGEMENT_COMPANY,
+	);
+	futureManagerId = await business(
+		"Future Management Company",
 		EntityType.MANAGEMENT_COMPANY,
 	);
 	propertyId = await business(
@@ -111,6 +132,12 @@ beforeAll(async () => {
 				type: RelationshipType.MANAGED_BY,
 				validFrom: daysAgo(2000),
 				validTo: daysAgo(401),
+			},
+			{
+				fromCompanyId: propertyId,
+				toCompanyId: futureManagerId,
+				type: RelationshipType.MANAGED_BY,
+				validFrom: daysAgo(-30),
 			},
 		],
 	});
@@ -152,6 +179,16 @@ beforeAll(async () => {
 		select: { id: true },
 	});
 	formerDirectorId = formerDirector.id;
+	const futureDirector = await db.contact.create({
+		data: {
+			firstName: "Future",
+			lastName: `Director ${tag}`,
+			email: `future.director@${groupDomain}`,
+			companyId: futureManagerId,
+		},
+		select: { id: true },
+	});
+	futureDirectorId = futureDirector.id;
 
 	const mover = await db.contact.create({
 		data: {
@@ -160,6 +197,7 @@ beforeAll(async () => {
 			email: `tom.reid@${domain}`,
 			title: "General Manager",
 			companyId: propertyId,
+			ownerId: userId,
 		},
 		select: { id: true },
 	});
@@ -183,6 +221,13 @@ beforeAll(async () => {
 				validFrom: daysAgo(2000),
 				validTo: daysAgo(500),
 			},
+			{
+				contactId: futureDirectorId,
+				companyId: propertyId,
+				scope: AssignmentScope.RESPONSIBLE_FOR,
+				roleType: ContactRoleType.DISTRIBUTION,
+				validFrom: daysAgo(-30),
+			},
 		],
 	});
 });
@@ -193,6 +238,7 @@ async function cleanup(): Promise<void> {
 	await db.contact.deleteMany({ where: { lastName: { contains: tag } } });
 	await db.company.deleteMany({ where: { name: { startsWith: tag } } });
 	await db.vertical.deleteMany({ where: { key: `hotel-${suffix}` } });
+	await db.user.deleteMany({ where: { id: `entity-user-${suffix}` } });
 }
 
 describe("a property reads as a property", () => {
@@ -226,6 +272,15 @@ describe("a property reads as a property", () => {
 		const markdown = structureMarkdown("Sofitel Sydney", structure);
 		expect(markdown).not.toContain("Mantra Group");
 		expect(markdown).toContain("Only current records are listed here.");
+	});
+
+	it("leaves out a relationship that has not started", async () => {
+		const structure = await readBusinessStructure(propertyId);
+		if (!structure.readable) throw new Error("structure unreadable");
+
+		expect(
+			structure.partOf.listed.map((link) => link.company.id),
+		).not.toContain(futureManagerId);
 	});
 
 	it("names the group and the manager in the text the model reads", async () => {
@@ -262,6 +317,15 @@ describe("people responsible from another payroll", () => {
 		expect(
 			structure.responsible.listed.map((person) => person.id),
 		).not.toContain(formerDirectorId);
+	});
+
+	it("leaves out an assignment that has not started", async () => {
+		const structure = await readBusinessStructure(propertyId);
+		if (!structure.readable) throw new Error("structure unreadable");
+
+		expect(
+			structure.responsible.listed.map((person) => person.id),
+		).not.toContain(futureDirectorId);
 	});
 
 	it("shows the property on the contact, and warns against moving them", async () => {
@@ -373,12 +437,63 @@ describe("the agent cannot invent structure", () => {
 		expect(blocked).toContain("A property is not its group");
 	});
 
+	it("never claims a blocked employer move completed", async () => {
+		await db.contactFact.createMany({
+			data: [
+				{
+					contactId: moverId,
+					field: "employer",
+					value: "Sofitel Sydney Darling Harbour",
+					score: 1,
+					band: FactBand.VERIFIED,
+					evidence: [],
+					method: "test",
+					status: FactStatus.SUPERSEDED,
+					supersededAt: daysAgo(1),
+				},
+				{
+					contactId: moverId,
+					field: "employer",
+					value: "Accor Hotel Group",
+					score: 1,
+					band: FactBand.VERIFIED,
+					evidence: [],
+					method: "test",
+					status: FactStatus.APPLIED,
+				},
+			],
+		});
+
+		const result = await recordJobChange({
+			contactId: moverId,
+			moveToCompanyId: groupId,
+		});
+		const activity = await db.activity.findFirstOrThrow({
+			where: { contactId: moverId },
+			orderBy: { createdAt: "desc" },
+			select: { subject: true, body: true, meta: true },
+		});
+
+		expect(result.moved).toBe(false);
+		expect(activity.subject).toContain("reported a possible employer change");
+		expect(activity.subject).not.toContain("has moved");
+		expect(activity.body).toContain("The move was not made");
+		expect(activity.meta).toMatchObject({ blocked: expect.any(String) });
+		expect(
+			await db.contact.findUnique({
+				where: { id: moverId },
+				select: { companyId: true },
+			}),
+		).toEqual({ companyId: propertyId });
+	});
+
 	it("refuses it in the other direction too", async () => {
 		expect(await employerMoveBlock(groupId, propertyId)).not.toBeNull();
 	});
 
 	it("allows a move to a business nothing relates it to", async () => {
 		expect(await employerMoveBlock(propertyId, standaloneId)).toBeNull();
+		expect(await employerMoveBlock(propertyId, futureManagerId)).toBeNull();
 		expect(await employerMoveBlock(null, standaloneId)).toBeNull();
 		expect(await employerMoveBlock(propertyId, propertyId)).toBeNull();
 	});

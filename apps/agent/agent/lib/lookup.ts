@@ -1,4 +1,4 @@
-import { DealStage, db, type EntityType } from "@crm/db";
+import { db, type EntityType } from "@crm/db";
 import {
 	LOSING_DEAL_STAGES,
 	OPEN_DEAL_STAGES,

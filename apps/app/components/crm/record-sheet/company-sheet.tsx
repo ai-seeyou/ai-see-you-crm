@@ -220,7 +220,14 @@ export function CompanySheet({ companyId }: { companyId: string }) {
 					value: "responsible",
 					label: "People responsible",
 					count: company.assignments.length,
-					content: <CompanyResponsible company={company} />,
+					content: (
+						<CompanyResponsible
+							company={company}
+							adding={adding === "responsible"}
+							onAdd={() => setAdding("responsible")}
+							onDone={() => setAdding(null)}
+						/>
+					),
 				},
 				{
 					value: "deals",

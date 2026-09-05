@@ -65,6 +65,21 @@ export const contactUpdateArgs = z.object({
 
 export const contactIdInput = z.object({ id: z.string() });
 
+export const contactOptionsInput = z.object({
+	q: z.string().default(""),
+});
+
+export const contactOptionOutput = z.array(
+	z.object({
+		id: z.string(),
+		name: z.string(),
+		email: z.string().nullable(),
+		title: z.string().nullable(),
+		imageUrl: z.string().nullable(),
+		employer: z.string().nullable(),
+	}),
+);
+
 export const contactBulkInput = bulkIdsInput;
 
 export const contactBulkOwnerInput = bulkIdsInput.extend({

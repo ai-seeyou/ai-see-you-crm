@@ -515,7 +515,10 @@ async function upsertField(
 				})),
 			},
 		},
-		update: { showOnFilter },
+		// The travel field definitions are created by migration 20260905060000, which
+		// owns showOnFilter. Writing it here on every re-seed would overwrite a
+		// choice somebody made in the field editor.
+		update: {},
 		include: { options: true },
 	});
 

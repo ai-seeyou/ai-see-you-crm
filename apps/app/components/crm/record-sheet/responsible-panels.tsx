@@ -39,6 +39,7 @@ import { BUSINESS, CONTACT } from "@/lib/labels";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
+import { ContactPicker } from "../contact-picker";
 import { QuickAddForm } from "./quick-add";
 import { AddRow } from "./record-parts";
 import { useOpenRecord } from "./record-stack";
@@ -49,6 +50,8 @@ type Contact = RouterOutputs["contacts"]["byId"];
 type ContactAssignment = Contact["responsibleFor"][number];
 
 const ADD_BUSINESS_LABEL = `Add ${BUSINESS.oneLower}`;
+
+const ADD_PERSON_LABEL = `Add ${CONTACT.oneLower}`;
 
 const PEOPLE_COLUMNS = [
 	{ id: "name", header: "Name", width: "w-[28%]", className: "pl-5" },
@@ -70,32 +73,135 @@ function personName(contact: { firstName: string; lastName: string | null }) {
 	return [contact.firstName, contact.lastName].filter(Boolean).join(" ");
 }
 
-export function CompanyResponsible({ company }: { company: Company }) {
+export function CompanyResponsible({
+	company,
+	adding,
+	onAdd,
+	onDone,
+}: {
+	company: Company;
+	adding: boolean;
+	onAdd: () => void;
+	onDone: () => void;
+}) {
 	const openRecord = useOpenRecord();
+
+	const form = adding ? (
+		<AddResponsiblePerson company={company} onDone={onDone} />
+	) : null;
 
 	if (company.assignments.length === 0) {
 		return (
-			<DetailSheetEmpty
-				icon={UserRole}
-				title="Nobody is responsible yet"
-				description={`People who cover ${company.name} from somewhere else, a group office or a management company, appear here. Open their ${CONTACT.oneLower} record and add this ${BUSINESS.oneLower} under Responsible for.`}
-			/>
+			<>
+				{form}
+				{adding ? null : (
+					<DetailSheetEmpty
+						icon={UserRole}
+						title="Nobody is responsible yet"
+						description={`People who cover ${company.name} from somewhere else, a group office or a management company, appear here. They keep their own employer.`}
+						action={
+							<Button variant="outline" size="sm" onClick={onAdd}>
+								<Icon icon={Add} data-icon="inline-start" />
+								{ADD_PERSON_LABEL}
+							</Button>
+						}
+					/>
+				)}
+			</>
 		);
 	}
 
 	return (
-		<SimpleTable variant="panel" columns={PEOPLE_COLUMNS}>
-			{company.assignments.map((assignment) => (
-				<PersonRow
-					key={assignment.id}
-					companyId={company.id}
-					assignment={assignment}
-					onOpen={() =>
-						openRecord({ kind: "contact", id: assignment.contact.id })
-					}
+		<>
+			{form}
+			<SimpleTable variant="panel" columns={PEOPLE_COLUMNS}>
+				{company.assignments.map((assignment) => (
+					<PersonRow
+						key={assignment.id}
+						companyId={company.id}
+						assignment={assignment}
+						onOpen={() =>
+							openRecord({ kind: "contact", id: assignment.contact.id })
+						}
+					/>
+				))}
+
+				<AddRow
+					label={ADD_PERSON_LABEL}
+					columns={PEOPLE_COLUMNS.length}
+					onClick={onAdd}
 				/>
-			))}
-		</SimpleTable>
+			</SimpleTable>
+		</>
+	);
+}
+
+function AddResponsiblePerson({
+	company,
+	onDone,
+}: {
+	company: Company;
+	onDone: () => void;
+}) {
+	const trpc = useTRPC();
+	const cache = useCrmCache();
+
+	const [contactId, setContactId] = useState("");
+	const [roleType, setRoleType] = useState<ContactRoleType>(
+		ContactRoleType.COMMERCIAL,
+	);
+
+	const contactFieldId = useId();
+	const roleFieldId = useId();
+
+	const assign = useMutation(
+		trpc.assignments.assign.mutationOptions({
+			onSuccess: async (row) => {
+				await cache.assignment(row.contactId, row.companyId);
+				toast.success("Responsibility recorded.");
+				onDone();
+			},
+			onError: (error) => toast.error(error.message),
+		}),
+	);
+
+	return (
+		<QuickAddForm
+			submitLabel={ADD_PERSON_LABEL}
+			pending={assign.isPending}
+			ready={contactId !== ""}
+			onCancel={onDone}
+			onSubmit={() =>
+				assign.mutate({ contactId, companyId: company.id, roleType })
+			}
+		>
+			<Field>
+				<FieldLabel htmlFor={contactFieldId}>{CONTACT.one}</FieldLabel>
+				<ContactPicker
+					id={contactFieldId}
+					value={contactId}
+					onValueChange={setContactId}
+				/>
+			</Field>
+			<Field>
+				<FieldLabel htmlFor={roleFieldId}>Role</FieldLabel>
+				<Select
+					value={roleType}
+					onValueChange={(next) => setRoleType(next as ContactRoleType)}
+				>
+					<SelectTrigger id={roleFieldId}>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{CONTACT_ROLE_OPTIONS.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</Field>
+		</QuickAddForm>
 	);
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { EntityType } from "@crm/db/enums";
 import {
 	Command,
 	CommandDialog,
@@ -18,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { parseAsBoolean, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { useOpenRecord } from "@/components/crm/record-sheet/record-stack";
+import { entityTypeLabel } from "@/lib/entity-type";
 import { BUSINESS, CONTACT, OPPORTUNITY } from "@/lib/labels";
 import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useTRPC } from "@/lib/trpc/client";
@@ -29,6 +31,17 @@ const GROUP_LABEL = {
 } as const;
 
 const KINDS = ["company", "contact", "deal"] as const;
+
+type Hit = {
+	detail: string | null;
+	entityType: EntityType | null;
+};
+
+// Two businesses can share a corporate domain now, so three Sofitel results all
+// reading "accor.com" tell the reader nothing. What kind of business it is does.
+function subtitle(hit: Hit): string | null {
+	return hit.entityType ? entityTypeLabel(hit.entityType) : hit.detail;
+}
 
 export function QuickSwitcher() {
 	const openRecord = useOpenRecord();
@@ -115,9 +128,9 @@ export function QuickSwitcher() {
 										)}
 										<span className="flex min-w-0 flex-col">
 											<span className="truncate">{hit.label}</span>
-											{hit.detail ? (
+											{subtitle(hit) ? (
 												<span className="truncate text-muted-foreground text-xs">
-													{hit.detail}
+													{subtitle(hit)}
 												</span>
 											) : null}
 										</span>

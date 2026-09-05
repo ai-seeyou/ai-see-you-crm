@@ -1,3 +1,4 @@
+import { EntityType } from "@crm/db";
 import { Inject } from "@nestjs/common";
 import { Input, Query, Router, UseMiddlewares } from "nestjs-trpc";
 import { z } from "zod";
@@ -12,6 +13,7 @@ const searchHitOutput = z.object({
 	id: z.string(),
 	label: z.string(),
 	detail: z.string().nullable(),
+	entityType: z.enum(EntityType).nullable(),
 	iconUrl: z.string().nullable(),
 	iconDarkUrl: z.string().nullable(),
 	iconTone: z.string().nullable(),

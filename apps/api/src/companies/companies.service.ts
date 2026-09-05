@@ -136,6 +136,12 @@ export class CompaniesService {
 					_count: {
 						select: {
 							contacts: true,
+							assignments: {
+								where: {
+									scope: AssignmentScope.RESPONSIBLE_FOR,
+									validTo: null,
+								},
+							},
 							deals: { where: { stage: { in: [...OPEN_DEAL_STAGES] } } },
 						},
 					},
@@ -171,7 +177,7 @@ export class CompaniesService {
 				queued: queued.has(row.id),
 				source: row.source,
 				owner: row.owner,
-				contactCount: row._count.contacts,
+				contactCount: row._count.contacts + row._count.assignments,
 				openDealCount: row._count.deals,
 				lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
 				createdAt: row.createdAt.toISOString(),

@@ -852,6 +852,32 @@ export class ContactsService {
 		return { contactId: fact.contactId, field: fact.field, applied: accepted };
 	}
 
+	async options(q: string) {
+		const rows = await this.db.contact.findMany({
+			where: { AND: [this.searchFilter(q), { archivedAt: null }] },
+			select: {
+				id: true,
+				firstName: true,
+				lastName: true,
+				email: true,
+				title: true,
+				imageUrl: true,
+				company: { select: { name: true } },
+			},
+			orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+			take: 100,
+		});
+
+		return rows.map((row) => ({
+			id: row.id,
+			name: [row.firstName, row.lastName].filter(Boolean).join(" "),
+			email: row.email,
+			title: row.title,
+			imageUrl: row.imageUrl,
+			employer: row.company?.name ?? null,
+		}));
+	}
+
 	private searchFilter(q: string): Prisma.ContactWhereInput {
 		const term = q.trim();
 		if (!term) return {};

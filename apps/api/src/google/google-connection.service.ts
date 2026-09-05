@@ -208,15 +208,21 @@ export class GoogleConnectionService {
 			select: { id: true },
 		});
 		const companyIds = companies.map((company) => company.id);
-		const suffix = `@${normalised}`;
+		// A suppressed domain covers everyone who sends from under it, so
+		// mail.accor.com goes with accor.com. Matching the exact suffix alone left
+		// every subdomain sender behind.
+		const at = `@${normalised}`;
+		const under = `.${normalised}`;
 
 		const [threads, events] = await this.db.$transaction([
 			this.db.emailThread.deleteMany({
 				where: {
 					OR: [
 						{ companyId: { in: companyIds } },
-						{ messages: { some: { fromEmail: { endsWith: suffix } } } },
-						{ contact: { email: { endsWith: suffix } } },
+						{ messages: { some: { fromEmail: { endsWith: at } } } },
+						{ messages: { some: { fromEmail: { endsWith: under } } } },
+						{ contact: { email: { endsWith: at } } },
+						{ contact: { email: { endsWith: under } } },
 					],
 				},
 			}),
@@ -224,8 +230,10 @@ export class GoogleConnectionService {
 				where: {
 					OR: [
 						{ companyId: { in: companyIds } },
-						{ attendees: { some: { email: { endsWith: suffix } } } },
-						{ contact: { email: { endsWith: suffix } } },
+						{ attendees: { some: { email: { endsWith: at } } } },
+						{ attendees: { some: { email: { endsWith: under } } } },
+						{ contact: { email: { endsWith: at } } },
+						{ contact: { email: { endsWith: under } } },
 					],
 				},
 			}),

@@ -69,16 +69,17 @@ export class CompanyDirectoryService {
 	}): Promise<void> {
 		const seenAt = new Date();
 
-		// Any row for the domain counts, not only an open one. A domain a human
-		// dismissed must stay dismissed: filtering on PROPOSED here raised a fresh
-		// row on the next email and the dismissal meant nothing.
+		// A dismissed domain must stay dismissed, so an open row is not the only one
+		// that counts: filtering on PROPOSED raised a fresh row on the next email and
+		// the dismissal meant nothing. An applied one is different. The domain was
+		// filed to a business and has come back unmatched, which is a new question.
 		const seen = await this.db.domainReview.findFirst({
 			where: { domain: input.domain },
 			select: { id: true, status: true },
 			orderBy: { lastSeenAt: "desc" },
 		});
 
-		if (seen) {
+		if (seen && seen.status !== DomainReviewStatus.APPLIED) {
 			await this.db.domainReview.update({
 				where: { id: seen.id },
 				data: {

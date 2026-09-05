@@ -38,6 +38,7 @@ export type ProductionImportResult = {
 		httpMethod: "GET";
 		readRequests: number;
 		clientEvidence: "GET_ONLY_HTTP_CLIENT";
+		manifestSnapshot: string;
 	};
 };
 type FetchedPage = { records: ProductionBusiness[]; nextCursor: string | null };
@@ -220,11 +221,13 @@ export async function importProductionHotels(
 	if (options.fullReconciliation && options.destination) {
 		throw new Error("Full reconciliation cannot use a destination filter");
 	}
-	const updatedSince = options.fullReconciliation
+	const updatedSince = options.snapshot
 		? undefined
-		: saved?.snapshot
-			? saved.updatedSince?.toISOString()
-			: saved?.sourceWatermark?.toISOString();
+		: options.fullReconciliation
+			? undefined
+			: saved?.snapshot
+				? saved.updatedSince?.toISOString()
+				: saved?.sourceWatermark?.toISOString();
 	let runId: string | undefined;
 	const leaseOwner = crypto.randomUUID();
 	const priorFullRun = options.fullReconciliation
@@ -286,7 +289,7 @@ export async function importProductionHotels(
 			{
 				destination: options.destination,
 				updatedSince,
-				snapshot: saved?.snapshot ?? options.snapshot,
+				snapshot: options.snapshot ?? saved?.snapshot ?? undefined,
 			},
 			heartbeat,
 		);
@@ -318,6 +321,29 @@ export async function importProductionHotels(
 				});
 			}
 			throw new Error("Production snapshot contains duplicate property IDs");
+		}
+		if (options.destination) {
+			const mismatched = records.filter(
+				(record) => record.destination.slug !== options.destination,
+			);
+			if (mismatched.length > 0) {
+				if (runId) {
+					await db.productionImportRun.update({
+						where: { id: runId, leaseOwner },
+						data: {
+							exceptionCount: mismatched.length,
+							reviewCount: mismatched.length,
+							reviewItems: mismatched.map((record) => ({
+								productionPropertyId: record.productionPropertyId,
+								reason: `Expected destination ${options.destination}, received ${record.destination.slug}`,
+							})),
+						},
+					});
+				}
+				throw new Error(
+					"Production manifest contains an unexpected destination",
+				);
+			}
 		}
 		if (
 			options.expectedCount !== undefined &&
@@ -467,6 +493,7 @@ export async function importProductionHotels(
 			httpMethod: "GET" as const,
 			readRequests,
 			clientEvidence: "GET_ONLY_HTTP_CLIENT" as const,
+			manifestSnapshot: snapshot,
 		};
 		if (runId || !options.dryRun)
 			await db.$transaction(async (tx) => {

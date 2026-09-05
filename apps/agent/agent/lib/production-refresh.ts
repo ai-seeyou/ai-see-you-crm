@@ -5,12 +5,24 @@ import { ProductionReadClient } from "./production-client";
 import { importProductionHotels } from "./production-import";
 import { PRODUCTION_IMPORT } from "./production-import-config";
 
-const payloadSchema = z.object({ fullReconciliation: z.boolean() });
+const payloadSchema = z
+	.object({
+		fullReconciliation: z.boolean(),
+		destination: z.string().min(1).optional(),
+		expectedCount: z.number().int().nonnegative().optional(),
+		dryRun: z.boolean().optional(),
+		snapshot: z.string().datetime().optional(),
+	})
+	.strict();
 export type ProductionRefreshPayload = z.infer<typeof payloadSchema>;
-const subjectFor = (fullReconciliation: boolean) =>
-	fullReconciliation
+const subjectFor = (payload: ProductionRefreshPayload) => {
+	if (payload.destination) {
+		return `production-hotel-universe-proving:${payload.destination.toLowerCase()}:${payload.dryRun ? "dry-run" : "commit"}`;
+	}
+	return payload.fullReconciliation
 		? "production-hotel-universe-full"
 		: "production-hotel-universe-incremental";
+};
 
 export function productionRefreshPayload(
 	value: Prisma.JsonValue | null,
@@ -19,7 +31,26 @@ export function productionRefreshPayload(
 }
 
 export async function queueProductionRefresh(fullReconciliation: boolean) {
-	const subject = subjectFor(fullReconciliation);
+	return queueProductionRefreshTask({ fullReconciliation });
+}
+
+export async function queueProductionRefreshTask(
+	input: ProductionRefreshPayload,
+) {
+	const payload = payloadSchema.parse(input);
+	if (payload.fullReconciliation && payload.destination) {
+		throw new Error("A full reconciliation cannot use a destination filter");
+	}
+	if (payload.snapshot && payload.dryRun) {
+		throw new Error("A dry-run cannot resume a pinned snapshot");
+	}
+	if (payload.destination && !payload.dryRun && !payload.snapshot) {
+		throw new Error("A destination commit requires a pinned snapshot");
+	}
+	if (payload.destination && payload.expectedCount === undefined) {
+		throw new Error("A destination task requires an expected count");
+	}
+	const subject = subjectFor(payload);
 	const pending = await db.agentTask.findFirst({
 		where: { kind: "production-refresh", subject, finishedAt: null },
 		select: { id: true },
@@ -30,10 +61,12 @@ export async function queueProductionRefresh(fullReconciliation: boolean) {
 			await db.agentTask.create({
 				data: {
 					kind: "production-refresh",
-					reason: fullReconciliation
-						? "Reconcile the complete Production hotel universe."
-						: "Import newly qualifying Production hotels.",
-					payload: { fullReconciliation },
+					reason: payload.destination
+						? `Prove the ${payload.destination} Production hotel universe.`
+						: payload.fullReconciliation
+							? "Reconcile the complete Production hotel universe."
+							: "Import newly qualifying Production hotels.",
+					payload,
 					priority: PRIORITY.productionRefresh,
 					budget: 0,
 					dueAt: new Date(),
@@ -52,6 +85,35 @@ export async function queueProductionRefresh(fullReconciliation: boolean) {
 	}
 }
 
+const boundaryEvidenceSchema = z.object({
+	manifestSnapshot: z.string().datetime(),
+});
+
+export async function approveSydneyProductionProving() {
+	const dryRun = await db.productionImportRun.findFirst({
+		where: {
+			scope: "qualifying-hotels:sydney",
+			destination: "sydney",
+			dryRun: true,
+			status: "COMPLETED",
+			qualifyingCount: 228,
+		},
+		orderBy: { completedAt: "desc" },
+		select: { boundaryEvidence: true },
+	});
+	if (!dryRun) {
+		throw new Error("A completed 228-hotel Sydney dry-run is required");
+	}
+	const evidence = boundaryEvidenceSchema.parse(dryRun.boundaryEvidence);
+	return queueProductionRefreshTask({
+		fullReconciliation: false,
+		destination: "sydney",
+		expectedCount: 228,
+		dryRun: false,
+		snapshot: evidence.manifestSnapshot,
+	});
+}
+
 export async function runProductionRefresh(
 	taskId: string,
 	payload: ProductionRefreshPayload,
@@ -66,7 +128,14 @@ export async function runProductionRefresh(
 	});
 	const result = await importProductionHotels(
 		new ProductionReadClient(endpoint, token),
-		{ dryRun: false, fullReconciliation: payload.fullReconciliation },
+		{
+			dryRun: payload.dryRun ?? false,
+			fullReconciliation: payload.fullReconciliation,
+			destination: payload.destination,
+			expectedCount: payload.expectedCount,
+			snapshot: payload.snapshot,
+		},
 	);
-	return `Processed ${result.qualifying} qualifying hotels: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged.`;
+	const action = payload.dryRun ? "Validated" : "Processed";
+	return `${action} ${result.qualifying} qualifying hotels: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged. Snapshot ${result.snapshot}.`;
 }

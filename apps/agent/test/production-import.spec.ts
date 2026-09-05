@@ -67,6 +67,7 @@ describe("Production hotel import proof", () => {
 				httpMethod: "GET",
 				readRequests: 2,
 				clientEvidence: "GET_ONLY_HTTP_CLIENT",
+				manifestSnapshot: "2026-09-05T00:00:00.000Z",
 			},
 		});
 		expect(calls[1]?.snapshot).toBe("2026-09-05T00:00:00.000Z");

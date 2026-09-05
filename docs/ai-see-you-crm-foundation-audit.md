@@ -91,12 +91,10 @@ software plus the data model work above. Two of them, "who have we contacted" an
 happened", require outreach logging that does not exist yet. Section L scopes the smallest
 honest V1.
 
-**Three things to decide before any code is written.** They are in section Q, but the
-sharpest one is this: this development environment currently has a Supabase MCP server
-named `supabase-production` attached with `execute_sql` available. That is a live,
-one-tool-call path from an agent session into AI See You Production. Your instruction was
-"do not modify Production". The environment does not currently enforce that instruction.
-Detach it or restrict it to read-only before the first implementation session.
+**Three things to decide before any code is written.** They are in section Q. One earlier
+draft of this document rated developer tooling as the sharpest of them and was wrong on the
+facts; the correction is in section I.7 and the item now sits at its true severity in
+section P.
 
 ---
 
@@ -659,9 +657,9 @@ includes contractors or regional partners.
 
 ## F.3 What needs attention for AI See You
 
-1. **`supabase-production` MCP server is attached to this development environment with
-   `execute_sql`.** This is not a repository finding, it is an environment finding, and it
-   is the most serious one in this document. Section Q.
+1. **Developer tooling reaches Production read-only, and the CRM workspace now denies it
+   outright.** An environment finding, not a repository one, and it is not the most serious
+   item here. Section I.7 has the detail.
 2. **Telemetry is on by default and posts to a third party.** Section C.11.
 3. **An API key equals a full user session.** Acceptable for our own scripts, wrong for
    Clay. Section J.
@@ -1190,16 +1188,32 @@ the next person to need one will use it.
 | Deletion | A Production id that stops resolving marks the `ExternalRef` stale and raises a review item. **It never deletes the CRM record**, because our commercial history with that business is ours and survives Production changing its mind. |
 | Volume | Never mirror the full Production dataset. If someone proposes a nightly full sync, that is the signal the boundary is being eroded. |
 
-## I.7 The immediate environment risk
+## I.7 Developer tooling versus application architecture
 
-This session has two Supabase MCP servers attached: `supabase` (the new CRM project) and
-`supabase-production`. The production one exposes `execute_sql`. **Any agent session in this
-workspace, including a future one with a vague instruction, can write to Production with a
-single tool call.**
+Two different things get confused here, and this section exists to keep them apart.
 
-No amount of architecture in this document mitigates that. **Action: remove
-`supabase-production` from this project's MCP configuration, or replace its credential with
-a read-only one, before the first implementation session.**
+**Shared developer tooling. Already read-only.** The development environment has two Supabase
+MCP servers configured in the user scope of `~/.claude.json`, so they are present in every
+project on this machine: `supabase` for the CRM project, and `supabase-production`. Inspection
+of that configuration establishes that **`supabase-production` already runs with
+`--read-only`**. Its queries are wrapped in a read-only transaction and it exposes no
+migration, branch or edge function tool. It cannot write to Production, and an earlier draft
+of this document was wrong to say that it could.
+
+Devin is a shared environment and other AI See You projects legitimately use that Production
+tooling, so the global configuration is left exactly as it is.
+
+**What was done instead, and it is narrow.** `/Users/davidwilley/Projects/CRM/.claude/settings.json`
+carries a directory-scoped permission deny rule for `mcp__supabase-production`. Project
+settings apply only when Claude is operating inside this repository, so the tooling stays
+available everywhere else and the CRM Supabase MCP stays available here. This is defence in
+depth over an already read-only connection, not a fix for a live write path.
+
+**The application architecture is the real subject of this section, and it does not change.**
+The CRM application must never have a Production write path: no connection string, no service
+key, no mutating call, in any phase. That rule is about the permanent system, not about a
+developer's tooling, and nothing in this subsection relaxes it. Sections I.1 to I.6 stand as
+written.
 
 ---
 
@@ -1600,10 +1614,16 @@ half-populated ones.
 
 Ordered by expected damage.
 
-**1. Accidental write to Production. Severity: critical. Likelihood: real today.**
-A `supabase-production` MCP server with `execute_sql` is attached to this development
-environment. Mitigation: detach it or make its credential read-only, before the first
-implementation session. This is the one item on this list that is dangerous right now.
+**1. The CRM acquires a Production write path. Severity: critical. Likelihood: low.**
+The risk is architectural and permanent: a connection string, a service key or a mutating call
+added to the application in some later phase. Mitigation: the rule in section I.5, restated in
+`README.md`, `AGENTS.md`, `CLAUDE.md` and `SECURITY.md`, and a repository that contains no
+Production credential today.
+
+*Corrected.* An earlier draft rated this critical and immediate on the grounds that the
+`supabase-production` MCP server could execute arbitrary SQL. It is configured `--read-only`
+and cannot write. The CRM workspace now also denies it by project settings. **Risk 2 below is
+the most serious live item on this list.**
 
 **2. Supabase Data API exposure. Severity: critical. Likelihood: moderate.**
 No table has row level security, because the application has never needed any. If PostgREST
@@ -1673,12 +1693,12 @@ quarter second per query round trip. Mitigation: deploy to `syd1`. This is a pro
 
 Ordered by urgency.
 
-**Q1. Detach or restrict `supabase-production` from this workspace. Blocking.**
-Nothing should be implemented until the environment cannot write to Production. Options:
-remove the MCP server from this project's configuration (simplest), or replace its credential
-with a read-only role. **My recommendation: remove it entirely. If the CRM later needs to read
-Production, it should do so through the audited service path in section I, not through a
-developer's MCP session.**
+**Q1. Settled, no decision needed.** `supabase-production` is already `--read-only`, the
+global configuration is left untouched because Devin is shared, and the CRM workspace denies
+the server through its own `.claude/settings.json`. Recorded here because an earlier draft
+made this a blocking decision on facts that were wrong. If the CRM ever needs to read
+Production, it goes through the audited service path in section I, not a developer's MCP
+session.
 
 **Q2. Confirm Supabase as managed Postgres only, and disable the Data API. Blocking.**
 Section G. Confirm that Supabase Auth, Realtime, Edge Functions and PostgREST are all off the
@@ -1725,7 +1745,8 @@ Each phase ends with something that works. No phase depends on a later one.
 ### Phase 0: environment safety and fork hygiene
 *Blocking. Nothing else starts until this is done.*
 
-1. Detach or restrict `supabase-production` from this workspace (Q1).
+1. Deny `mcp__supabase-production` in the CRM's own `.claude/settings.json`, leaving the
+   global configuration untouched (Q1).
 2. Disable the Supabase Data API on the CRM project; confirm no RLS is expected.
 3. Set `CRM_TELEMETRY_DISABLED=1` everywhere. Leave `IS_MARKETING` unset.
 4. Replace `README.md`, `CLAUDE.md` and `AGENTS.md` with ours. Keep `LICENSE` intact.
@@ -1832,5 +1853,7 @@ determines whether this CRM can describe the travel industry or merely a list of
 Everything else can be added later against a correct model, and almost nothing can be fixed
 later against a wrong one.
 
-The second most important thing: **detach the Production MCP server before anyone writes any
-code.**
+The second most important thing: **the CRM application must never acquire a Production write
+path.** That is a rule about the permanent architecture and it holds in every phase. It is not
+the same question as which developer tooling a shared machine exposes, and section I.7 keeps
+the two apart.

@@ -4,5 +4,11 @@
   },
   "enabledPlugins": {
     "paper-desktop@paper": true
+  },
+  "permissions": {
+    "deny": [
+      "mcp__supabase-production",
+      "mcp__supabase-production__execute_sql"
+    ]
   }
 }

@@ -159,6 +159,14 @@ writeFileSync(
 	join(funcDir, "package.json"),
 	JSON.stringify({ type: "module" }),
 );
+// The Vercel project's Root Directory is the repository root, so Vercel reads no
+// vercel.json and this Build Output API config is the only one that ships. The
+// regions and the crons are read from apps/api/vercel.json rather than repeated
+// here, so there is one place to change them and they cannot drift apart.
+const projectConfig = JSON.parse(
+	readFileSync(join(apiDir, "vercel.json"), "utf8"),
+);
+
 writeFileSync(
 	join(funcDir, ".vc-config.json"),
 	JSON.stringify({
@@ -169,7 +177,7 @@ writeFileSync(
 		maxDuration: 60,
 		memory: 1769,
 		environment: { NODE_ENV: "production" },
-		regions: ["iad1"],
+		regions: projectConfig.regions ?? ["iad1"],
 	}),
 );
 writeFileSync(
@@ -177,7 +185,7 @@ writeFileSync(
 	JSON.stringify({
 		version: 3,
 		routes: [{ src: "/(.*)", dest: "/api/index" }],
-		crons: [{ path: "/internal/sync/google", schedule: "*/5 * * * *" }],
+		crons: projectConfig.crons ?? [],
 	}),
 );
 

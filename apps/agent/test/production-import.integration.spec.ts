@@ -14,6 +14,7 @@ import {
 	productionRefreshPayload,
 	queueProductionRefresh,
 	queueProductionRefreshTask,
+	queueSydneyProductionDryRun,
 	runProductionRefresh,
 } from "../agent/lib/production-refresh";
 
@@ -408,14 +409,14 @@ describe("Production hotel import database behavior", () => {
 	});
 
 	it("queues a bounded Sydney proving task with its exact contract", async () => {
-		const taskId = await queueProductionRefreshTask({
-			fullReconciliation: false,
-			destination: "sydney",
-			expectedCount: 228,
-			dryRun: true,
-		});
+		const [taskId, duplicateTaskId] = await Promise.all([
+			queueSydneyProductionDryRun(),
+			queueSydneyProductionDryRun(),
+		]);
+		expect(taskId).not.toBeNull();
+		expect(duplicateTaskId).toBe(taskId);
 		const task = await db.agentTask.findUniqueOrThrow({
-			where: { id: taskId },
+			where: { id: taskId ?? "" },
 			select: { subject: true, payload: true },
 		});
 		expect(task.subject).toBe(
@@ -427,6 +428,40 @@ describe("Production hotel import database behavior", () => {
 			expectedCount: 228,
 			dryRun: true,
 		});
+	});
+
+	it("stops the one-shot queue after a completed 228 proof", async () => {
+		await db.agentTask.deleteMany({
+			where: {
+				kind: "production-refresh",
+				subject: "production-hotel-universe-proving:sydney:dry-run",
+			},
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: true,
+				qualifyingCount: 228,
+				boundaryEvidence: {
+					manifestSnapshot: "2026-09-05T01:00:00.000Z",
+				},
+				completedAt: new Date(),
+			},
+		});
+		expect(await queueSydneyProductionDryRun()).toBeNull();
+		expect(
+			await db.agentTask.count({
+				where: {
+					kind: "production-refresh",
+					subject: "production-hotel-universe-proving:sydney:dry-run",
+					finishedAt: null,
+				},
+			}),
+		).toBe(0);
 	});
 
 	it("rejects destination commits without a proven snapshot", async () => {

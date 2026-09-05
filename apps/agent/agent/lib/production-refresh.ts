@@ -89,6 +89,33 @@ const boundaryEvidenceSchema = z.object({
 	manifestSnapshot: z.string().datetime(),
 });
 
+export async function queueSydneyProductionDryRun() {
+	const completed = await db.productionImportRun.findMany({
+		where: {
+			scope: "qualifying-hotels:sydney",
+			destination: "sydney",
+			dryRun: true,
+			status: "COMPLETED",
+			qualifyingCount: 228,
+		},
+		orderBy: { completedAt: "desc" },
+		select: { boundaryEvidence: true },
+	});
+	if (
+		completed.some(
+			(run) => boundaryEvidenceSchema.safeParse(run.boundaryEvidence).success,
+		)
+	) {
+		return null;
+	}
+	return queueProductionRefreshTask({
+		fullReconciliation: false,
+		destination: "sydney",
+		expectedCount: 228,
+		dryRun: true,
+	});
+}
+
 export async function approveSydneyProductionProving() {
 	const dryRun = await db.productionImportRun.findFirst({
 		where: {

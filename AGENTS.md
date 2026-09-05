@@ -21,13 +21,13 @@ RELATIONSHIP with that business IS.**
 - **Never write to AI See You Production.** No SQL, no migration, no schema change,
   no data write, no API call that mutates. Not through a tool, not through an MCP
   server, not to fix something quickly.
-- **Never connect this application to Production.** No Production connection string,
-  no Production service key, no Production credential in `.env`, in a deployment
-  environment, in a test fixture or in a commit.
-- **The finished repository contains no Production credential and no Production write
-  path.** If you find one, stop and report it.
-- Reading Production is authorised only in the phase that designs it (Phase 5), and
-  only through the audited read path described in the audit. Not before.
+- **Never connect this application to the Production database.** No Production
+  connection string or service key is permitted anywhere in the CRM.
+- **The agent deployment can hold one scoped token for the GET-only Production read
+  contract.** The app and API deployments must not hold it.
+- **The finished repository contains no Production write path.** If you find one,
+  stop and report it.
+- Phase 5 authorises reads only through the audited contract described in the audit.
 
 If a task seems to require a Production write, it does not. Report it as a blocker.
 

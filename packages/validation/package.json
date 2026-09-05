@@ -16,6 +16,7 @@
 		"./field-backfill": "./src/field-backfill.ts",
 		"./field-templates": "./src/field-templates.ts",
 		"./relationship-evidence": "./src/relationship-evidence.ts",
+		"./production-business": "./src/production-business.ts",
 		"./saved-view": "./src/saved-view.ts",
 		"./temporal": "./src/temporal.ts"
 	},

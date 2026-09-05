@@ -277,6 +277,32 @@ enum AgentResponseRating {
   DOWN
 }
 
+enum EntityType {
+  HOTEL
+  HOTEL_GROUP
+  HOTEL_BRAND
+  MANAGEMENT_COMPANY
+  OWNERSHIP_GROUP
+  DESTINATION_ORGANISATION
+  CRUISE_LINE
+  CRUISE_SHIP
+  TOUR_OPERATOR
+  OTHER
+}
+
+model Vertical {
+  id         String    @id @default(cuid())
+  key        String    @unique
+  label      String
+  position   Int
+  archivedAt DateTime?
+
+  companies Company[]
+
+  @@index([position])
+  @@map("vertical")
+}
+
 model Company {
   id          String  @id @default(cuid())
   name        String
@@ -311,6 +337,10 @@ model Company {
   primaryContactId String?  @unique
   primaryContact   Contact? @relation("PrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
 
+  verticalId String?
+  vertical   Vertical? @relation(fields: [verticalId], references: [id], onDelete: SetNull)
+  entityType EntityType @default(OTHER)
+
   enrichmentStatus EnrichmentStatus   @default(PENDING)
   enrichedAt       DateTime?
   enrichmentError  String?
@@ -336,6 +366,8 @@ model Company {
   @@index([name])
   @@index([lastActivityAt])
   @@index([archivedAt])
+  @@index([verticalId])
+  @@index([entityType])
   @@map("company")
 }
 

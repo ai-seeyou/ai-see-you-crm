@@ -59,6 +59,7 @@ const contaminationCompanyId = crypto.randomUUID();
 const chainId = crypto.randomUUID();
 const parentChainId = crypto.randomUUID();
 const structurePropertyId = crypto.randomUUID();
+const chunkPropertyIds = Array.from({ length: 102 }, () => crypto.randomUUID());
 const destinationId = crypto.randomUUID();
 const proofBoundaryEvidence = {
 	contractVersion: "1" as const,
@@ -142,6 +143,7 @@ async function cleanup() {
 				in: [
 					...ids,
 					...committedPropertyIds,
+					...chunkPropertyIds,
 					contaminationPropertyId,
 					structurePropertyId,
 				],
@@ -167,6 +169,7 @@ async function cleanup() {
 				in: [
 					...ids,
 					...committedPropertyIds,
+					...chunkPropertyIds,
 					contaminationPropertyId,
 					structurePropertyId,
 					`chain:${chainId}`,
@@ -183,6 +186,7 @@ async function cleanup() {
 				in: [
 					...ids,
 					...committedPropertyIds,
+					...chunkPropertyIds,
 					contaminationPropertyId,
 					structurePropertyId,
 					`chain:${chainId}`,
@@ -219,6 +223,7 @@ afterAll(async () => {
 
 describe("Production hotel import database behavior", () => {
 	it("uses bounded transaction limits for page and structure writes", () => {
+		expect(PRODUCTION_IMPORT.writeChunkSize).toBe(100);
 		expect(PRODUCTION_IMPORT.transaction).toEqual({
 			maxWait: 10_000,
 			timeout: 120_000,
@@ -607,6 +612,68 @@ describe("Production hotel import database behavior", () => {
 		);
 		expect(restarted.unchanged).toBe(1);
 		expect(restarted.created).toBe(1);
+	});
+
+	it("checkpoints a page only after every bounded write chunk succeeds", async () => {
+		const records = chunkPropertyIds.map((productionPropertyId, index) => ({
+			...record(3),
+			productionPropertyId,
+			canonicalName: `Chunk Hotel ${suffix} ${index}`,
+			propertySlug: `chunk-hotel-${suffix}-${index}`,
+			primaryDomain: null,
+			sourceUpdatedAt: new Date(
+				Date.parse("2026-09-05T00:00:00.000Z") + index,
+			).toISOString(),
+		}));
+		const failedId = chunkPropertyIds.at(-1) ?? "";
+		await db.externalRef.create({
+			data: {
+				recordType: ExternalRecordType.COMPANY,
+				recordId: `missing-chunk-${suffix}`,
+				system: ExternalSystem.PRODUCTION,
+				externalId: failedId,
+				matchMethod: "fixture",
+				matchedBy: MatchActor.HUMAN,
+				confirmedAt: new Date(),
+			},
+		});
+		const pagedClient = clientFor([records, []]);
+		await expect(
+			importProductionHotels(pagedClient, { destination, dryRun: false }),
+		).rejects.toThrow();
+		expect(
+			await db.externalRef.count({
+				where: {
+					system: ExternalSystem.PRODUCTION,
+					externalId: { in: chunkPropertyIds },
+					confirmedAt: { not: null },
+				},
+			}),
+		).toBe(PRODUCTION_IMPORT.writeChunkSize + 1);
+		expect(
+			await db.productionSnapshot.count({
+				where: { productionId: { in: chunkPropertyIds } },
+			}),
+		).toBe(PRODUCTION_IMPORT.writeChunkSize);
+		const state = await db.productionImportState.findUniqueOrThrow({
+			where: { id: scope },
+		});
+		expect(state.cursor).toBeNull();
+		await db.externalRef.delete({
+			where: {
+				system_recordType_externalId: {
+					system: ExternalSystem.PRODUCTION,
+					recordType: ExternalRecordType.COMPANY,
+					externalId: failedId,
+				},
+			},
+		});
+		const restarted = await importProductionHotels(clientFor([records, []]), {
+			destination,
+			dryRun: false,
+		});
+		expect(restarted.unchanged).toBe(PRODUCTION_IMPORT.writeChunkSize);
+		expect(restarted.created).toBe(2);
 	});
 
 	it("takes over an expired lease and records the expired run", async () => {

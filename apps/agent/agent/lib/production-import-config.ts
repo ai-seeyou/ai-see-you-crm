@@ -4,6 +4,7 @@ const SECOND_MS = 1000;
 
 export const PRODUCTION_IMPORT = {
 	pageLimit: 500,
+	writeChunkSize: 100,
 	leaseMs: 6 * HOUR_MS,
 	retryMs: 5 * MINUTE_MS,
 	reconciliationMinimumRatio: 0.8,

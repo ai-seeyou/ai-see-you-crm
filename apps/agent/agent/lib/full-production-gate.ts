@@ -35,6 +35,8 @@ function failureCode(error: string | null | undefined) {
 	if (error.startsWith("[")) return "PRODUCTION_CONTRACT_INVALID";
 	if (error === "Production snapshot changed during pagination")
 		return "PRODUCTION_SNAPSHOT_CHANGED";
+	if (error === "Production pagination repeated a cursor")
+		return "PRODUCTION_CURSOR_REPEATED";
 	if (error === "Production import lease was lost")
 		return "PRODUCTION_IMPORT_LEASE_LOST";
 	return "PRODUCTION_READ_UNKNOWN";

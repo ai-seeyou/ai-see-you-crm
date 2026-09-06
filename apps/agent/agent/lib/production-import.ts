@@ -622,6 +622,7 @@ async function fetchManifest(
 	let cursor: string | undefined;
 	let snapshot = input.snapshot;
 	const pages: FetchedPage[] = [];
+	const cursors = new Set<string>();
 	let readRequests = 0;
 	do {
 		const page = await client.page({
@@ -632,6 +633,12 @@ async function fetchManifest(
 		});
 		if (snapshot && page.snapshot !== snapshot) {
 			throw new Error("Production snapshot changed during pagination");
+		}
+		if (page.nextCursor !== null) {
+			if (cursors.has(page.nextCursor)) {
+				throw new Error("Production pagination repeated a cursor");
+			}
+			cursors.add(page.nextCursor);
 		}
 		await heartbeat();
 		snapshot = page.snapshot;

@@ -446,6 +446,37 @@ describe("Production hotel import database behavior", () => {
 		expect(after).toBe(before);
 	});
 
+	it.each([
+		["a", "a"],
+		["a", "b", "a"],
+	])("rejects cursor cycles before business writes: %j", async (...cursors) => {
+		let requests = 0;
+		const before = await db.externalRef.count({
+			where: { system: ExternalSystem.PRODUCTION },
+		});
+		const client = {
+			async page() {
+				const nextCursor = cursors[requests++] ?? null;
+				return {
+					ok: true as const,
+					contractVersion: "2" as const,
+					snapshot: "2026-09-05T01:00:00.000Z",
+					records: [record(2)],
+					nextCursor,
+				};
+			},
+		} as ProductionReadClient;
+		await expect(
+			importProductionHotels(client, { destination, dryRun: false }),
+		).rejects.toThrow("Production pagination repeated a cursor");
+		expect(requests).toBe(cursors.length);
+		expect(
+			await db.externalRef.count({
+				where: { system: ExternalSystem.PRODUCTION },
+			}),
+		).toBe(before);
+	});
+
 	it("prefers an explicitly pinned snapshot over saved state", async () => {
 		const pinnedSnapshot = "2026-09-05T02:00:00.000Z";
 		await db.productionImportState.upsert({

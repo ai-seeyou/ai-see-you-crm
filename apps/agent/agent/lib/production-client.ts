@@ -36,7 +36,10 @@ export class ProductionReadClient {
 		});
 		if (!response.ok) {
 			const failureCode = response.headers.get("x-crm-failure-code");
-			if (failureCode && /^RPC_(?:HTTP_\d{3}|UNKNOWN)$/.test(failureCode))
+			if (
+				failureCode &&
+				/^RPC_(?:HTTP_\d{3}|PGRST\d{3}|UNKNOWN)$/.test(failureCode)
+			)
 				throw new Error(`Production read failed with ${failureCode}`);
 			throw new Error(`Production read failed with HTTP ${response.status}`);
 		}

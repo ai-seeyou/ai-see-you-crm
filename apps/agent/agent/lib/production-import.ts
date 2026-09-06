@@ -19,6 +19,8 @@ export type ProductionImportOptions = {
 	audit?: boolean;
 	snapshot?: string;
 	fullReconciliation?: boolean;
+	auditScope?: "qualifying-hotels:sydney:idempotency";
+	expectedProductionIds?: string[];
 };
 export type ProductionImportResult = {
 	qualifying: number;
@@ -48,6 +50,35 @@ type FetchedManifest = {
 	snapshot: string;
 	readRequests: number;
 };
+
+function assertApprovedManifest(
+	productionIds: Set<string>,
+	expectedProductionIds?: string[],
+) {
+	if (!expectedProductionIds) return;
+	const actualIds = [...productionIds].sort();
+	const expectedIds = [...expectedProductionIds].sort();
+	if (
+		actualIds.length !== expectedIds.length ||
+		actualIds.some((id, index) => id !== expectedIds[index])
+	) {
+		throw new Error("Production manifest does not match the approved IDs");
+	}
+}
+
+function updatedSinceFor(
+	options: ProductionImportOptions,
+	saved?: {
+		snapshot: string | null;
+		updatedSince: Date | null;
+		sourceWatermark: Date | null;
+	} | null,
+) {
+	if (options.snapshot || options.fullReconciliation) return undefined;
+	return saved?.snapshot
+		? saved.updatedSince?.toISOString()
+		: saved?.sourceWatermark?.toISOString();
+}
 type ProductionCompanyData = {
 	name: string;
 	domain?: string;
@@ -214,6 +245,7 @@ export async function importProductionHotels(
 ): Promise<ProductionImportResult> {
 	const now = options.now ?? new Date();
 	const key = importStateId(options.destination);
+	const runScope = options.auditScope ?? key;
 	const audit = options.audit ?? true;
 	const saved = options.dryRun
 		? null
@@ -221,19 +253,13 @@ export async function importProductionHotels(
 	if (options.fullReconciliation && options.destination) {
 		throw new Error("Full reconciliation cannot use a destination filter");
 	}
-	const updatedSince = options.snapshot
-		? undefined
-		: options.fullReconciliation
-			? undefined
-			: saved?.snapshot
-				? saved.updatedSince?.toISOString()
-				: saved?.sourceWatermark?.toISOString();
+	const updatedSince = updatedSinceFor(options, saved);
 	let runId: string | undefined;
 	const leaseOwner = crypto.randomUUID();
 	const priorFullRun = options.fullReconciliation
 		? await db.productionImportRun.findFirst({
 				where: {
-					scope: key,
+					scope: runScope,
 					status: "COMPLETED",
 					dryRun: false,
 					fullReconciliation: true,
@@ -247,7 +273,7 @@ export async function importProductionHotels(
 	if (audit) {
 		await db.productionImportRun.updateMany({
 			where: {
-				scope: key,
+				scope: runScope,
 				status: "RUNNING",
 				heartbeatAt: {
 					lt: new Date(now.getTime() - PRODUCTION_IMPORT.leaseMs),
@@ -262,7 +288,7 @@ export async function importProductionHotels(
 		runId = (
 			await db.productionImportRun.create({
 				data: {
-					scope: key,
+					scope: runScope,
 					leaseOwner,
 					heartbeatAt: now,
 					destination: options.destination,
@@ -298,6 +324,7 @@ export async function importProductionHotels(
 		const productionIds = new Set(
 			records.map((record) => record.productionPropertyId),
 		);
+		assertApprovedManifest(productionIds, options.expectedProductionIds);
 		if (productionIds.size !== records.length) {
 			const seen = new Set<string>();
 			const duplicates = records

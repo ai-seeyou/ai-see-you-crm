@@ -1,6 +1,7 @@
 import { defineSchedule } from "eve/schedules";
 import {
 	readSydneyCommittedProof,
+	readSydneyIdempotencyProof,
 	readSydneyProductionProof,
 } from "../lib/sydney-production-proof";
 
@@ -11,10 +12,11 @@ export default defineSchedule({
 			Promise.all([
 				readSydneyProductionProof(),
 				readSydneyCommittedProof(),
-			]).then(([dryRun, committed]) => {
+				readSydneyIdempotencyProof(),
+			]).then(([dryRun, committed, idempotency]) => {
 				console.info(
 					"[agent] Sydney Production proof",
-					JSON.stringify({ dryRun, committed }),
+					JSON.stringify({ dryRun, committed, idempotency }),
 				);
 			}),
 		);

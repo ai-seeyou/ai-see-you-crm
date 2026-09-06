@@ -15,6 +15,7 @@ import {
 	productionRefreshPayload,
 	queueProductionRefresh,
 	queueProductionRefreshTask,
+	queueSydneyIdempotencyProof,
 	queueSydneyProductionCommit,
 	queueSydneyProductionDryRun,
 	runProductionRefresh,
@@ -206,6 +207,24 @@ describe("Production hotel import database behavior", () => {
 				expectedCount: 2,
 			}),
 		).rejects.toThrow();
+		const after = await db.externalRef.count({
+			where: { system: ExternalSystem.PRODUCTION },
+		});
+		expect(after).toBe(before);
+	});
+
+	it("applies no records when the approved manifest differs", async () => {
+		const before = await db.externalRef.count({
+			where: { system: ExternalSystem.PRODUCTION },
+		});
+		await expect(
+			importProductionHotels(clientFor([[record(2)]]), {
+				destination,
+				dryRun: false,
+				expectedCount: 1,
+				expectedProductionIds: [crypto.randomUUID()],
+			}),
+		).rejects.toThrow("Production manifest does not match the approved IDs");
 		const after = await db.externalRef.count({
 			where: { system: ExternalSystem.PRODUCTION },
 		});
@@ -451,7 +470,9 @@ describe("Production hotel import database behavior", () => {
 			fullReconciliation: true,
 		});
 	});
+});
 
+describe("Production hotel import proving gates", () => {
 	it("queues a bounded Sydney proving task with its exact contract", async () => {
 		const [taskId, duplicateTaskId] = await Promise.all([
 			queueSydneyProductionDryRun(),
@@ -610,7 +631,14 @@ describe("Production hotel import database behavior", () => {
 	it("reports only sanitized Sydney proof aggregates", async () => {
 		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
 		await db.productionImportRun.deleteMany({
-			where: { scope: "qualifying-hotels:sydney" },
+			where: {
+				scope: {
+					in: [
+						"qualifying-hotels:sydney",
+						"qualifying-hotels:sydney:idempotency",
+					],
+				},
+			},
 		});
 		const startedAt = new Date("2026-09-05T01:00:00.000Z");
 		const completedAt = new Date("2026-09-05T01:00:02.500Z");
@@ -669,7 +697,14 @@ describe("Production hotel import database behavior", () => {
 	it("queues one pinned Sydney commit and stops after completion", async () => {
 		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
 		await db.productionImportRun.deleteMany({
-			where: { scope: "qualifying-hotels:sydney" },
+			where: {
+				scope: {
+					in: [
+						"qualifying-hotels:sydney",
+						"qualifying-hotels:sydney:idempotency",
+					],
+				},
+			},
 		});
 		const approvedStartedAt = new Date("2026-09-05T01:00:00.000Z");
 		const approvedDryRun = await db.productionImportRun.create({
@@ -731,6 +766,57 @@ describe("Production hotel import database behavior", () => {
 			},
 		});
 		expect(await queueSydneyProductionCommit()).toBeNull();
+		const [rerunTaskId, duplicateRerunTaskId] = await Promise.all([
+			queueSydneyIdempotencyProof(),
+			queueSydneyIdempotencyProof(),
+		]);
+		expect(rerunTaskId).not.toBeNull();
+		expect(duplicateRerunTaskId).toBe(rerunTaskId);
+		const rerunTask = await db.agentTask.findUniqueOrThrow({
+			where: { id: rerunTaskId ?? "" },
+			select: { payload: true },
+		});
+		expect(productionRefreshPayload(rerunTask.payload)).toEqual({
+			fullReconciliation: false,
+			destination: "sydney",
+			expectedCount: 228,
+			dryRun: false,
+			snapshot: proofBoundaryEvidence.manifestSnapshot,
+			auditScope: "qualifying-hotels:sydney:idempotency",
+			expectedProductionIds: proofBoundaryEvidence.manifestProductionIds,
+		});
+		await db.agentTask.update({
+			where: { id: rerunTaskId ?? "" },
+			data: { startedAt: new Date(), finishedAt: new Date() },
+		});
+		const rerun = await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney:idempotency",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "FAILED",
+				destination: "sydney",
+				dryRun: false,
+				qualifyingCount: 228,
+				fetchedCount: 228,
+				createdCount: 1,
+				unchangedCount: 227,
+				exceptionCount: 1,
+				boundaryEvidence: proofBoundaryEvidence,
+				completedAt: new Date(),
+			},
+		});
+		expect(await queueSydneyIdempotencyProof()).toBeNull();
+		await db.productionImportRun.update({
+			where: { id: rerun.id },
+			data: {
+				status: "COMPLETED",
+				createdCount: 0,
+				unchangedCount: 228,
+				exceptionCount: 0,
+			},
+		});
+		expect(await queueSydneyIdempotencyProof()).toBeNull();
 		expect(await holdProductionUniverseRefresh()).toBeNull();
 		expect(
 			await db.agentTask.count({

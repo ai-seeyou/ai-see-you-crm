@@ -654,6 +654,69 @@ async function fetchManifest(
 	};
 }
 
+async function writeChunk(
+	records: ProductionBusiness[],
+	runId: string | undefined,
+	leaseOwner: string,
+	now: Date,
+) {
+	return db.$transaction(async (tx) => {
+		if (runId) {
+			const lease = await tx.productionImportRun.updateMany({
+				where: { id: runId, leaseOwner, status: "RUNNING" },
+				data: { heartbeatAt: new Date() },
+			});
+			if (lease.count !== 1)
+				throw new Error("Production import lease was lost");
+		}
+		let created = 0;
+		let updated = 0;
+		let unchanged = 0;
+		const reviewItems: ReturnType<typeof manifestReviewItems> = [];
+		for (const record of records) {
+			const outcome = await writeRecord(tx, record, now);
+			if (outcome === "created") created += 1;
+			else if (outcome === "updated") updated += 1;
+			else if (outcome === "unchanged") unchanged += 1;
+			else
+				reviewItems.push({
+					productionPropertyId: record.productionPropertyId,
+					reason: "Existing Production reference is not confirmed",
+				});
+		}
+		return { created, updated, unchanged, reviewItems };
+	}, PRODUCTION_IMPORT.transaction);
+}
+
+async function writePageChunks(
+	records: ProductionBusiness[],
+	runId: string | undefined,
+	leaseOwner: string,
+	now: Date,
+) {
+	let created = 0;
+	let updated = 0;
+	let unchanged = 0;
+	const reviewItems: ReturnType<typeof manifestReviewItems> = [];
+	for (
+		let offset = 0;
+		offset < records.length;
+		offset += PRODUCTION_IMPORT.writeChunkSize
+	) {
+		const result = await writeChunk(
+			records.slice(offset, offset + PRODUCTION_IMPORT.writeChunkSize),
+			runId,
+			leaseOwner,
+			now,
+		);
+		created += result.created;
+		updated += result.updated;
+		unchanged += result.unchanged;
+		reviewItems.push(...result.reviewItems);
+	}
+	return { created, updated, unchanged, reviewItems };
+}
+
 export async function importProductionHotels(
 	client: ProductionReadClient,
 	options: ProductionImportOptions,
@@ -886,28 +949,18 @@ export async function importProductionHotels(
 		}
 		if (!options.dryRun) {
 			for (const page of pages) {
+				const result = await writePageChunks(
+					page.records,
+					runId,
+					leaseOwner,
+					now,
+				);
+				created += result.created;
+				updated += result.updated;
+				unchanged += result.unchanged;
+				exceptions += result.reviewItems.length;
+				reviewItems.push(...result.reviewItems);
 				await db.$transaction(async (tx) => {
-					if (runId) {
-						const lease = await tx.productionImportRun.updateMany({
-							where: { id: runId, leaseOwner, status: "RUNNING" },
-							data: { heartbeatAt: new Date() },
-						});
-						if (lease.count !== 1)
-							throw new Error("Production import lease was lost");
-					}
-					for (const record of page.records) {
-						const outcome = await writeRecord(tx, record, now);
-						if (outcome === "created") created += 1;
-						else if (outcome === "updated") updated += 1;
-						else if (outcome === "unchanged") unchanged += 1;
-						else {
-							exceptions += 1;
-							reviewItems.push({
-								productionPropertyId: record.productionPropertyId,
-								reason: "Existing Production reference is not confirmed",
-							});
-						}
-					}
 					await tx.productionImportState.upsert({
 						where: { id: key },
 						create: {
@@ -933,10 +986,11 @@ export async function importProductionHotels(
 							exceptionCount: exceptions,
 						},
 					});
-					if (runId)
-						await tx.productionImportRun.update({
-							where: { id: runId },
+					if (runId) {
+						const progress = await tx.productionImportRun.updateMany({
+							where: { id: runId, leaseOwner, status: "RUNNING" },
 							data: {
+								heartbeatAt: new Date(),
 								fetchedCount: created + updated + unchanged + exceptions,
 								createdCount: created,
 								updatedCount: updated,
@@ -945,6 +999,9 @@ export async function importProductionHotels(
 								reviewItems,
 							},
 						});
+						if (progress.count !== 1)
+							throw new Error("Production import lease was lost");
+					}
 				}, PRODUCTION_IMPORT.transaction);
 			}
 		}

@@ -1,7 +1,8 @@
-import { db } from "@crm/db";
+import { db, type Prisma } from "@crm/db";
 import { PRIORITY } from "@crm/db/agent-tasks";
 import { z } from "zod";
 import { productionIdDigest } from "./production-import";
+import { PRODUCTION_IMPORT } from "./production-import-config";
 import {
 	productionBoundaryEvidenceSchema,
 	productionRefreshPayload,
@@ -188,6 +189,76 @@ export async function queueFullUniverseDryRun() {
 			universeGate: "DRY_RUN",
 		}),
 	);
+}
+
+export async function recoverStrandedFullUniverseDryRun() {
+	return db.$transaction(async (tx) => {
+		const now = new Date();
+		const staleBefore = new Date(now.getTime() - PRODUCTION_IMPORT.retryMs);
+		const legacyLeaseAfter = new Date(
+			now.getTime() + PRODUCTION_IMPORT.retryMs,
+		);
+		const tasks = await tx.$queryRaw<
+			Array<{
+				id: string;
+				leasedUntil: Date | null;
+				payload: Prisma.JsonValue | null;
+				startedAt: Date | null;
+			}>
+		>`SELECT "id", "leasedUntil", "payload", "startedAt" FROM "agentTask" WHERE "kind" = 'production-refresh' AND "subject" = ${FULL_UNIVERSE.drySubject} AND "finishedAt" IS NULL AND "attempts" = 1 FOR UPDATE`;
+		if (tasks.length !== 1) return false;
+		const task = tasks[0];
+		if (
+			!task?.leasedUntil ||
+			!task.startedAt ||
+			task.leasedUntil <= legacyLeaseAfter
+		)
+			return false;
+		const payload = productionRefreshPayload(task.payload);
+		if (
+			Object.keys(payload).length !== 3 ||
+			payload.fullReconciliation ||
+			payload.dryRun !== true ||
+			payload.universeGate !== "DRY_RUN"
+		)
+			return false;
+		const activeRuns = await tx.productionImportRun.count({
+			where: { scope: FULL_UNIVERSE.scope, status: "RUNNING" },
+		});
+		if (activeRuns !== 0) return false;
+		const latest = await tx.productionImportRun.findFirst({
+			where: { scope: FULL_UNIVERSE.scope },
+			orderBy: { startedAt: "desc" },
+			select: {
+				status: true,
+				dryRun: true,
+				startedAt: true,
+				completedAt: true,
+				heartbeatAt: true,
+			},
+		});
+		if (
+			latest?.status !== "FAILED" ||
+			latest.dryRun !== true ||
+			latest.startedAt < task.startedAt ||
+			!latest.completedAt ||
+			latest.completedAt > staleBefore ||
+			latest.heartbeatAt > staleBefore
+		)
+			return false;
+		const changed = await tx.agentTask.updateMany({
+			where: {
+				id: task.id,
+				kind: "production-refresh",
+				subject: FULL_UNIVERSE.drySubject,
+				finishedAt: null,
+				attempts: 1,
+				leasedUntil: task.leasedUntil,
+			},
+			data: { dueAt: now, leasedUntil: now },
+		});
+		return changed.count === 1;
+	});
 }
 
 export async function readFullUniverseGateState() {

@@ -331,17 +331,18 @@ export async function holdProductionUniverseRefresh() {
 export async function runProductionRefresh(
 	taskId: string,
 	payload: ProductionRefreshPayload,
+	client?: ProductionReadClient,
 ) {
 	const endpoint = process.env.PRODUCTION_READ_URL;
 	const token = process.env.PRODUCTION_READ_TOKEN;
-	if (!endpoint || !token)
+	if (!client && (!endpoint || !token))
 		return "Production read capability is not configured.";
 	await db.agentTask.update({
 		where: { id: taskId },
 		data: { leasedUntil: new Date(Date.now() + PRODUCTION_IMPORT.leaseMs) },
 	});
 	const result = await importProductionHotels(
-		new ProductionReadClient(endpoint, token),
+		client ?? new ProductionReadClient(endpoint ?? "", token ?? ""),
 		{
 			dryRun: payload.dryRun ?? false,
 			fullReconciliation: payload.fullReconciliation,
@@ -353,7 +354,14 @@ export async function runProductionRefresh(
 			expectedProductionIdDigest: payload.expectedProductionIdDigest,
 			expectedManifestDigest: payload.expectedManifestDigest,
 		},
-	);
+	).catch(async (error) => {
+		const retryAt = new Date(Date.now() + PRODUCTION_IMPORT.retryMs);
+		await db.agentTask.updateMany({
+			where: { id: taskId, finishedAt: null },
+			data: { dueAt: retryAt, leasedUntil: new Date() },
+		});
+		throw error;
+	});
 	const action = payload.dryRun ? "Validated" : "Processed";
 	return `${action} ${result.qualifying} qualifying hotels: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged. Snapshot ${result.snapshot}.`;
 }

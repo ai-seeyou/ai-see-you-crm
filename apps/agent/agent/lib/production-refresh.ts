@@ -12,11 +12,14 @@ const payloadSchema = z
 		expectedCount: z.number().int().nonnegative().optional(),
 		dryRun: z.boolean().optional(),
 		snapshot: z.string().datetime().optional(),
+		auditScope: z.literal("qualifying-hotels:sydney:idempotency").optional(),
+		expectedProductionIds: z.array(z.string().uuid()).optional(),
 	})
 	.strict();
 export type ProductionRefreshPayload = z.infer<typeof payloadSchema>;
 const subjectFor = (payload: ProductionRefreshPayload) => {
 	if (payload.destination) {
+		if (payload.auditScope) return payload.auditScope;
 		return `production-hotel-universe-proving:${payload.destination.toLowerCase()}:${payload.dryRun ? "dry-run" : "commit"}`;
 	}
 	return payload.fullReconciliation
@@ -49,6 +52,16 @@ export async function queueProductionRefreshTask(
 	}
 	if (payload.destination && payload.expectedCount === undefined) {
 		throw new Error("A destination task requires an expected count");
+	}
+	if (
+		payload.auditScope &&
+		(payload.destination !== SYDNEY_PROOF.destination ||
+			payload.expectedCount !== SYDNEY_PROOF.expectedCount ||
+			payload.dryRun !== false ||
+			!payload.snapshot ||
+			payload.expectedProductionIds?.length !== SYDNEY_PROOF.expectedCount)
+	) {
+		throw new Error("The Sydney idempotency task requires its pinned contract");
 	}
 	const subject = subjectFor(payload);
 	const pending = await db.agentTask.findFirst({
@@ -103,6 +116,7 @@ export const SYDNEY_PROOF = {
 	subject: "production-hotel-universe-proving:sydney:dry-run",
 	commitSubject: "production-hotel-universe-proving:sydney:commit",
 	approvedDryRunRuntimeMs: 3129,
+	idempotencyScope: "qualifying-hotels:sydney:idempotency",
 } as const;
 
 export const productionCommittedBoundaryEvidenceSchema =
@@ -218,6 +232,59 @@ export async function queueSydneyProductionCommit() {
 	return approveSydneyProductionProving();
 }
 
+export async function queueSydneyIdempotencyProof() {
+	const completed = await db.productionImportRun.findFirst({
+		where: {
+			scope: SYDNEY_PROOF.idempotencyScope,
+			destination: SYDNEY_PROOF.destination,
+			dryRun: false,
+		},
+		select: { status: true },
+	});
+	if (completed) return null;
+	const committed = await db.productionImportRun.findFirst({
+		where: {
+			scope: SYDNEY_PROOF.scope,
+			destination: SYDNEY_PROOF.destination,
+			dryRun: false,
+			status: "COMPLETED",
+			qualifyingCount: SYDNEY_PROOF.expectedCount,
+			exceptionCount: 0,
+		},
+		orderBy: { completedAt: "asc" },
+		select: {
+			boundaryEvidence: true,
+			fetchedCount: true,
+			createdCount: true,
+			updatedCount: true,
+			unchangedCount: true,
+		},
+	});
+	if (!committed) {
+		throw new Error("A completed Sydney import is required before its rerun");
+	}
+	if (
+		committed.fetchedCount !== SYDNEY_PROOF.expectedCount ||
+		committed.createdCount +
+			committed.updatedCount +
+			committed.unchangedCount !==
+			SYDNEY_PROOF.expectedCount
+	)
+		throw new Error("The completed Sydney import lacks acceptance evidence");
+	const evidence = productionCommittedBoundaryEvidenceSchema.parse(
+		committed.boundaryEvidence,
+	);
+	return queueProductionRefreshTask({
+		fullReconciliation: false,
+		destination: SYDNEY_PROOF.destination,
+		expectedCount: SYDNEY_PROOF.expectedCount,
+		dryRun: false,
+		snapshot: evidence.manifestSnapshot,
+		auditScope: SYDNEY_PROOF.idempotencyScope,
+		expectedProductionIds: evidence.manifestProductionIds,
+	});
+}
+
 export async function holdProductionUniverseRefresh() {
 	return null;
 }
@@ -242,6 +309,8 @@ export async function runProductionRefresh(
 			destination: payload.destination,
 			expectedCount: payload.expectedCount,
 			snapshot: payload.snapshot,
+			auditScope: payload.auditScope,
+			expectedProductionIds: payload.expectedProductionIds,
 		},
 	);
 	const action = payload.dryRun ? "Validated" : "Processed";

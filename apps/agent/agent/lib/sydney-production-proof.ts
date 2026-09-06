@@ -209,3 +209,76 @@ export async function readSydneyCommittedProof() {
 				: null,
 	};
 }
+
+export async function readSydneyIdempotencyProof() {
+	const [run, initial] = await Promise.all([
+		db.productionImportRun.findFirst({
+			where: {
+				scope: SYDNEY_PROOF.idempotencyScope,
+				destination: SYDNEY_PROOF.destination,
+				dryRun: false,
+			},
+			orderBy: { startedAt: "desc" },
+			select: {
+				status: true,
+				qualifyingCount: true,
+				fetchedCount: true,
+				createdCount: true,
+				updatedCount: true,
+				unchangedCount: true,
+				exceptionCount: true,
+				reviewCount: true,
+				boundaryEvidence: true,
+				startedAt: true,
+				completedAt: true,
+			},
+		}),
+		db.productionImportRun.findFirst({
+			where: {
+				scope: SYDNEY_PROOF.scope,
+				destination: SYDNEY_PROOF.destination,
+				dryRun: false,
+				status: "COMPLETED",
+			},
+			orderBy: { completedAt: "asc" },
+			select: { boundaryEvidence: true },
+		}),
+	]);
+	const evidence = productionCommittedBoundaryEvidenceSchema.safeParse(
+		run?.boundaryEvidence,
+	);
+	const initialEvidence = productionCommittedBoundaryEvidenceSchema.safeParse(
+		initial?.boundaryEvidence,
+	);
+	const manifestMatches =
+		evidence.success &&
+		initialEvidence.success &&
+		evidence.data.manifestSnapshot === initialEvidence.data.manifestSnapshot &&
+		evidence.data.manifestProductionIds.every(
+			(id, index) => id === initialEvidence.data.manifestProductionIds[index],
+		);
+	return {
+		runStatus: run?.status ?? null,
+		qualifyingCount: run?.qualifyingCount ?? null,
+		fetchedCount: run?.fetchedCount ?? null,
+		createdCount: run?.createdCount ?? null,
+		updatedCount: run?.updatedCount ?? null,
+		unchangedCount: run?.unchangedCount ?? null,
+		exceptionCount: run?.exceptionCount ?? null,
+		reviewCount: run?.reviewCount ?? null,
+		manifestValid: manifestMatches,
+		passed:
+			run?.status === "COMPLETED" &&
+			run.qualifyingCount === SYDNEY_PROOF.expectedCount &&
+			run.fetchedCount === SYDNEY_PROOF.expectedCount &&
+			run.createdCount === 0 &&
+			run.updatedCount === 0 &&
+			run.unchangedCount === SYDNEY_PROOF.expectedCount &&
+			run.exceptionCount === 0 &&
+			manifestMatches,
+		runtimeMs:
+			run?.completedAt && run.startedAt
+				? Math.max(0, run.completedAt.getTime() - run.startedAt.getTime())
+				: null,
+	};
+}

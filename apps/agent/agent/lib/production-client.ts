@@ -35,6 +35,9 @@ export class ProductionReadClient {
 			headers: { authorization: `Bearer ${this.token}` },
 		});
 		if (!response.ok) {
+			const failureCode = response.headers.get("x-crm-failure-code");
+			if (failureCode && /^RPC_(?:HTTP_\d{3}|UNKNOWN)$/.test(failureCode))
+				throw new Error(`Production read failed with ${failureCode}`);
 			throw new Error(`Production read failed with HTTP ${response.status}`);
 		}
 		return productionBusinessPageSchema.parse(await response.json());

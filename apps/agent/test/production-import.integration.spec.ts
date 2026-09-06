@@ -12,12 +12,14 @@ import {
 	queueApprovedFullUniverseCommit,
 	queueFullUniverseDryRun,
 	readFullUniverseProof,
+	recoverStrandedFullUniverseDryRun,
 } from "../agent/lib/full-production-gate";
 import { ProductionReadClient } from "../agent/lib/production-client";
 import {
 	importProductionHotels,
 	productionIdDigest,
 } from "../agent/lib/production-import";
+import { PRODUCTION_IMPORT } from "../agent/lib/production-import-config";
 import {
 	approveSydneyProductionProving,
 	holdProductionUniverseRefresh,
@@ -1271,7 +1273,182 @@ describe("Production hotel import proving gates", () => {
 		});
 		expect((await readSydneyProductionProof()).manifestValid).toBe(false);
 	});
+});
 
+describe("Full Production universe stranded lease recovery", () => {
+	it("releases only the stranded first full-universe dry-run lease", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: { scope: FULL_UNIVERSE.scope },
+		});
+		const now = new Date();
+		const stale = new Date(now.getTime() - 2 * PRODUCTION_IMPORT.retryMs);
+		const task = await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Stranded full-universe proof",
+				payload: {
+					fullReconciliation: false,
+					dryRun: true,
+					universeGate: "DRY_RUN",
+				},
+				priority: 600,
+				budget: 0,
+				attempts: 1,
+				dueAt: stale,
+				startedAt: stale,
+				leasedUntil: new Date(now.getTime() + PRODUCTION_IMPORT.leaseMs),
+				subject: FULL_UNIVERSE.drySubject,
+			},
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: stale,
+				status: "FAILED",
+				dryRun: true,
+				startedAt: stale,
+				completedAt: stale,
+			},
+		});
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(true);
+		const recovered = await db.agentTask.findUniqueOrThrow({
+			where: { id: task.id },
+			select: { dueAt: true, leasedUntil: true },
+		});
+		expect(recovered.dueAt.getTime()).toBeGreaterThanOrEqual(now.getTime());
+		expect(recovered.leasedUntil?.getTime()).toBeGreaterThanOrEqual(
+			now.getTime(),
+		);
+		const claimed = await claimDue(1, { only: ["production-refresh"] });
+		expect(claimed).toHaveLength(1);
+		expect(claimed[0]?.id).toBe(task.id);
+		expect(claimed[0]?.attempts).toBe(2);
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(false);
+	});
+
+	it("rejects recovery evidence from a committed full-universe run", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: { scope: FULL_UNIVERSE.scope },
+		});
+		const stale = new Date(Date.now() - 2 * PRODUCTION_IMPORT.retryMs);
+		await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Stranded full-universe proof",
+				payload: {
+					fullReconciliation: false,
+					dryRun: true,
+					universeGate: "DRY_RUN",
+				},
+				priority: 600,
+				budget: 0,
+				attempts: 1,
+				dueAt: stale,
+				startedAt: stale,
+				leasedUntil: new Date(Date.now() + PRODUCTION_IMPORT.leaseMs),
+				subject: FULL_UNIVERSE.drySubject,
+			},
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: stale,
+				status: "FAILED",
+				dryRun: false,
+				startedAt: stale,
+				completedAt: stale,
+			},
+		});
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(false);
+	});
+
+	it("rejects unsafe stranded lease recovery states", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: { scope: FULL_UNIVERSE.scope },
+		});
+		const now = new Date();
+		const stale = new Date(now.getTime() - 2 * PRODUCTION_IMPORT.retryMs);
+		const task = await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Unsafe stranded full-universe proof",
+				payload: { fullReconciliation: false, dryRun: true },
+				priority: 600,
+				budget: 0,
+				attempts: 1,
+				dueAt: stale,
+				startedAt: stale,
+				leasedUntil: new Date(now.getTime() + PRODUCTION_IMPORT.leaseMs),
+				subject: FULL_UNIVERSE.drySubject,
+			},
+		});
+		const run = await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: stale,
+				status: "FAILED",
+				dryRun: true,
+				startedAt: stale,
+				completedAt: stale,
+			},
+		});
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(false);
+		await db.agentTask.update({
+			where: { id: task.id },
+			data: {
+				payload: {
+					fullReconciliation: false,
+					dryRun: true,
+					universeGate: "DRY_RUN",
+				},
+				leasedUntil: new Date(now.getTime() + PRODUCTION_IMPORT.retryMs),
+			},
+		});
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(false);
+		await db.agentTask.update({
+			where: { id: task.id },
+			data: {
+				leasedUntil: new Date(now.getTime() + PRODUCTION_IMPORT.leaseMs),
+			},
+		});
+		await db.productionImportRun.update({
+			where: { id: run.id },
+			data: { heartbeatAt: new Date(), completedAt: new Date() },
+		});
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(false);
+		await db.productionImportRun.update({
+			where: { id: run.id },
+			data: { heartbeatAt: stale, completedAt: stale },
+		});
+		await db.agentTask.update({
+			where: { id: task.id },
+			data: { attempts: 2 },
+		});
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(false);
+		await db.agentTask.update({
+			where: { id: task.id },
+			data: { attempts: 1 },
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "RUNNING",
+				dryRun: true,
+			},
+		});
+		expect(await recoverStrandedFullUniverseDryRun()).toBe(false);
+	});
+});
+
+describe("Production hotel import full universe gate", () => {
 	it("gates the full universe through exact durable dry-run evidence", async () => {
 		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
 		await db.productionImportRun.deleteMany({

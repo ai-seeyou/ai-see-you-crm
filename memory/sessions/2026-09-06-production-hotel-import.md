@@ -5,9 +5,13 @@
 
 ## Summary
 
-Sydney contains 228 imported hotels and passes rerun idempotency. Production PR 65 is merged but its deployment is blocked by automatic approval review. CRM timestamp and pagination guard corrections are live. The temporary operator role password is expired with zero sessions. Full-universe certification remains incomplete.
+CRM contains all 4,996 certified hotels. The complete import and post-rotation idempotent rerun pass independent verification.
+Production PR 65 and CRM PRs 26 and 27 are deployed. Daily incremental and weekly reconciliation schedules are enabled.
+The expired temporary operator role still needs Supabase administrator removal.
+Current acceptance evidence is `docs/production-hotel-import-acceptance-2026-09-06.md`.
+Earlier actions and continuation entries preserve chronological history. Later founder rulings and current acceptance evidence supersede their status claims.
 
-## Actions taken
+## Historical actions taken
 
 - Read and verified the programme handover, foundation audit, repository rules, and area documentation.
 - Fixed future relationship filtering and blocked employer move history in PR 11.
@@ -17,7 +21,7 @@ Sydney contains 228 imported hotels and passes rerun idempotency. Production PR 
 - Built and independently reviewed Production PR 49.
 - Merged Production PR 49 as 2f48a2e.
 - Deployed the Production crm-universe-read function and scoped database role.
-- Proved the role can select one view and write zero Production relations.
+- Initial checks incorrectly certify zero writable relations. Later cross-schema verification disproves that role-based boundary.
 - Verified unauthorized GET returns 401 and authenticated POST returns 405.
 - Verified authenticated Sydney GET returns 228 unique HOTEL records.
 - Added the idempotent CRM import, audit records, leases, durable tasks, and weekly reconciliation.
@@ -73,7 +77,7 @@ Sydney contains 228 imported hotels and passes rerun idempotency. Production PR 
 - QA flags, trend flags, sealed generations, and destination completion do not define recommendation validity.
 - Production IDs are the only canonical match key.
 - Domains never merge properties.
-- Chain identifiers remain cached evidence only. CRM does not infer relationships from them.
+- Reliable Production chain identifiers map to structural CRM relationships. Names and domains never establish those relationships.
 - Daily incremental refresh and weekly full reconciliation use durable AgentTask rows.
 - Reconciliation confirms absences twice before marking imported property references stale.
 - Diagnostic responses expose only bounded HTTP or PGRST codes and never private response details.
@@ -82,21 +86,19 @@ Sydney contains 228 imported hotels and passes rerun idempotency. Production PR 
 ## Rules learned
 
 - CRM receives only the endpoint URL and scoped bearer token. It never receives the Production database URL.
-- Production runtime uses a dedicated role with one SELECT grant and no effective write privilege.
+- Production runtime uses the scoped GET-only Edge contract and guarded STABLE SECURITY DEFINER RPCs, not the rejected database-role design.
+- Each RPC reads the approved view only after its GET and internal capability checks pass.
 - A proving import must validate a frozen identifier manifest before CRM business writes.
 - Existing unconfirmed Production references require review and remain retriable.
 
 ## Pending items
 
-- Resolve automatic approval review's block on the explicitly approved PR 65 Production-side migration.
-- Apply only the reviewed precision migration and deploy the matching v2 function after resolving that block.
-- Verify the exact live signature, private view grants, GET-only execution, and microsecond pagination.
-- Recover the old full dry-run task only after proving its invocation is dead. Its last known heartbeat is 06:44:26 UTC.
-- Complete the full-universe dry run and certify its frozen manifest.
-- Run the full Production universe import only after dry-run certification.
-- Report final totals, destinations, countries, chain identifiers, exceptions, reviews, runtime, and incremental readiness.
+- Complete the reviewed expired operator-role removal through Supabase-managed administration.
+- Observe the first future scheduled incremental run. Its implementation, watermark, and activation gate already pass verification.
+- Continue commercial workflow acceptance with the complete hotel universe.
+- Preserve the four unrelated Production CI baseline issues for separate remediation.
 
-## Data discovered
+## Historical data discovered
 
 - Production project reference: tnskqujimizlsmsmonor.
 - Production PR 49: https://github.com/ai-seeyou/tri/pull/49.

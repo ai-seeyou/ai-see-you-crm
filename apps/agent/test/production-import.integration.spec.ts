@@ -7,8 +7,17 @@ import {
 	RecordSource,
 } from "@crm/db";
 import type { ProductionBusiness } from "@crm/validation/production-business";
+import {
+	FULL_UNIVERSE,
+	queueApprovedFullUniverseCommit,
+	queueFullUniverseDryRun,
+	readFullUniverseProof,
+} from "../agent/lib/full-production-gate";
 import type { ProductionReadClient } from "../agent/lib/production-client";
-import { importProductionHotels } from "../agent/lib/production-import";
+import {
+	importProductionHotels,
+	productionIdDigest,
+} from "../agent/lib/production-import";
 import {
 	approveSydneyProductionProving,
 	holdProductionUniverseRefresh,
@@ -44,6 +53,10 @@ const committedCompanyIds = Array.from({ length: 228 }, () =>
 );
 const contaminationPropertyId = crypto.randomUUID();
 const contaminationCompanyId = crypto.randomUUID();
+const chainId = crypto.randomUUID();
+const parentChainId = crypto.randomUUID();
+const structurePropertyId = crypto.randomUUID();
+const destinationId = crypto.randomUUID();
 const proofBoundaryEvidence = {
 	contractVersion: "1" as const,
 	httpMethod: "GET" as const,
@@ -55,10 +68,33 @@ const proofBoundaryEvidence = {
 const record = (index: number): ProductionBusiness => ({
 	productionPropertyId: ids[index] ?? crypto.randomUUID(),
 	canonicalName: `Import Hotel ${suffix} ${index}`,
-	destination: { id: crypto.randomUUID(), name: "Sydney", slug: destination },
+	propertySlug: `import-hotel-${index}`,
+	destination: {
+		id: destinationId,
+		name: "Sydney",
+		slug: destination,
+		type: "city",
+	},
 	country: { name: "Australia", code: "AU" },
 	primaryDomain: index < 2 ? `shared-${suffix}.test` : null,
+	brand: null,
+	ownershipStatus: "independent_confirmed",
 	chain: null,
+	parentChain: null,
+	locality: null,
+	commercialKnowledge: {
+		canonicalOwnership: null,
+		chainScale: null,
+		propertyPositioning: null,
+		accommodationType: null,
+		starRating: null,
+		heritageStatus: null,
+		locationContexts: [],
+		facilityPresence: [],
+		policyCharacteristics: [],
+		provenance: [],
+	},
+	recommendationSummary: null,
 	entityType: "HOTEL",
 	vertical: "HOTEL",
 	firstQualifiedAt: "2026-09-01T00:00:00.000Z",
@@ -71,7 +107,7 @@ function clientFor(pages: ProductionBusiness[][]): ProductionReadClient {
 			const index = input.cursor ? Number(input.cursor) : 0;
 			return {
 				ok: true as const,
-				contractVersion: "1" as const,
+				contractVersion: "2" as const,
 				snapshot: "2026-09-05T01:00:00.000Z",
 				records: pages[index] ?? [],
 				nextCursor: index + 1 < pages.length ? String(index + 1) : null,
@@ -83,7 +119,14 @@ function clientFor(pages: ProductionBusiness[][]): ProductionReadClient {
 async function cleanup() {
 	await db.productionImportRun.deleteMany({
 		where: {
-			scope: { in: [scope, "qualifying-hotels", "qualifying-hotels:sydney"] },
+			scope: {
+				in: [
+					scope,
+					"qualifying-hotels",
+					"qualifying-hotels:sydney",
+					"qualifying-hotels:sydney:idempotency",
+				],
+			},
 		},
 	});
 	await db.productionImportState.deleteMany({
@@ -93,7 +136,24 @@ async function cleanup() {
 	await db.productionSnapshot.deleteMany({
 		where: {
 			productionId: {
-				in: [...ids, ...committedPropertyIds, contaminationPropertyId],
+				in: [
+					...ids,
+					...committedPropertyIds,
+					contaminationPropertyId,
+					structurePropertyId,
+				],
+			},
+		},
+	});
+	await db.externalRelationshipRef.deleteMany({
+		where: {
+			system: ExternalSystem.PRODUCTION,
+			externalId: {
+				in: [
+					...ids.map((id) => `property:${id}:belongs-to:chain:${chainId}`),
+					`property:${structurePropertyId}:belongs-to:chain:${chainId}`,
+					`chain:${chainId}:belongs-to:chain:${parentChainId}`,
+				],
 			},
 		},
 	});
@@ -101,7 +161,14 @@ async function cleanup() {
 		where: {
 			system: ExternalSystem.PRODUCTION,
 			externalId: {
-				in: [...ids, ...committedPropertyIds, contaminationPropertyId],
+				in: [
+					...ids,
+					...committedPropertyIds,
+					contaminationPropertyId,
+					structurePropertyId,
+					`chain:${chainId}`,
+					`chain:${parentChainId}`,
+				],
 			},
 		},
 		select: { recordId: true },
@@ -110,7 +177,14 @@ async function cleanup() {
 		where: {
 			system: ExternalSystem.PRODUCTION,
 			externalId: {
-				in: [...ids, ...committedPropertyIds, contaminationPropertyId],
+				in: [
+					...ids,
+					...committedPropertyIds,
+					contaminationPropertyId,
+					structurePropertyId,
+					`chain:${chainId}`,
+					`chain:${parentChainId}`,
+				],
 			},
 		},
 	});
@@ -194,6 +268,30 @@ describe("Production hotel import database behavior", () => {
 		expect(preserved.description).toBe("CRM-owned note");
 		expect(preserved.source).toBe(RecordSource.MANUAL);
 		expect(preserved.city).toBeNull();
+		await db.productionBusinessProfile.delete({
+			where: { companyId: firstRef?.recordId },
+		});
+		const enriched = await importProductionHotels(
+			clientFor([[changed, record(1)]]),
+			{ destination, dryRun: false },
+		);
+		expect(enriched.updated).toBe(1);
+		expect(enriched.unchanged).toBe(1);
+		const stableRef = await db.externalRef.findUniqueOrThrow({
+			where: {
+				system_recordType_externalId: {
+					system: ExternalSystem.PRODUCTION,
+					recordType: ExternalRecordType.COMPANY,
+					externalId: ids[0] ?? "",
+				},
+			},
+		});
+		expect(stableRef.recordId).toBe(firstRef?.recordId);
+		expect(
+			await db.productionBusinessProfile.count({
+				where: { companyId: firstRef?.recordId },
+			}),
+		).toBe(1);
 	});
 
 	it("applies no records when the expected count fails", async () => {
@@ -211,6 +309,120 @@ describe("Production hotel import database behavior", () => {
 			where: { system: ExternalSystem.PRODUCTION },
 		});
 		expect(after).toBe(before);
+	});
+
+	it("stores governed fields and maps chain structure by Production ID", async () => {
+		const structured = {
+			...record(3),
+			productionPropertyId: structurePropertyId,
+			brand: "Harbour Collection",
+			ownershipStatus: "chained" as const,
+			chain: { id: chainId, name: "Harbour Hotels" },
+			parentChain: { id: parentChainId, name: "Global Lodging" },
+			locality: {
+				id: crypto.randomUUID(),
+				name: "Circular Quay",
+				slug: "circular-quay",
+				type: "precinct" as const,
+			},
+			commercialKnowledge: {
+				...record(3).commercialKnowledge,
+				starRating: "five-star",
+				locationContexts: ["harbour"],
+			},
+		};
+		const first = await importProductionHotels(clientFor([[structured]]), {
+			destination,
+			dryRun: false,
+		});
+		expect(first.created).toBe(1);
+		const propertyRef = await db.externalRef.findUniqueOrThrow({
+			where: {
+				system_recordType_externalId: {
+					system: ExternalSystem.PRODUCTION,
+					recordType: ExternalRecordType.COMPANY,
+					externalId: structured.productionPropertyId,
+				},
+			},
+		});
+		const profile = await db.productionBusinessProfile.findUniqueOrThrow({
+			where: { companyId: propertyRef.recordId },
+		});
+		expect(profile.brandText).toBe("Harbour Collection");
+		expect(profile.ownershipStatus).toBe("chained");
+		expect(profile.commercialKnowledge).toMatchObject({
+			starRating: "five-star",
+			locationContexts: ["harbour"],
+		});
+		const structureRefs = await db.externalRef.findMany({
+			where: {
+				system: ExternalSystem.PRODUCTION,
+				externalId: { in: [`chain:${chainId}`, `chain:${parentChainId}`] },
+			},
+		});
+		expect(structureRefs).toHaveLength(2);
+		expect(new Set(structureRefs.map((ref) => ref.recordId)).size).toBe(2);
+		const relationships = await db.externalRelationshipRef.findMany({
+			where: {
+				system: ExternalSystem.PRODUCTION,
+				externalId: {
+					in: [
+						`property:${structured.productionPropertyId}:belongs-to:chain:${chainId}`,
+						`chain:${chainId}:belongs-to:chain:${parentChainId}`,
+					],
+				},
+			},
+		});
+		expect(relationships).toHaveLength(2);
+		const replay = await importProductionHotels(clientFor([[structured]]), {
+			destination,
+			dryRun: false,
+		});
+		expect(replay.unchanged).toBe(1);
+		expect(
+			await db.productionBusinessProfile.count({
+				where: { productionPropertyId: structured.productionPropertyId },
+			}),
+		).toBe(1);
+		const localityChanged = {
+			...structured,
+			locality: { ...structured.locality, name: "The Rocks" },
+			sourceUpdatedAt: "2026-09-05T00:05:00.000Z",
+		};
+		const refreshed = await importProductionHotels(
+			clientFor([[localityChanged]]),
+			{ destination, dryRun: false },
+		);
+		expect(refreshed.updated).toBe(1);
+		expect(
+			await db.productionBusinessProfile.findUniqueOrThrow({
+				where: { productionPropertyId: structured.productionPropertyId },
+				select: { localityName: true },
+			}),
+		).toEqual({ localityName: "The Rocks" });
+		const independent = {
+			...localityChanged,
+			ownershipStatus: "independent_confirmed" as const,
+			chain: null,
+			parentChain: null,
+			sourceUpdatedAt: "2026-09-05T00:10:00.000Z",
+		};
+		await importProductionHotels(clientFor([[independent]]), {
+			destination,
+			dryRun: false,
+		});
+		const staleRelationship =
+			await db.externalRelationshipRef.findUniqueOrThrow({
+				where: {
+					system_externalId: {
+						system: ExternalSystem.PRODUCTION,
+						externalId: `property:${structured.productionPropertyId}:belongs-to:chain:${chainId}`,
+					},
+				},
+				include: { relationship: true },
+			});
+		expect(staleRelationship.staleAt).not.toBeNull();
+		expect(staleRelationship.relationship.validTo).not.toBeNull();
 	});
 
 	it("applies no records when the approved manifest differs", async () => {
@@ -248,7 +460,7 @@ describe("Production hotel import database behavior", () => {
 				snapshots.push(input.snapshot);
 				return {
 					ok: true as const,
-					contractVersion: "1" as const,
+					contractVersion: "2" as const,
 					snapshot: input.snapshot ?? pinnedSnapshot,
 					records: [],
 					nextCursor: null,
@@ -559,7 +771,7 @@ describe("Production hotel import proving gates", () => {
 		globalThis.fetch = async () =>
 			Response.json({
 				ok: true,
-				contractVersion: "1",
+				contractVersion: "2",
 				snapshot: "2026-09-05T01:00:00.000Z",
 				records: Array.from({ length: 228 }, (_, index) => ({
 					...record(index + 20),
@@ -1016,5 +1228,170 @@ describe("Production hotel import proving gates", () => {
 			},
 		});
 		expect((await readSydneyProductionProof()).manifestValid).toBe(false);
+	});
+
+	it("gates the full universe through exact durable dry-run evidence", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: {
+				scope: {
+					in: [FULL_UNIVERSE.scope, "qualifying-hotels:sydney:idempotency"],
+				},
+			},
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney:idempotency",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: false,
+				qualifyingCount: 228,
+				fetchedCount: 228,
+				unchangedCount: 228,
+				exceptionCount: 0,
+				completedAt: new Date(),
+			},
+		});
+		const activeRun = await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "RUNNING",
+				dryRun: true,
+			},
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		await db.productionImportRun.delete({ where: { id: activeRun.id } });
+		await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Sydney task still active",
+				payload: { fullReconciliation: false },
+				priority: 600,
+				budget: 0,
+				dueAt: new Date(),
+				subject: "production-hotel-universe-proving:sydney:commit",
+			},
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		const queued = await Promise.all([
+			queueFullUniverseDryRun(),
+			queueFullUniverseDryRun(),
+		]);
+		expect(queued.filter(Boolean)).toHaveLength(1);
+		const dryTask = await db.agentTask.findFirstOrThrow({
+			where: { subject: FULL_UNIVERSE.drySubject },
+			select: { payload: true },
+		});
+		expect(productionRefreshPayload(dryTask.payload)).toEqual({
+			fullReconciliation: false,
+			dryRun: true,
+			universeGate: "DRY_RUN",
+		});
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		const snapshot = "2026-09-06T01:00:00.000Z";
+		const fullIds = [crypto.randomUUID(), crypto.randomUUID()];
+		const digest = await productionIdDigest(fullIds);
+		const manifestDigest = "a".repeat(64);
+		await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				dryRun: true,
+				qualifyingCount: 2,
+				fetchedCount: 2,
+				readRequestCount: 1,
+				boundaryEvidence: {
+					contractVersion: "2",
+					httpMethod: "GET",
+					readRequests: 1,
+					clientEvidence: "GET_ONLY_HTTP_CLIENT",
+					manifestSnapshot: snapshot,
+					manifestProductionIds: fullIds,
+					manifestProductionIdDigest: digest,
+					manifestPayloadDigest: manifestDigest,
+				},
+				completedAt: new Date(),
+			},
+		});
+		await expect(
+			queueApprovedFullUniverseCommit({
+				expectedCount: 2,
+				snapshot,
+				productionIdDigest: "b".repeat(64),
+				manifestDigest,
+			}),
+		).rejects.toThrow("does not match dry-run evidence");
+		const commitId = await queueApprovedFullUniverseCommit({
+			expectedCount: 2,
+			snapshot,
+			productionIdDigest: digest,
+			manifestDigest,
+		});
+		expect(commitId).not.toBeNull();
+		const commit = await db.agentTask.findUniqueOrThrow({
+			where: { id: commitId ?? "" },
+			select: { payload: true },
+		});
+		expect(productionRefreshPayload(commit.payload)).toEqual({
+			fullReconciliation: false,
+			dryRun: false,
+			universeGate: "COMMIT",
+			expectedCount: 2,
+			snapshot,
+			expectedProductionIdDigest: digest,
+			expectedManifestDigest: manifestDigest,
+		});
+		expect(await readFullUniverseProof(true)).toMatchObject({
+			runStatus: "COMPLETED",
+			dryRun: true,
+			qualifyingCount: 2,
+			readRequestCount: 1,
+			manifestSnapshot: snapshot,
+			productionIdDigest: digest,
+			manifestDigest,
+			manifestValid: true,
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				dryRun: false,
+				qualifyingCount: 2,
+				fetchedCount: 2,
+				createdCount: 2,
+				exceptionCount: 0,
+				boundaryEvidence: {
+					contractVersion: "2",
+					httpMethod: "GET",
+					readRequests: 1,
+					clientEvidence: "GET_ONLY_HTTP_CLIENT",
+					manifestSnapshot: snapshot,
+					manifestProductionIds: fullIds,
+					manifestProductionIdDigest: digest,
+					manifestPayloadDigest: manifestDigest,
+				},
+				completedAt: new Date(),
+			},
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		expect(
+			await queueApprovedFullUniverseCommit({
+				expectedCount: 2,
+				snapshot,
+				productionIdDigest: digest,
+				manifestDigest,
+			}),
+		).toBeNull();
 	});
 });

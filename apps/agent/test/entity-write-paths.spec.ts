@@ -8,6 +8,8 @@ const MODELS = [
 	"entityRelationship",
 	"contactAssignment",
 	"externalRef",
+	"externalRelationshipRef",
+	"productionBusinessProfile",
 	"vertical",
 	"opportunityEntity",
 ] as const;

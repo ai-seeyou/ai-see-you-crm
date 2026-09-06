@@ -4,14 +4,33 @@ import { ProductionReadClient } from "../agent/lib/production-client";
 const record = {
 	productionPropertyId: "20000000-0000-4000-8000-000000000001",
 	canonicalName: "Harbour Hotel",
+	propertySlug: "harbour-hotel",
 	destination: {
 		id: "30000000-0000-4000-8000-000000000001",
 		name: "Sydney",
 		slug: "sydney",
+		type: "city",
 	},
 	country: { name: "Australia", code: "AU" },
 	primaryDomain: "example.com",
+	brand: null,
+	ownershipStatus: "independent_confirmed",
 	chain: null,
+	parentChain: null,
+	locality: null,
+	commercialKnowledge: {
+		canonicalOwnership: null,
+		chainScale: null,
+		propertyPositioning: null,
+		accommodationType: null,
+		starRating: null,
+		heritageStatus: null,
+		locationContexts: [],
+		facilityPresence: [],
+		policyCharacteristics: [],
+		provenance: [],
+	},
+	recommendationSummary: null,
 	entityType: "HOTEL",
 	vertical: "HOTEL",
 	firstQualifiedAt: "2026-09-01T00:00:00.000Z",
@@ -25,7 +44,7 @@ describe("ProductionReadClient", () => {
 			requested = new Request(input, init);
 			return Response.json({
 				ok: true,
-				contractVersion: "1",
+				contractVersion: "2",
 				snapshot: "2026-09-05T00:00:00.000Z",
 				records: [record],
 				nextCursor: null,
@@ -52,12 +71,101 @@ describe("ProductionReadClient", () => {
 			(async () =>
 				Response.json({
 					ok: true,
-					contractVersion: "1",
+					contractVersion: "2",
 					snapshot: "2026-09-05T00:00:00.000Z",
 					records: [{ ...record, entityType: "RESTAURANT" }],
 					nextCursor: null,
 				})) as typeof fetch,
 		);
 		expect(client.page({ limit: 500 })).rejects.toThrow();
+	});
+
+	it("rejects provenance source references outside the governed contract", async () => {
+		const client = new ProductionReadClient(
+			"https://production.example/internal/crm",
+			"scoped-token",
+			(async () =>
+				Response.json({
+					ok: true,
+					contractVersion: "2",
+					snapshot: "2026-09-05T00:00:00.000Z",
+					records: [
+						{
+							...record,
+							commercialKnowledge: {
+								...record.commercialKnowledge,
+								provenance: [
+									{
+										attribute: "star_rating",
+										value: "five-star",
+										evidenceClass: "primary",
+										evidenceSourceReference: "private-source",
+										evidenceSightedAt: "2026-09-05T00:00:00.000Z",
+										modelVersion: "governed-v1",
+									},
+								],
+							},
+						},
+					],
+					nextCursor: null,
+				})) as typeof fetch,
+		);
+		expect(client.page({ limit: 500 })).rejects.toThrow();
+	});
+
+	it("parses governed knowledge and certified recommendation summaries", async () => {
+		const expanded = {
+			...record,
+			commercialKnowledge: {
+				...record.commercialKnowledge,
+				starRating: "five-star",
+				locationContexts: ["harbour"],
+				provenance: [
+					{
+						attribute: "star_rating",
+						value: "five-star",
+						evidenceClass: "approved",
+						evidenceSightedAt: "2026-09-05T00:00:00.000Z",
+						modelVersion: "governed-v1",
+					},
+				],
+			},
+			recommendationSummary: {
+				pulseId: "40000000-0000-4000-8000-000000000001",
+				pulseLabel: "August 2026",
+				periodStart: "2026-08-01",
+				periodEnd: "2026-08-31",
+				generation: "Current",
+				certifiedAt: "2026-09-05T00:00:00.000Z",
+				markets: [
+					{
+						market: "UK",
+						recommendationCount: 12,
+						totalPossible: 20,
+						recommendationShare: 0.6,
+						averageIntentShare: 0.5,
+						weightedScore: 8.5,
+						primaryCount: 4,
+						intentsRecommended: 6,
+						topIntentCount: 3,
+						topIntentConcentration: 0.25,
+						rank: 2,
+					},
+				],
+			},
+		};
+		const client = new ProductionReadClient(
+			"https://production.example/internal/crm",
+			"scoped-token",
+			(async () =>
+				Response.json({
+					ok: true,
+					contractVersion: "2",
+					snapshot: "2026-09-05T00:00:00.000Z",
+					records: [expanded],
+					nextCursor: null,
+				})) as typeof fetch,
+		);
+		expect((await client.page({ limit: 500 })).records[0]).toEqual(expanded);
 	});
 });

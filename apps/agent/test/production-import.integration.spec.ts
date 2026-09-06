@@ -13,7 +13,7 @@ import {
 	queueFullUniverseDryRun,
 	readFullUniverseProof,
 } from "../agent/lib/full-production-gate";
-import type { ProductionReadClient } from "../agent/lib/production-client";
+import { ProductionReadClient } from "../agent/lib/production-client";
 import {
 	importProductionHotels,
 	productionIdDigest,
@@ -33,6 +33,7 @@ import {
 	readSydneyCommittedProof,
 	readSydneyProductionProof,
 } from "../agent/lib/sydney-production-proof";
+import { claimDue } from "../agent/lib/tasks";
 
 const suffix = (process.env.TEST_RUN_ID ?? crypto.randomUUID())
 	.replace(/[^a-z0-9]/gi, "")
@@ -681,6 +682,47 @@ describe("Production hotel import database behavior", () => {
 		expect(productionRefreshPayload(fullTask.payload)).toEqual({
 			fullReconciliation: true,
 		});
+	});
+
+	it("releases a failed refresh lease for bounded retry", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		const task = await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Test failed refresh lease release.",
+				payload: { fullReconciliation: false },
+				priority: 600,
+				budget: 0,
+				dueAt: new Date(),
+				leasedUntil: new Date(Date.now() + 60_000),
+				subject: `failed-refresh:${suffix}`,
+			},
+		});
+		const failedClient = new ProductionReadClient(
+			"https://production.test/read",
+			"test-token",
+			async () => new Response(null, { status: 500 }),
+		);
+		await expect(
+			runProductionRefresh(
+				task.id,
+				{
+					fullReconciliation: false,
+					destination,
+					expectedCount: 1,
+					dryRun: true,
+				},
+				failedClient,
+			),
+		).rejects.toThrow("Production read failed with HTTP 500");
+		const failed = await db.agentTask.findUniqueOrThrow({
+			where: { id: task.id },
+			select: { dueAt: true, finishedAt: true, leasedUntil: true },
+		});
+		expect(failed.finishedAt).toBeNull();
+		expect(failed.leasedUntil?.getTime()).toBeLessThanOrEqual(Date.now());
+		expect(failed.dueAt.getTime()).toBeGreaterThan(Date.now());
+		expect(await claimDue(1, { only: ["production-refresh"] })).toEqual([]);
 	});
 });
 

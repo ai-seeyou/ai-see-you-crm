@@ -324,10 +324,6 @@ export async function queueSydneyIdempotencyProof() {
 	});
 }
 
-export async function holdProductionUniverseRefresh() {
-	return null;
-}
-
 export async function runProductionRefresh(
 	taskId: string,
 	payload: ProductionRefreshPayload,

@@ -80,6 +80,21 @@ describe("ProductionReadClient", () => {
 		expect(client.page({ limit: 500 })).rejects.toThrow();
 	});
 
+	it("reports only an allow-listed upstream failure code", async () => {
+		const client = new ProductionReadClient(
+			"https://production.example/internal/crm",
+			"scoped-token",
+			(async () =>
+				new Response("private detail", {
+					status: 502,
+					headers: { "X-CRM-Failure-Code": "RPC_HTTP_400" },
+				})) as typeof fetch,
+		);
+		expect(client.page({ limit: 500 })).rejects.toThrow(
+			"Production read failed with RPC_HTTP_400",
+		);
+	});
+
 	it("rejects provenance source references outside the governed contract", async () => {
 		const client = new ProductionReadClient(
 			"https://production.example/internal/crm",

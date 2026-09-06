@@ -945,7 +945,7 @@ export async function importProductionHotels(
 								reviewItems,
 							},
 						});
-				});
+				}, PRODUCTION_IMPORT.transaction);
 			}
 		}
 		if (exceptions > 0) {
@@ -1128,7 +1128,7 @@ export async function importProductionHotels(
 							exceptionCount: exceptions,
 						},
 					});
-			});
+			}, PRODUCTION_IMPORT.transaction);
 		return {
 			qualifying: records.length,
 			created,

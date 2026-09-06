@@ -6,6 +6,7 @@ import { PRODUCTION_IMPORT } from "./production-import-config";
 import {
 	productionBoundaryEvidenceSchema,
 	productionRefreshPayload,
+	queueProductionRefresh,
 	SYDNEY_PROOF,
 } from "./production-refresh";
 
@@ -97,6 +98,13 @@ async function completedFullCommit() {
 		}),
 	);
 	return validity.some(Boolean);
+}
+
+export async function queueProductionRefreshAfterFullImport(
+	fullReconciliation: boolean,
+) {
+	if (!(await completedFullCommit())) return null;
+	return queueProductionRefresh(fullReconciliation);
 }
 
 async function completedFullDryRun() {

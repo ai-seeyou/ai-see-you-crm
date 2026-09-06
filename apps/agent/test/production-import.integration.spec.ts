@@ -11,6 +11,7 @@ import {
 	FULL_UNIVERSE,
 	queueApprovedFullUniverseCommit,
 	queueFullUniverseDryRun,
+	queueProductionRefreshAfterFullImport,
 	readFullUniverseProof,
 	recoverStrandedFullUniverseDryRun,
 } from "../agent/lib/full-production-gate";
@@ -22,7 +23,6 @@ import {
 import { PRODUCTION_IMPORT } from "../agent/lib/production-import-config";
 import {
 	approveSydneyProductionProving,
-	holdProductionUniverseRefresh,
 	productionRefreshPayload,
 	queueProductionRefresh,
 	queueProductionRefreshTask,
@@ -218,6 +218,13 @@ afterAll(async () => {
 });
 
 describe("Production hotel import database behavior", () => {
+	it("uses bounded transaction limits for page and structure writes", () => {
+		expect(PRODUCTION_IMPORT.transaction).toEqual({
+			maxWait: 10_000,
+			timeout: 120_000,
+		});
+	});
+
 	it("creates separate properties sharing a domain and reruns unchanged", async () => {
 		const client = clientFor([[record(0), record(1)]]);
 		const first = await importProductionHotels(client, {
@@ -1013,7 +1020,6 @@ describe("Production hotel import proving gates", () => {
 		await expect(queueSydneyProductionCommit()).rejects.toThrow(
 			"completed 228-hotel Sydney dry-run",
 		);
-		expect(await holdProductionUniverseRefresh()).toBeNull();
 		await db.productionImportRun.update({
 			where: { id: approvedDryRun.id },
 			data: { completedAt: new Date(approvedStartedAt.getTime() + 3129) },
@@ -1104,7 +1110,6 @@ describe("Production hotel import proving gates", () => {
 			},
 		});
 		expect(await queueSydneyIdempotencyProof()).toBeNull();
-		expect(await holdProductionUniverseRefresh()).toBeNull();
 		expect(
 			await db.agentTask.count({
 				where: {
@@ -1504,6 +1509,8 @@ describe("Production hotel import full universe gate", () => {
 				completedAt: new Date(),
 			},
 		});
+		expect(await queueProductionRefreshAfterFullImport(false)).toBeNull();
+		expect(await queueProductionRefreshAfterFullImport(true)).toBeNull();
 		const activeRun = await db.productionImportRun.create({
 			data: {
 				scope: FULL_UNIVERSE.scope,
@@ -1643,5 +1650,28 @@ describe("Production hotel import full universe gate", () => {
 				manifestDigest,
 			}),
 		).toBeNull();
+		const incrementalTaskId =
+			await queueProductionRefreshAfterFullImport(false);
+		expect(incrementalTaskId).not.toBeNull();
+		const reconciliationTaskId =
+			await queueProductionRefreshAfterFullImport(true);
+		expect(reconciliationTaskId).not.toBeNull();
+		const scheduledTasks = await db.agentTask.findMany({
+			where: {
+				id: { in: [incrementalTaskId ?? "", reconciliationTaskId ?? ""] },
+			},
+			orderBy: { subject: "asc" },
+			select: { payload: true, subject: true },
+		});
+		expect(scheduledTasks).toEqual([
+			{
+				payload: { fullReconciliation: true },
+				subject: "production-hotel-universe-full",
+			},
+			{
+				payload: { fullReconciliation: false },
+				subject: "production-hotel-universe-incremental",
+			},
+		]);
 	});
 });

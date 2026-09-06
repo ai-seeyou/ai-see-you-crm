@@ -1,9 +1,9 @@
 import { defineSchedule } from "eve/schedules";
-import { holdProductionUniverseRefresh } from "../lib/production-refresh";
+import { queueProductionRefreshAfterFullImport } from "../lib/full-production-gate";
 
 export default defineSchedule({
 	cron: "17 2 * * *",
 	async run({ waitUntil }) {
-		waitUntil(holdProductionUniverseRefresh());
+		waitUntil(queueProductionRefreshAfterFullImport(false));
 	},
 });

@@ -1,4 +1,8 @@
 import { describe, expect, it } from "bun:test";
+import {
+	productionCommercialKnowledgeSchema,
+	productionRecommendationSummarySchema,
+} from "@crm/validation/production-business";
 import { ProductionReadClient } from "../agent/lib/production-client";
 
 const record = {
@@ -38,6 +42,23 @@ const record = {
 } as const;
 
 describe("ProductionReadClient", () => {
+	it.each([
+		"2026-09-05T00:00:00",
+		"2026-02-30T00:00:00+00:00",
+		"2026-09-05T00:00:00+25:00",
+		"not-a-date",
+	])("rejects invalid governed timestamps %s", (timestamp) => {
+		expect(
+			productionRecommendationSummarySchema.shape.certifiedAt.safeParse(
+				timestamp,
+			).success,
+		).toBe(false);
+		expect(
+			productionCommercialKnowledgeSchema.shape.provenance.element.shape.evidenceSightedAt.safeParse(
+				timestamp,
+			).success,
+		).toBe(false);
+	});
 	it("uses only GET with the scoped bearer token", async () => {
 		let requested: Request | undefined;
 		const request = async (input: URL | RequestInfo, init?: RequestInit) => {
@@ -158,7 +179,11 @@ describe("ProductionReadClient", () => {
 		expect(client.page({ limit: 500 })).rejects.toThrow();
 	});
 
-	it("parses governed knowledge and certified recommendation summaries", async () => {
+	it.each([
+		"2026-09-05T00:00:00.000Z",
+		"2026-09-05T00:00:00.123456+00:00",
+		"2026-09-05T10:00:00+10:00",
+	])("parses governed timestamps with timezone %s", async (timestamp) => {
 		const expanded = {
 			...record,
 			commercialKnowledge: {
@@ -170,7 +195,7 @@ describe("ProductionReadClient", () => {
 						attribute: "star_rating",
 						value: "five-star",
 						evidenceClass: "approved",
-						evidenceSightedAt: "2026-09-05T00:00:00.000Z",
+						evidenceSightedAt: timestamp,
 						modelVersion: "governed-v1",
 					},
 				],
@@ -181,7 +206,7 @@ describe("ProductionReadClient", () => {
 				periodStart: "2026-08-01",
 				periodEnd: "2026-08-31",
 				generation: "Current",
-				certifiedAt: "2026-09-05T00:00:00.000Z",
+				certifiedAt: timestamp,
 				markets: [
 					{
 						market: "UK",

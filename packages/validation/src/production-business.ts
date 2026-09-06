@@ -51,7 +51,7 @@ export const productionCommercialKnowledgeSchema = z
 					attribute: z.string(),
 					value: z.string(),
 					evidenceClass: z.string(),
-					evidenceSightedAt: z.iso.datetime(),
+					evidenceSightedAt: z.iso.datetime({ offset: true }),
 					modelVersion: z.string(),
 				})
 				.strict(),
@@ -66,7 +66,7 @@ export const productionRecommendationSummarySchema = z
 		periodStart: z.iso.date(),
 		periodEnd: z.iso.date(),
 		generation: z.string(),
-		certifiedAt: z.iso.datetime(),
+		certifiedAt: z.iso.datetime({ offset: true }),
 		markets: z.array(
 			z
 				.object({

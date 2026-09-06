@@ -22,6 +22,18 @@ const approvalSchema = z.object({
 	manifestDigest: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
+function failureCode(error: string | null | undefined) {
+	if (!error) return null;
+	const status = /^Production read failed with HTTP (\d{3})$/.exec(error)?.[1];
+	if (status) return `PRODUCTION_HTTP_${status}`;
+	if (error.startsWith("[")) return "PRODUCTION_CONTRACT_INVALID";
+	if (error === "Production snapshot changed during pagination")
+		return "PRODUCTION_SNAPSHOT_CHANGED";
+	if (error === "Production import lease was lost")
+		return "PRODUCTION_IMPORT_LEASE_LOST";
+	return "PRODUCTION_READ_UNKNOWN";
+}
+
 async function sydneyIdempotencyPassed() {
 	const run = await db.productionImportRun.findFirst({
 		where: {
@@ -174,6 +186,68 @@ export async function queueFullUniverseDryRun() {
 	);
 }
 
+export async function readFullUniverseGateState() {
+	const [
+		sydneyPassed,
+		dryRunCompleted,
+		commitCompleted,
+		activeRuns,
+		unfinished,
+	] = await Promise.all([
+		sydneyIdempotencyPassed(),
+		completedFullDryRun(),
+		completedFullCommit(),
+		db.productionImportRun.count({
+			where: {
+				status: "RUNNING",
+				scope: {
+					in: [
+						FULL_UNIVERSE.scope,
+						SYDNEY_PROOF.scope,
+						SYDNEY_PROOF.idempotencyScope,
+					],
+				},
+			},
+		}),
+		db.agentTask.findMany({
+			where: {
+				kind: "production-refresh",
+				finishedAt: null,
+				subject: {
+					in: [
+						SYDNEY_PROOF.subject,
+						SYDNEY_PROOF.commitSubject,
+						SYDNEY_PROOF.idempotencyScope,
+						FULL_UNIVERSE.drySubject,
+						FULL_UNIVERSE.commitSubject,
+						"production-hotel-universe-full",
+						"production-hotel-universe-incremental",
+					],
+				},
+			},
+			select: {
+				subject: true,
+				startedAt: true,
+				leasedUntil: true,
+				attempts: true,
+			},
+		}),
+	]);
+	return {
+		sydneyPassed,
+		dryRunCompleted,
+		commitCompleted,
+		activeRuns,
+		unfinished: unfinished.map((task) => ({
+			subject: task.subject,
+			started: task.startedAt !== null,
+			leaseActive:
+				task.leasedUntil !== null && task.leasedUntil.getTime() > Date.now(),
+			attempts: task.attempts,
+		})),
+	};
+}
+
 export async function queueApprovedFullUniverseCommit(
 	input: z.input<typeof approvalSchema>,
 ) {
@@ -219,6 +293,7 @@ export async function readFullUniverseProof(dryRun: boolean) {
 		orderBy: { startedAt: "desc" },
 		select: {
 			status: true,
+			error: true,
 			qualifyingCount: true,
 			fetchedCount: true,
 			createdCount: true,
@@ -246,6 +321,7 @@ export async function readFullUniverseProof(dryRun: boolean) {
 		: null;
 	return {
 		runStatus: run?.status ?? null,
+		failureCode: failureCode(run?.error),
 		dryRun,
 		qualifyingCount: run?.qualifyingCount ?? null,
 		fetchedCount: run?.fetchedCount ?? null,

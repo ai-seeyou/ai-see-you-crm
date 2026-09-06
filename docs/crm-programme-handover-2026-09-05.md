@@ -3,6 +3,13 @@
 This document is the authoritative continuation record for the next CRM coordinator.
 Read it with `docs/ai-see-you-crm-foundation-audit.md` before changing the programme.
 
+## Later Phase 5 evidence
+
+Read [Production hotel import acceptance](./production-hotel-import-acceptance-2026-09-06.md) for the later import state and security-cleanup requirements.
+Its dated evidence supersedes the historical repository and phase status below.
+The founder permits only the exact reviewed Production PR 65 migration and the separately approved internal capability rotation.
+These operator actions do not permit CRM to write Production or hold Production database credentials.
+
 ## Programme boundary
 
 Production says what a travel business is. CRM says what our commercial relationship with it is.

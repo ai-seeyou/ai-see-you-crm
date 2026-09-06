@@ -92,6 +92,7 @@ export const productionBoundaryEvidenceSchema = z
 		readRequests: z.number().int().positive(),
 		clientEvidence: z.literal("GET_ONLY_HTTP_CLIENT"),
 		manifestSnapshot: z.string().datetime(),
+		manifestProductionIds: z.array(z.string().uuid()).optional(),
 	})
 	.strict();
 
@@ -100,7 +101,16 @@ export const SYDNEY_PROOF = {
 	destination: "sydney",
 	expectedCount: 228,
 	subject: "production-hotel-universe-proving:sydney:dry-run",
+	commitSubject: "production-hotel-universe-proving:sydney:commit",
+	approvedDryRunRuntimeMs: 3129,
 } as const;
+
+export const productionCommittedBoundaryEvidenceSchema =
+	productionBoundaryEvidenceSchema.extend({
+		manifestProductionIds: z
+			.array(z.string().uuid())
+			.length(SYDNEY_PROOF.expectedCount),
+	});
 
 export async function queueSydneyProductionDryRun() {
 	const completed = await db.productionImportRun.findMany({
@@ -132,7 +142,7 @@ export async function queueSydneyProductionDryRun() {
 }
 
 export async function approveSydneyProductionProving() {
-	const dryRun = await db.productionImportRun.findFirst({
+	const dryRuns = await db.productionImportRun.findMany({
 		where: {
 			scope: SYDNEY_PROOF.scope,
 			destination: SYDNEY_PROOF.destination,
@@ -141,21 +151,75 @@ export async function approveSydneyProductionProving() {
 			qualifyingCount: SYDNEY_PROOF.expectedCount,
 		},
 		orderBy: { completedAt: "desc" },
-		select: { boundaryEvidence: true },
+		select: {
+			boundaryEvidence: true,
+			createdCount: true,
+			updatedCount: true,
+			startedAt: true,
+			completedAt: true,
+		},
 	});
-	if (!dryRun) {
+	const evidence = dryRuns
+		.filter(
+			(run) =>
+				run.createdCount + run.updatedCount === 0 &&
+				run.completedAt !== null &&
+				run.completedAt.getTime() - run.startedAt.getTime() ===
+					SYDNEY_PROOF.approvedDryRunRuntimeMs,
+		)
+		.map((run) =>
+			productionBoundaryEvidenceSchema.safeParse(run.boundaryEvidence),
+		)
+		.find((result) => result.success);
+	if (!evidence) {
 		throw new Error("A completed 228-hotel Sydney dry-run is required");
 	}
-	const evidence = productionBoundaryEvidenceSchema.parse(
-		dryRun.boundaryEvidence,
-	);
 	return queueProductionRefreshTask({
 		fullReconciliation: false,
 		destination: SYDNEY_PROOF.destination,
 		expectedCount: SYDNEY_PROOF.expectedCount,
 		dryRun: false,
-		snapshot: evidence.manifestSnapshot,
+		snapshot: evidence.data.manifestSnapshot,
 	});
+}
+
+export async function queueSydneyProductionCommit() {
+	const completed = await db.productionImportRun.findMany({
+		where: {
+			scope: SYDNEY_PROOF.scope,
+			destination: SYDNEY_PROOF.destination,
+			dryRun: false,
+			status: "COMPLETED",
+			qualifyingCount: SYDNEY_PROOF.expectedCount,
+			exceptionCount: 0,
+		},
+		orderBy: { completedAt: "desc" },
+		select: {
+			boundaryEvidence: true,
+			fetchedCount: true,
+			createdCount: true,
+			updatedCount: true,
+			unchangedCount: true,
+		},
+	});
+	if (
+		completed.some(
+			(run) =>
+				run.fetchedCount === SYDNEY_PROOF.expectedCount &&
+				run.createdCount + run.updatedCount + run.unchangedCount ===
+					SYDNEY_PROOF.expectedCount &&
+				productionCommittedBoundaryEvidenceSchema.safeParse(
+					run.boundaryEvidence,
+				).success,
+		)
+	) {
+		return null;
+	}
+	return approveSydneyProductionProving();
+}
+
+export async function holdProductionUniverseRefresh() {
+	return null;
 }
 
 export async function runProductionRefresh(

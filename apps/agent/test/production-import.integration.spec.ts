@@ -11,13 +11,18 @@ import type { ProductionReadClient } from "../agent/lib/production-client";
 import { importProductionHotels } from "../agent/lib/production-import";
 import {
 	approveSydneyProductionProving,
+	holdProductionUniverseRefresh,
 	productionRefreshPayload,
 	queueProductionRefresh,
 	queueProductionRefreshTask,
+	queueSydneyProductionCommit,
 	queueSydneyProductionDryRun,
 	runProductionRefresh,
 } from "../agent/lib/production-refresh";
-import { readSydneyProductionProof } from "../agent/lib/sydney-production-proof";
+import {
+	readSydneyCommittedProof,
+	readSydneyProductionProof,
+} from "../agent/lib/sydney-production-proof";
 
 const suffix = (process.env.TEST_RUN_ID ?? crypto.randomUUID())
 	.replace(/[^a-z0-9]/gi, "")
@@ -30,6 +35,22 @@ const ids = [
 	crypto.randomUUID(),
 	crypto.randomUUID(),
 ];
+const committedPropertyIds = Array.from({ length: 228 }, () =>
+	crypto.randomUUID(),
+);
+const committedCompanyIds = Array.from({ length: 228 }, () =>
+	crypto.randomUUID(),
+);
+const contaminationPropertyId = crypto.randomUUID();
+const contaminationCompanyId = crypto.randomUUID();
+const proofBoundaryEvidence = {
+	contractVersion: "1" as const,
+	httpMethod: "GET" as const,
+	readRequests: 1,
+	clientEvidence: "GET_ONLY_HTTP_CLIENT" as const,
+	manifestSnapshot: "2026-09-05T01:00:00.000Z",
+	manifestProductionIds: committedPropertyIds,
+};
 const record = (index: number): ProductionBusiness => ({
 	productionPropertyId: ids[index] ?? crypto.randomUUID(),
 	canonicalName: `Import Hotel ${suffix} ${index}`,
@@ -69,17 +90,39 @@ async function cleanup() {
 	});
 	await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
 	await db.productionSnapshot.deleteMany({
-		where: { productionId: { in: ids } },
+		where: {
+			productionId: {
+				in: [...ids, ...committedPropertyIds, contaminationPropertyId],
+			},
+		},
 	});
 	const refs = await db.externalRef.findMany({
-		where: { system: ExternalSystem.PRODUCTION, externalId: { in: ids } },
+		where: {
+			system: ExternalSystem.PRODUCTION,
+			externalId: {
+				in: [...ids, ...committedPropertyIds, contaminationPropertyId],
+			},
+		},
 		select: { recordId: true },
 	});
 	await db.externalRef.deleteMany({
-		where: { system: ExternalSystem.PRODUCTION, externalId: { in: ids } },
+		where: {
+			system: ExternalSystem.PRODUCTION,
+			externalId: {
+				in: [...ids, ...committedPropertyIds, contaminationPropertyId],
+			},
+		},
 	});
 	await db.company.deleteMany({
-		where: { id: { in: refs.map((ref) => ref.recordId) } },
+		where: {
+			id: {
+				in: [
+					...refs.map((ref) => ref.recordId),
+					...committedCompanyIds,
+					contaminationCompanyId,
+				],
+			},
+		},
 	});
 }
 
@@ -524,6 +567,21 @@ describe("Production hotel import database behavior", () => {
 					},
 				}),
 			).toBe(0);
+			const auditedDryRun = await db.productionImportRun.findFirstOrThrow({
+				where: {
+					scope: "qualifying-hotels:sydney",
+					dryRun: true,
+					status: "COMPLETED",
+				},
+				orderBy: { startedAt: "desc" },
+				select: { id: true, startedAt: true },
+			});
+			await db.productionImportRun.update({
+				where: { id: auditedDryRun.id },
+				data: {
+					completedAt: new Date(auditedDryRun.startedAt.getTime() + 3129),
+				},
+			});
 			await approveSydneyProductionProving();
 			const commit = await db.agentTask.findFirstOrThrow({
 				where: {
@@ -605,6 +663,250 @@ describe("Production hotel import database behavior", () => {
 			businessWriteCountEvidence: 0,
 			taskState: "FINISHED",
 			runtimeMs: 2500,
+		});
+	});
+
+	it("queues one pinned Sydney commit and stops after completion", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: { scope: "qualifying-hotels:sydney" },
+		});
+		const approvedStartedAt = new Date("2026-09-05T01:00:00.000Z");
+		const approvedDryRun = await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: true,
+				qualifyingCount: 228,
+				createdCount: 0,
+				updatedCount: 0,
+				boundaryEvidence: proofBoundaryEvidence,
+				startedAt: approvedStartedAt,
+				completedAt: new Date(approvedStartedAt.getTime() + 3000),
+			},
+		});
+		await expect(queueSydneyProductionCommit()).rejects.toThrow(
+			"completed 228-hotel Sydney dry-run",
+		);
+		expect(await holdProductionUniverseRefresh()).toBeNull();
+		await db.productionImportRun.update({
+			where: { id: approvedDryRun.id },
+			data: { completedAt: new Date(approvedStartedAt.getTime() + 3129) },
+		});
+		const [firstTaskId, secondTaskId] = await Promise.all([
+			queueSydneyProductionCommit(),
+			queueSydneyProductionCommit(),
+		]);
+		expect(firstTaskId).not.toBeNull();
+		expect(secondTaskId).toBe(firstTaskId);
+		const task = await db.agentTask.findUniqueOrThrow({
+			where: { id: firstTaskId ?? "" },
+			select: { payload: true },
+		});
+		expect(productionRefreshPayload(task.payload)).toEqual({
+			fullReconciliation: false,
+			destination: "sydney",
+			expectedCount: 228,
+			dryRun: false,
+			snapshot: proofBoundaryEvidence.manifestSnapshot,
+		});
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: false,
+				qualifyingCount: 228,
+				fetchedCount: 228,
+				createdCount: 228,
+				exceptionCount: 0,
+				boundaryEvidence: proofBoundaryEvidence,
+				completedAt: new Date(),
+			},
+		});
+		expect(await queueSydneyProductionCommit()).toBeNull();
+		expect(await holdProductionUniverseRefresh()).toBeNull();
+		expect(
+			await db.agentTask.count({
+				where: {
+					subject: {
+						in: [
+							"production-hotel-universe-incremental",
+							"production-hotel-universe-full",
+						],
+					},
+					finishedAt: null,
+				},
+			}),
+		).toBe(0);
+	});
+
+	it("reports the committed Sydney acceptance evidence without identifiers", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: { scope: "qualifying-hotels:sydney" },
+		});
+		await db.externalRef.deleteMany({
+			where: {
+				system: ExternalSystem.PRODUCTION,
+				externalId: {
+					in: [...committedPropertyIds, contaminationPropertyId],
+				},
+			},
+		});
+		await db.productionSnapshot.deleteMany({
+			where: {
+				productionId: {
+					in: [...committedPropertyIds, contaminationPropertyId],
+				},
+			},
+		});
+		await db.company.deleteMany({
+			where: {
+				id: { in: [...committedCompanyIds, contaminationCompanyId] },
+			},
+		});
+		const vertical = await db.vertical.findUniqueOrThrow({
+			where: { key: "hotel" },
+			select: { id: true },
+		});
+		const startedAt = new Date("2026-09-05T02:00:00.000Z");
+		const completedAt = new Date("2026-09-05T02:00:04.250Z");
+		await db.$transaction(async (tx) => {
+			await tx.company.createMany({
+				data: committedCompanyIds.map((id, index) => ({
+					id,
+					name: `Sydney committed hotel ${index + 1}`,
+					domain: index < 2 ? "shared-sydney.test" : `sydney-${index}.test`,
+					verticalId: vertical.id,
+					entityType: "HOTEL",
+					source: RecordSource.IMPORT,
+				})),
+			});
+			await tx.externalRef.createMany({
+				data: committedPropertyIds.map((externalId, index) => ({
+					recordType: ExternalRecordType.COMPANY,
+					recordId: committedCompanyIds[index] ?? "",
+					system: ExternalSystem.PRODUCTION,
+					externalId,
+					matchMethod: "production-property-id",
+					matchedBy: MatchActor.IMPORT,
+					confirmedAt: completedAt,
+				})),
+			});
+			await tx.productionSnapshot.createMany({
+				data: committedPropertyIds.map((productionId, index) => ({
+					productionId,
+					entityKind: "property",
+					name: `Sydney committed hotel ${index + 1}`,
+					destination: "Sydney",
+					destinationSlug: "sydney",
+					payload: { productionPropertyId: productionId },
+					fetchedAt: completedAt,
+					staleAfter: new Date("2026-09-06T02:00:04.250Z"),
+				})),
+			});
+			await tx.company.create({
+				data: {
+					id: contaminationCompanyId,
+					name: "Later Sydney hotel",
+					domain: "shared-sydney.test",
+					verticalId: vertical.id,
+					entityType: "HOTEL",
+					source: RecordSource.IMPORT,
+				},
+			});
+			await tx.externalRef.create({
+				data: {
+					recordType: ExternalRecordType.COMPANY,
+					recordId: contaminationCompanyId,
+					system: ExternalSystem.PRODUCTION,
+					externalId: contaminationPropertyId,
+					matchMethod: "production-property-id",
+					matchedBy: MatchActor.IMPORT,
+					confirmedAt: completedAt,
+				},
+			});
+			await tx.productionSnapshot.create({
+				data: {
+					productionId: contaminationPropertyId,
+					entityKind: "property",
+					name: "Later Sydney hotel",
+					destination: "Sydney",
+					destinationSlug: "sydney",
+					payload: { productionPropertyId: contaminationPropertyId },
+					fetchedAt: completedAt,
+					staleAfter: new Date("2026-09-06T02:00:04.250Z"),
+				},
+			});
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: completedAt,
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: false,
+				qualifyingCount: 228,
+				fetchedCount: 228,
+				createdCount: 228,
+				exceptionCount: 0,
+				reviewCount: 3,
+				reviewItems: committedPropertyIds
+					.slice(0, 3)
+					.map((productionPropertyId) => ({
+						productionPropertyId,
+						reason: "Production country identity is incomplete",
+					})),
+				chainIdCount: 40,
+				missingChainCount: 188,
+				boundaryEvidence: proofBoundaryEvidence,
+				startedAt,
+				completedAt,
+			},
+		});
+		await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Sydney committed proof",
+				payload: { fullReconciliation: false },
+				priority: 600,
+				budget: 0,
+				dueAt: startedAt,
+				startedAt,
+				finishedAt: completedAt,
+				subject: "production-hotel-universe-proving:sydney:commit",
+			},
+		});
+		expect(await readSydneyCommittedProof()).toEqual({
+			runStatus: "COMPLETED",
+			qualifyingCount: 228,
+			destination: "sydney",
+			dryRun: false,
+			manifestValid: true,
+			crmBusinessCount: 228,
+			confirmedProductionExternalRefCount: 228,
+			duplicateProductionRefCount: 0,
+			hotelEntityTypeCount: 228,
+			hotelVerticalCount: 228,
+			destinationCount: 1,
+			sharedDomainGroupCount: 1,
+			sharedDomainBusinessCount: 2,
+			sharedDomainCollapsedPropertyCount: 0,
+			exceptionCount: 0,
+			reviewCount: 3,
+			reviewItemCount: 3,
+			withChainIdentifierCount: 40,
+			withoutChainIdentifierCount: 188,
+			taskState: "FINISHED",
+			runtimeMs: 4250,
 		});
 	});
 

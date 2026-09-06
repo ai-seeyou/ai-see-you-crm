@@ -550,7 +550,12 @@ export async function importProductionHotels(
 							staleRefCount: staleReferences,
 							reviewItems,
 							readRequestCount: readRequests,
-							boundaryEvidence,
+							boundaryEvidence: {
+								...boundaryEvidence,
+								manifestProductionIds: records.map(
+									(record) => record.productionPropertyId,
+								),
+							},
 							destinations: destinations.size,
 							countries: countries.size,
 							completedAt: new Date(),

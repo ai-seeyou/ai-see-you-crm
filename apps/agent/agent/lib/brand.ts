@@ -115,6 +115,20 @@ export async function runBrand({
 		if (!current) return null;
 
 		const data = stillFillable(update, snapshot(current));
+		const productionRef = await tx.externalRef.findFirst({
+			where: {
+				recordType: "COMPANY",
+				recordId: companyId,
+				system: "PRODUCTION",
+				confirmedAt: { not: null },
+			},
+			select: { id: true },
+		});
+		if (productionRef) {
+			delete data.name;
+			delete data.country;
+			delete data.countryCode;
+		}
 
 		await tx.company.update({
 			where: { id: companyId },

@@ -374,6 +374,23 @@ enum ProductionImportStatus {
   FAILED
 }
 
+enum ProductionOwnershipStatus {
+  chained
+  independent_confirmed
+  unresolved
+}
+
+enum ProductionLocalityType {
+  precinct
+  district
+  suburb
+  transit_zone
+  coastal_zone
+  airport_zone
+  event_zone
+  landmark
+}
+
 model ProductionSnapshot {
   productionId String @id
   entityKind   String
@@ -428,6 +445,8 @@ model ProductionImportRun {
   exceptionCount    Int                    @default(0)
   chainIdCount      Int                    @default(0)
   missingChainCount Int                    @default(0)
+  relationshipCount Int                    @default(0)
+  staleRelationshipCount Int               @default(0)
   reviewCount       Int                    @default(0)
   staleRefCount     Int                    @default(0)
   readRequestCount  Int                    @default(0)
@@ -517,6 +536,8 @@ model EntityRelationship {
   evidence Json?
   note     String?
 
+  externalRef ExternalRelationshipRef?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -524,6 +545,29 @@ model EntityRelationship {
   @@index([toCompanyId, type])
   @@index([fromCompanyId, type])
   @@map("entityRelationship")
+}
+
+model ExternalRelationshipRef {
+  id String @id @default(cuid())
+
+  relationshipId String             @unique
+  relationship   EntityRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+
+  system     ExternalSystem
+  externalId String
+
+  confirmedAt DateTime?
+  lastSeenAt  DateTime?
+  staleAt     DateTime?
+  reviewReason String?
+  sourceUpdatedAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([system, externalId])
+  @@index([system, staleAt])
+  @@map("externalRelationshipRef")
 }
 
 enum EntityType {
@@ -594,6 +638,7 @@ model Company {
   enrichedAt       DateTime?
   enrichmentError  String?
   enrichment       CompanyEnrichment?
+  productionProfile ProductionBusinessProfile?
 
   source RecordSource @default(MANUAL)
 
@@ -623,6 +668,38 @@ model Company {
   @@index([verticalId])
   @@index([entityType])
   @@map("company")
+}
+
+model ProductionBusinessProfile {
+  id String @id @default(cuid())
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  productionPropertyId String @unique
+  propertySlug          String?
+  ownershipStatus       ProductionOwnershipStatus
+  destinationProductionId String
+  destinationName       String
+  destinationSlug       String
+  destinationType       String
+  localityProductionId  String?
+  localityName          String?
+  localitySlug          String?
+  localityType          ProductionLocalityType?
+  brandText             String?
+  commercialKnowledge  Json
+  recommendationSummary Json?
+  sourceUpdatedAt       DateTime
+  fetchedAt             DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sourceUpdatedAt])
+  @@index([destinationProductionId])
+  @@index([localityProductionId])
+  @@map("productionBusinessProfile")
 }
 
 model CompanyEnrichment {

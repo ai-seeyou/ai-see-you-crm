@@ -2,8 +2,8 @@ import {
 	AssignmentScope,
 	type Db,
 	type EnrichmentStatus,
-	type EntityType,
 	ExternalRecordType,
+	ExternalSystem,
 	type Prisma,
 	Prisma as PrismaNamespace,
 	type RecordSource,
@@ -375,6 +375,27 @@ export class CompaniesService {
 	}
 
 	async update(id: string, input: CompanyUpdateInput) {
+		const changesProductionIdentity =
+			input.name !== undefined ||
+			input.domain !== undefined ||
+			input.country !== undefined ||
+			input.entityType !== undefined ||
+			input.verticalId !== undefined;
+		if (changesProductionIdentity) {
+			const productionRef = await this.db.externalRef.findFirst({
+				where: {
+					recordType: ExternalRecordType.COMPANY,
+					recordId: id,
+					system: ExternalSystem.PRODUCTION,
+					confirmedAt: { not: null },
+				},
+				select: { id: true },
+			});
+			if (productionRef)
+				throw new BadRequestException(
+					"Production controls this company's identity fields.",
+				);
+		}
 		const data: Prisma.CompanyUpdateInput = {};
 
 		if (input.name !== undefined) data.name = input.name.trim();

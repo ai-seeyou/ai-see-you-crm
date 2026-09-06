@@ -406,6 +406,16 @@ describe("canonical external references", () => {
 
 		expect(canonical).toHaveLength(1);
 		expect(canonical[0]?.recordId).toBe(ids.sofitelSydney);
+
+		await expect(
+			companies.update(ids.sofitelSydney, { name: "Changed in CRM" }),
+		).rejects.toThrow("Production controls this company's identity fields");
+		await expect(
+			companies.update(ids.sofitelSydney, {
+				website: "https://hotel.example",
+				city: "Sydney",
+			}),
+		).resolves.toMatchObject({ id: ids.sofitelSydney });
 	});
 
 	it("refuses to let a second business claim the same Production record", async () => {

@@ -19,6 +19,7 @@ const approvalSchema = z.object({
 	expectedCount: z.number().int().positive(),
 	snapshot: z.string().datetime(),
 	productionIdDigest: z.string().regex(/^[a-f0-9]{64}$/),
+	manifestDigest: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
 async function sydneyIdempotencyPassed() {
@@ -62,7 +63,9 @@ async function completedFullCommit() {
 			);
 			return (
 				evidence.success &&
+				evidence.data.contractVersion === "2" &&
 				evidence.data.manifestProductionIdDigest !== undefined &&
+				evidence.data.manifestPayloadDigest !== undefined &&
 				(await productionIdDigest(
 					evidence.data.manifestProductionIds ?? [],
 				)) === evidence.data.manifestProductionIdDigest &&
@@ -88,8 +91,10 @@ async function completedFullDryRun() {
 			);
 			return (
 				evidence.success &&
+				evidence.data.contractVersion === "2" &&
 				run.qualifyingCount === evidence.data.manifestProductionIds?.length &&
 				evidence.data.manifestProductionIdDigest !== undefined &&
+				evidence.data.manifestPayloadDigest !== undefined &&
 				(await productionIdDigest(evidence.data.manifestProductionIds)) ===
 					evidence.data.manifestProductionIdDigest
 			);
@@ -187,7 +192,9 @@ export async function queueApprovedFullUniverseCommit(
 			evidence.success &&
 			run.qualifyingCount === approval.expectedCount &&
 			evidence.data.manifestSnapshot === approval.snapshot &&
-			evidence.data.manifestProductionIdDigest === approval.productionIdDigest
+			evidence.data.manifestProductionIdDigest ===
+				approval.productionIdDigest &&
+			evidence.data.manifestPayloadDigest === approval.manifestDigest
 		);
 	});
 	if (!bound)
@@ -201,6 +208,7 @@ export async function queueApprovedFullUniverseCommit(
 			expectedCount: approval.expectedCount,
 			snapshot: approval.snapshot,
 			expectedProductionIdDigest: approval.productionIdDigest,
+			expectedManifestDigest: approval.manifestDigest,
 		}),
 	);
 }
@@ -220,6 +228,8 @@ export async function readFullUniverseProof(dryRun: boolean) {
 			reviewCount: true,
 			chainIdCount: true,
 			missingChainCount: true,
+			relationshipCount: true,
+			staleRelationshipCount: true,
 			readRequestCount: true,
 			destinations: true,
 			countries: true,
@@ -246,6 +256,8 @@ export async function readFullUniverseProof(dryRun: boolean) {
 		reviewCount: run?.reviewCount ?? null,
 		withChainIdentifierCount: run?.chainIdCount ?? null,
 		withoutChainIdentifierCount: run?.missingChainCount ?? null,
+		relationshipCount: run?.relationshipCount ?? null,
+		staleRelationshipCount: run?.staleRelationshipCount ?? null,
 		readRequestCount: run?.readRequestCount ?? null,
 		destinationCount: run?.destinations ?? null,
 		countryCount: run?.countries ?? null,
@@ -253,9 +265,13 @@ export async function readFullUniverseProof(dryRun: boolean) {
 		productionIdDigest: evidence.success
 			? (evidence.data.manifestProductionIdDigest ?? null)
 			: null,
+		manifestDigest: evidence.success
+			? (evidence.data.manifestPayloadDigest ?? null)
+			: null,
 		manifestValid:
 			evidence.success &&
 			evidence.data.manifestProductionIdDigest !== undefined &&
+			evidence.data.manifestPayloadDigest !== undefined &&
 			recomputedDigest === evidence.data.manifestProductionIdDigest &&
 			run?.qualifyingCount === evidence.data.manifestProductionIds?.length,
 		runtimeMs:

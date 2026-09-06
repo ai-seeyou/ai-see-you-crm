@@ -5,9 +5,16 @@ import {
 	ExternalSystem,
 	MatchActor,
 	type Prisma,
+	Prisma as PrismaNamespace,
 	RecordSource,
+	RelationshipType,
 } from "@crm/db";
-import type { ProductionBusiness } from "@crm/validation/production-business";
+import {
+	type ProductionBusiness,
+	productionBusinessSchema,
+	productionCommercialKnowledgeSchema,
+	productionRecommendationSummarySchema,
+} from "@crm/validation/production-business";
 import type { ProductionReadClient } from "./production-client";
 import { PRODUCTION_IMPORT } from "./production-import-config";
 
@@ -22,6 +29,7 @@ export type ProductionImportOptions = {
 	auditScope?: "qualifying-hotels:sydney:idempotency";
 	expectedProductionIds?: string[];
 	expectedProductionIdDigest?: string;
+	expectedManifestDigest?: string;
 };
 export type ProductionImportResult = {
 	qualifying: number;
@@ -37,7 +45,7 @@ export type ProductionImportResult = {
 	staleReferences: number;
 	snapshot: string;
 	boundaryEvidence: {
-		contractVersion: "1";
+		contractVersion: "2";
 		httpMethod: "GET";
 		readRequests: number;
 		clientEvidence: "GET_ONLY_HTTP_CLIENT";
@@ -67,8 +75,68 @@ function assertApprovedManifest(
 	}
 }
 
+function manifestReviewItems(records: ProductionBusiness[]) {
+	return records.flatMap((record) => {
+		const reasons: string[] = [];
+		if (!record.country.name || !record.country.code)
+			reasons.push("Production country identity is incomplete");
+		if (record.chain?.name === null)
+			reasons.push("Production chain identity has no canonical name");
+		if (record.parentChain?.name === null)
+			reasons.push("Production parent chain identity has no canonical name");
+		if (record.ownershipStatus === "chained" && record.chain === null)
+			reasons.push("Chained property has no Production chain identity");
+		return reasons.map((reason) => ({
+			productionPropertyId: record.productionPropertyId,
+			reason,
+		}));
+	});
+}
+
+function assertExpectedEvidence(
+	options: ProductionImportOptions,
+	records: ProductionBusiness[],
+	productionIdManifestDigest: string,
+	manifestDigest: string,
+) {
+	if (
+		options.expectedProductionIdDigest &&
+		productionIdManifestDigest !== options.expectedProductionIdDigest
+	)
+		throw new Error("Production manifest digest does not match approval");
+	if (
+		options.expectedManifestDigest &&
+		manifestDigest !== options.expectedManifestDigest
+	)
+		throw new Error("Production payload digest does not match approval");
+	if (
+		options.expectedCount !== undefined &&
+		records.length !== options.expectedCount
+	)
+		throw new Error(
+			`Expected ${options.expectedCount} qualifying hotels, received ${records.length}`,
+		);
+}
+
 export async function productionIdDigest(productionIds: Iterable<string>) {
 	const input = [...productionIds].sort().join("\n");
+	const bytes = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(input),
+	);
+	return [...new Uint8Array(bytes)]
+		.map((byte) => byte.toString(16).padStart(2, "0"))
+		.join("");
+}
+
+export async function productionManifestDigest(records: ProductionBusiness[]) {
+	const input = JSON.stringify(
+		[...records]
+			.sort((left, right) =>
+				left.productionPropertyId.localeCompare(right.productionPropertyId),
+			)
+			.map((record) => productionBusinessSchema.parse(record)),
+	);
 	const bytes = await crypto.subtle.digest(
 		"SHA-256",
 		new TextEncoder().encode(input),
@@ -138,6 +206,202 @@ function sameCompanyIdentity(
 	);
 }
 
+type ProductionStructure = NonNullable<ProductionBusiness["chain"]>;
+const structuralExternalId = (productionId: string) => `chain:${productionId}`;
+
+async function upsertStructuralCompany(
+	tx: Prisma.TransactionClient,
+	entity: ProductionStructure,
+	verticalId: string,
+	now: Date,
+) {
+	const externalId = structuralExternalId(entity.id);
+	const ref = await tx.externalRef.findUnique({
+		where: {
+			system_recordType_externalId: {
+				system: ExternalSystem.PRODUCTION,
+				recordType: ExternalRecordType.COMPANY,
+				externalId,
+			},
+		},
+	});
+	if (ref?.confirmedAt === null) return null;
+	if (ref) {
+		const data: Prisma.CompanyUncheckedUpdateInput = {
+			verticalId,
+			entityType: EntityType.HOTEL_GROUP,
+		};
+		if (entity.name !== null) data.name = entity.name;
+		await tx.company.update({
+			where: { id: ref.recordId },
+			data,
+		});
+		await tx.externalRef.update({
+			where: { id: ref.id },
+			data: { lastSeenAt: now, staleAt: null, reviewReason: null },
+		});
+		return ref.recordId;
+	}
+	if (entity.name === null) return null;
+	const company = await tx.company.create({
+		data: {
+			name: entity.name,
+			verticalId,
+			entityType: EntityType.HOTEL_GROUP,
+			source: RecordSource.IMPORT,
+		},
+		select: { id: true },
+	});
+	await tx.externalRef.create({
+		data: {
+			recordType: ExternalRecordType.COMPANY,
+			recordId: company.id,
+			system: ExternalSystem.PRODUCTION,
+			externalId,
+			matchMethod: "production-chain-id",
+			matchedBy: MatchActor.IMPORT,
+			confirmedAt: now,
+			lastSeenAt: now,
+		},
+	});
+	return company.id;
+}
+
+const propertyChainRelationshipExternalId = (
+	propertyProductionId: string,
+	chainProductionId: string,
+) => `property:${propertyProductionId}:belongs-to:chain:${chainProductionId}`;
+
+const chainParentRelationshipExternalId = (
+	chainProductionId: string,
+	parentProductionId: string,
+) => `chain:${chainProductionId}:belongs-to:chain:${parentProductionId}`;
+
+function relationshipExternalIds(record: ProductionBusiness) {
+	const ids: string[] = [];
+	if (record.chain)
+		ids.push(
+			propertyChainRelationshipExternalId(
+				record.productionPropertyId,
+				record.chain.id,
+			),
+		);
+	if (record.chain && record.parentChain)
+		ids.push(
+			chainParentRelationshipExternalId(record.chain.id, record.parentChain.id),
+		);
+	return ids;
+}
+
+async function upsertProductionRelationship(
+	tx: Prisma.TransactionClient,
+	input: {
+		fromCompanyId: string;
+		toCompanyId: string;
+		externalId: string;
+		sourceUpdatedAt: Date;
+		now: Date;
+	},
+) {
+	const { externalId } = input;
+	const ref = await tx.externalRelationshipRef.findUnique({
+		where: {
+			system_externalId: { system: ExternalSystem.PRODUCTION, externalId },
+		},
+		include: { relationship: true },
+	});
+	if (ref?.confirmedAt === null) return false;
+	if (ref) {
+		if (
+			ref.relationship.fromCompanyId !== input.fromCompanyId ||
+			ref.relationship.toCompanyId !== input.toCompanyId ||
+			ref.relationship.type !== RelationshipType.BELONGS_TO
+		)
+			throw new Error("Production relationship identity changed endpoints");
+		await tx.externalRelationshipRef.update({
+			where: { id: ref.id },
+			data: {
+				lastSeenAt: input.now,
+				staleAt: null,
+				reviewReason: null,
+				sourceUpdatedAt: input.sourceUpdatedAt,
+			},
+		});
+		if (ref.relationship.validTo !== null)
+			await tx.entityRelationship.update({
+				where: { id: ref.relationship.id },
+				data: { validTo: null },
+			});
+		return true;
+	}
+	let relationship = await tx.entityRelationship.findFirst({
+		where: {
+			fromCompanyId: input.fromCompanyId,
+			toCompanyId: input.toCompanyId,
+			type: RelationshipType.BELONGS_TO,
+			validTo: null,
+		},
+		select: { id: true },
+	});
+	relationship ??= await tx.entityRelationship.create({
+		data: {
+			fromCompanyId: input.fromCompanyId,
+			toCompanyId: input.toCompanyId,
+			type: RelationshipType.BELONGS_TO,
+			source: RecordSource.IMPORT,
+		},
+		select: { id: true },
+	});
+	await tx.externalRelationshipRef.create({
+		data: {
+			relationshipId: relationship.id,
+			system: ExternalSystem.PRODUCTION,
+			externalId,
+			confirmedAt: input.now,
+			lastSeenAt: input.now,
+			sourceUpdatedAt: input.sourceUpdatedAt,
+		},
+	});
+	return true;
+}
+
+async function staleMissingRelationships(
+	tx: Prisma.TransactionClient,
+	fromProductionId: string,
+	fromKind: "property" | "chain",
+	currentExternalIds: string[],
+	now: Date,
+) {
+	const refs = await tx.externalRelationshipRef.findMany({
+		where: {
+			system: ExternalSystem.PRODUCTION,
+			confirmedAt: { not: null },
+			staleAt: null,
+			externalId: {
+				startsWith: `${fromKind}:${fromProductionId}:belongs-to:chain:`,
+				notIn: currentExternalIds,
+			},
+		},
+		select: { id: true, relationshipId: true },
+	});
+	if (refs.length === 0) return;
+	await tx.externalRelationshipRef.updateMany({
+		where: { id: { in: refs.map((ref) => ref.id) } },
+		data: {
+			staleAt: now,
+			reviewReason: "Relationship changed in Production",
+		},
+	});
+	await tx.entityRelationship.updateMany({
+		where: {
+			id: { in: refs.map((ref) => ref.relationshipId) },
+			source: RecordSource.IMPORT,
+			validTo: null,
+		},
+		data: { validTo: now },
+	});
+}
+
 async function writeRecord(
 	tx: Prisma.TransactionClient,
 	record: ProductionBusiness,
@@ -157,9 +421,38 @@ async function writeRecord(
 		where: { key: "hotel" },
 		select: { id: true },
 	});
+	const existingProfile = await tx.productionBusinessProfile.findUnique({
+		where: { productionPropertyId: record.productionPropertyId },
+	});
+	const profileChanged =
+		existingProfile === null ||
+		existingProfile.propertySlug !== record.propertySlug ||
+		existingProfile.ownershipStatus !== record.ownershipStatus ||
+		existingProfile.brandText !== record.brand ||
+		existingProfile.sourceUpdatedAt.toISOString() !== record.sourceUpdatedAt ||
+		existingProfile.destinationProductionId !== record.destination.id ||
+		existingProfile.destinationName !== record.destination.name ||
+		existingProfile.destinationSlug !== record.destination.slug ||
+		existingProfile.destinationType !== record.destination.type ||
+		existingProfile.localityProductionId !== (record.locality?.id ?? null) ||
+		existingProfile.localityName !== (record.locality?.name ?? null) ||
+		existingProfile.localitySlug !== (record.locality?.slug ?? null) ||
+		existingProfile.localityType !== (record.locality?.type ?? null) ||
+		JSON.stringify(
+			productionCommercialKnowledgeSchema.parse(
+				existingProfile.commercialKnowledge,
+			),
+		) !== JSON.stringify(record.commercialKnowledge) ||
+		JSON.stringify(
+			productionRecommendationSummarySchema
+				.nullable()
+				.parse(existingProfile.recommendationSummary),
+		) !== JSON.stringify(record.recommendationSummary);
 	const data = companyData(record, vertical.id);
 	let outcome: "created" | "updated" | "unchanged";
+	let companyId: string;
 	if (ref) {
+		companyId = ref.recordId;
 		const company = await tx.company.findUniqueOrThrow({
 			where: { id: ref.recordId },
 		});
@@ -176,6 +469,7 @@ async function writeRecord(
 			data: { ...data, source: RecordSource.IMPORT },
 			select: { id: true },
 		});
+		companyId = company.id;
 		await tx.externalRef.create({
 			data: {
 				recordType: ExternalRecordType.COMPANY,
@@ -190,6 +484,9 @@ async function writeRecord(
 		});
 		outcome = "created";
 	}
+	if (existingProfile && existingProfile.companyId !== companyId)
+		throw new Error("Production profile identity changed company");
+	if (outcome === "unchanged" && profileChanged) outcome = "updated";
 	await tx.productionSnapshot.upsert({
 		where: { productionId: record.productionPropertyId },
 		create: {
@@ -215,6 +512,105 @@ async function writeRecord(
 			staleAfter: new Date(now.getTime() + PRODUCTION_IMPORT.snapshotTtlMs),
 		},
 	});
+	await tx.productionBusinessProfile.upsert({
+		where: { productionPropertyId: record.productionPropertyId },
+		create: {
+			companyId,
+			productionPropertyId: record.productionPropertyId,
+			propertySlug: record.propertySlug,
+			ownershipStatus: record.ownershipStatus,
+			destinationProductionId: record.destination.id,
+			destinationName: record.destination.name,
+			destinationSlug: record.destination.slug,
+			destinationType: record.destination.type,
+			localityProductionId: record.locality?.id,
+			localityName: record.locality?.name,
+			localitySlug: record.locality?.slug,
+			localityType: record.locality?.type,
+			brandText: record.brand,
+			commercialKnowledge: record.commercialKnowledge,
+			recommendationSummary:
+				record.recommendationSummary ?? PrismaNamespace.JsonNull,
+			sourceUpdatedAt: new Date(record.sourceUpdatedAt),
+			fetchedAt: now,
+		},
+		update: {
+			propertySlug: record.propertySlug,
+			ownershipStatus: record.ownershipStatus,
+			destinationProductionId: record.destination.id,
+			destinationName: record.destination.name,
+			destinationSlug: record.destination.slug,
+			destinationType: record.destination.type,
+			localityProductionId: record.locality?.id ?? null,
+			localityName: record.locality?.name ?? null,
+			localitySlug: record.locality?.slug ?? null,
+			localityType: record.locality?.type ?? null,
+			brandText: record.brand,
+			commercialKnowledge: record.commercialKnowledge,
+			recommendationSummary:
+				record.recommendationSummary ?? PrismaNamespace.JsonNull,
+			sourceUpdatedAt: new Date(record.sourceUpdatedAt),
+			fetchedAt: now,
+		},
+	});
+	const sourceUpdatedAt = new Date(record.sourceUpdatedAt);
+	const chainCompanyId = record.chain
+		? await upsertStructuralCompany(tx, record.chain, vertical.id, now)
+		: null;
+	if (record.chain && chainCompanyId)
+		await upsertProductionRelationship(tx, {
+			fromCompanyId: companyId,
+			toCompanyId: chainCompanyId,
+			externalId: propertyChainRelationshipExternalId(
+				record.productionPropertyId,
+				record.chain.id,
+			),
+			sourceUpdatedAt,
+			now,
+		});
+	await staleMissingRelationships(
+		tx,
+		record.productionPropertyId,
+		"property",
+		record.chain
+			? [
+					propertyChainRelationshipExternalId(
+						record.productionPropertyId,
+						record.chain.id,
+					),
+				]
+			: [],
+		now,
+	);
+	const parentCompanyId = record.parentChain
+		? await upsertStructuralCompany(tx, record.parentChain, vertical.id, now)
+		: null;
+	if (record.chain && chainCompanyId && record.parentChain && parentCompanyId)
+		await upsertProductionRelationship(tx, {
+			fromCompanyId: chainCompanyId,
+			toCompanyId: parentCompanyId,
+			externalId: chainParentRelationshipExternalId(
+				record.chain.id,
+				record.parentChain.id,
+			),
+			sourceUpdatedAt,
+			now,
+		});
+	if (record.chain)
+		await staleMissingRelationships(
+			tx,
+			record.chain.id,
+			"chain",
+			record.parentChain
+				? [
+						chainParentRelationshipExternalId(
+							record.chain.id,
+							record.parentChain.id,
+						),
+					]
+				: [],
+			now,
+		);
 	return outcome;
 }
 
@@ -336,7 +732,18 @@ export async function importProductionHotels(
 		const productionIds = new Set(
 			records.map((record) => record.productionPropertyId),
 		);
+		const productionRelationshipIds = new Set(
+			records.flatMap(relationshipExternalIds),
+		);
+		const productionStructureIds = new Set(
+			records.flatMap((record) =>
+				[record.chain, record.parentChain].flatMap((entity) =>
+					entity ? [structuralExternalId(entity.id)] : [],
+				),
+			),
+		);
 		const productionIdManifestDigest = await productionIdDigest(productionIds);
+		const manifestDigest = await productionManifestDigest(records);
 		assertApprovedManifest(productionIds, options.expectedProductionIds);
 		if (productionIds.size !== records.length) {
 			const seen = new Set<string>();
@@ -362,12 +769,12 @@ export async function importProductionHotels(
 			}
 			throw new Error("Production snapshot contains duplicate property IDs");
 		}
-		if (
-			options.expectedProductionIdDigest &&
-			productionIdManifestDigest !== options.expectedProductionIdDigest
-		) {
-			throw new Error("Production manifest digest does not match approval");
-		}
+		assertExpectedEvidence(
+			options,
+			records,
+			productionIdManifestDigest,
+			manifestDigest,
+		);
 		if (options.destination) {
 			const mismatched = records.filter(
 				(record) => record.destination.slug !== options.destination,
@@ -391,13 +798,6 @@ export async function importProductionHotels(
 				);
 			}
 		}
-		if (
-			options.expectedCount !== undefined &&
-			records.length !== options.expectedCount
-		)
-			throw new Error(
-				`Expected ${options.expectedCount} qualifying hotels, received ${records.length}`,
-			);
 		if (options.fullReconciliation) {
 			if (records.length === 0) {
 				throw new Error("Full reconciliation returned an empty manifest");
@@ -419,6 +819,12 @@ export async function importProductionHotels(
 				verification.records.map((record) => record.productionPropertyId),
 			);
 			for (const id of verificationIds) reconciliationPresentIds.add(id);
+			for (const id of verification.records.flatMap(relationshipExternalIds))
+				productionRelationshipIds.add(id);
+			for (const record of verification.records)
+				for (const entity of [record.chain, record.parentChain])
+					if (entity)
+						productionStructureIds.add(structuralExternalId(entity.id));
 			if (
 				verificationIds.size === 0 ||
 				verificationIds.size <
@@ -434,16 +840,37 @@ export async function importProductionHotels(
 		let updated = 0;
 		let unchanged = 0;
 		let exceptions = 0;
-		const reviewItems: Array<{ productionPropertyId: string; reason: string }> =
-			[];
-		for (const record of records) {
-			if (!record.country.name || !record.country.code) {
-				reviewItems.push({
-					productionPropertyId: record.productionPropertyId,
-					reason: "Production country identity is incomplete",
-				});
-			}
-		}
+		const reviewItems = manifestReviewItems(records);
+		const [unconfirmedStructureRefs, unconfirmedRelationshipRefs] =
+			await Promise.all([
+				db.externalRef.findMany({
+					where: {
+						system: ExternalSystem.PRODUCTION,
+						recordType: ExternalRecordType.COMPANY,
+						externalId: { in: [...productionStructureIds] },
+						confirmedAt: null,
+					},
+					select: { externalId: true },
+				}),
+				db.externalRelationshipRef.findMany({
+					where: {
+						system: ExternalSystem.PRODUCTION,
+						externalId: { in: [...productionRelationshipIds] },
+						confirmedAt: null,
+					},
+					select: { externalId: true },
+				}),
+			]);
+		reviewItems.push(
+			...unconfirmedStructureRefs.map((ref) => ({
+				productionPropertyId: ref.externalId.slice("chain:".length),
+				reason: "Existing Production chain reference is not confirmed",
+			})),
+			...unconfirmedRelationshipRefs.map((ref) => ({
+				productionPropertyId: ref.externalId,
+				reason: "Existing Production relationship reference is not confirmed",
+			})),
+		);
 		let latestWatermark = saved?.sourceWatermark ?? null;
 		for (const record of records) {
 			const changed = new Date(record.sourceUpdatedAt);
@@ -518,6 +945,7 @@ export async function importProductionHotels(
 			throw new Error(`${exceptions} Production references require review`);
 		}
 		let staleReferences = 0;
+		let staleRelationships = 0;
 
 		const destinations = new Set(
 			records.map((record) => record.destination.id),
@@ -530,12 +958,9 @@ export async function importProductionHotels(
 		const chainIdCount = records.filter(
 			(record) => record.chain !== null,
 		).length;
-		const requiringReview =
-			exceptions +
-			records.filter((record) => !record.country.name || !record.country.code)
-				.length;
+		const requiringReview = reviewItems.length;
 		const boundaryEvidence = {
-			contractVersion: "1" as const,
+			contractVersion: "2" as const,
 			httpMethod: "GET" as const,
 			readRequests,
 			clientEvidence: "GET_ONLY_HTTP_CLIENT" as const,
@@ -578,6 +1003,67 @@ export async function importProductionHotels(
 							reason: "Property left the qualifying Production universe",
 						});
 					}
+					const staleStructureRefs = await tx.externalRef.findMany({
+						where: {
+							system: ExternalSystem.PRODUCTION,
+							recordType: ExternalRecordType.COMPANY,
+							matchedBy: MatchActor.IMPORT,
+							matchMethod: "production-chain-id",
+							confirmedAt: { not: null },
+							staleAt: null,
+							externalId: { notIn: [...productionStructureIds] },
+						},
+						select: { id: true, externalId: true },
+					});
+					await tx.externalRef.updateMany({
+						where: { id: { in: staleStructureRefs.map((ref) => ref.id) } },
+						data: {
+							staleAt: now,
+							reviewReason:
+								"Chain is absent from the current Production universe",
+						},
+					});
+					staleReferences += staleStructureRefs.length;
+					for (const ref of staleStructureRefs)
+						reviewItems.push({
+							productionPropertyId: ref.externalId.slice("chain:".length),
+							reason: "Chain left the qualifying Production universe",
+						});
+					const staleRelationshipRefs =
+						await tx.externalRelationshipRef.findMany({
+							where: {
+								system: ExternalSystem.PRODUCTION,
+								confirmedAt: { not: null },
+								staleAt: null,
+								OR: [
+									{ externalId: { startsWith: "property:" } },
+									{ externalId: { startsWith: "chain:" } },
+								],
+								externalId: {
+									notIn: [...productionRelationshipIds],
+								},
+							},
+							select: { id: true, relationshipId: true },
+						});
+					staleRelationships = staleRelationshipRefs.length;
+					await tx.externalRelationshipRef.updateMany({
+						where: { id: { in: staleRelationshipRefs.map((ref) => ref.id) } },
+						data: {
+							staleAt: now,
+							reviewReason:
+								"Relationship is absent from the current Production universe",
+						},
+					});
+					await tx.entityRelationship.updateMany({
+						where: {
+							id: {
+								in: staleRelationshipRefs.map((ref) => ref.relationshipId),
+							},
+							source: RecordSource.IMPORT,
+							validTo: null,
+						},
+						data: { validTo: now },
+					});
 				}
 				if (runId) {
 					const completed = await tx.productionImportRun.updateMany({
@@ -592,7 +1078,10 @@ export async function importProductionHotels(
 							exceptionCount: exceptions,
 							chainIdCount,
 							missingChainCount: records.length - chainIdCount,
-							reviewCount: requiringReview + staleReferences,
+							relationshipCount: productionRelationshipIds.size,
+							staleRelationshipCount: staleRelationships,
+							reviewCount:
+								requiringReview + staleReferences + staleRelationships,
 							staleRefCount: staleReferences,
 							reviewItems,
 							readRequestCount: readRequests,
@@ -602,6 +1091,7 @@ export async function importProductionHotels(
 									(record) => record.productionPropertyId,
 								),
 								manifestProductionIdDigest: productionIdManifestDigest,
+								manifestPayloadDigest: manifestDigest,
 							},
 							destinations: destinations.size,
 							countries: countries.size,

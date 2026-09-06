@@ -18,6 +18,10 @@ const payloadSchema = z
 			.string()
 			.regex(/^[a-f0-9]{64}$/)
 			.optional(),
+		expectedManifestDigest: z
+			.string()
+			.regex(/^[a-f0-9]{64}$/)
+			.optional(),
 		universeGate: z.enum(["DRY_RUN", "COMMIT"]).optional(),
 	})
 	.strict();
@@ -76,7 +80,8 @@ export async function queueProductionRefreshTask(
 		payload.universeGate === "COMMIT" &&
 		(!payload.snapshot ||
 			payload.expectedCount === undefined ||
-			!payload.expectedProductionIdDigest)
+			!payload.expectedProductionIdDigest ||
+			!payload.expectedManifestDigest)
 	) {
 		throw new Error("A full-universe commit requires its approved manifest");
 	}
@@ -84,7 +89,8 @@ export async function queueProductionRefreshTask(
 		payload.universeGate === "DRY_RUN" &&
 		(payload.snapshot ||
 			payload.expectedCount !== undefined ||
-			payload.expectedProductionIdDigest)
+			payload.expectedProductionIdDigest ||
+			payload.expectedManifestDigest)
 	) {
 		throw new Error("A full-universe dry-run cannot use committed evidence");
 	}
@@ -125,13 +131,17 @@ export async function queueProductionRefreshTask(
 
 export const productionBoundaryEvidenceSchema = z
 	.object({
-		contractVersion: z.literal("1"),
+		contractVersion: z.enum(["1", "2"]),
 		httpMethod: z.literal("GET"),
 		readRequests: z.number().int().positive(),
 		clientEvidence: z.literal("GET_ONLY_HTTP_CLIENT"),
 		manifestSnapshot: z.string().datetime(),
 		manifestProductionIds: z.array(z.string().uuid()).optional(),
 		manifestProductionIdDigest: z
+			.string()
+			.regex(/^[a-f0-9]{64}$/)
+			.optional(),
+		manifestPayloadDigest: z
 			.string()
 			.regex(/^[a-f0-9]{64}$/)
 			.optional(),
@@ -341,6 +351,7 @@ export async function runProductionRefresh(
 			auditScope: payload.auditScope,
 			expectedProductionIds: payload.expectedProductionIds,
 			expectedProductionIdDigest: payload.expectedProductionIdDigest,
+			expectedManifestDigest: payload.expectedManifestDigest,
 		},
 	);
 	const action = payload.dryRun ? "Validated" : "Processed";

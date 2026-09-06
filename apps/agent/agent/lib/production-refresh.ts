@@ -14,10 +14,19 @@ const payloadSchema = z
 		snapshot: z.string().datetime().optional(),
 		auditScope: z.literal("qualifying-hotels:sydney:idempotency").optional(),
 		expectedProductionIds: z.array(z.string().uuid()).optional(),
+		expectedProductionIdDigest: z
+			.string()
+			.regex(/^[a-f0-9]{64}$/)
+			.optional(),
+		universeGate: z.enum(["DRY_RUN", "COMMIT"]).optional(),
 	})
 	.strict();
 export type ProductionRefreshPayload = z.infer<typeof payloadSchema>;
 const subjectFor = (payload: ProductionRefreshPayload) => {
+	if (payload.universeGate === "DRY_RUN")
+		return "production-hotel-universe-full-proving:dry-run";
+	if (payload.universeGate === "COMMIT")
+		return "production-hotel-universe-full-proving:commit";
 	if (payload.destination) {
 		if (payload.auditScope) return payload.auditScope;
 		return `production-hotel-universe-proving:${payload.destination.toLowerCase()}:${payload.dryRun ? "dry-run" : "commit"}`;
@@ -63,6 +72,22 @@ export async function queueProductionRefreshTask(
 	) {
 		throw new Error("The Sydney idempotency task requires its pinned contract");
 	}
+	if (
+		payload.universeGate === "COMMIT" &&
+		(!payload.snapshot ||
+			payload.expectedCount === undefined ||
+			!payload.expectedProductionIdDigest)
+	) {
+		throw new Error("A full-universe commit requires its approved manifest");
+	}
+	if (
+		payload.universeGate === "DRY_RUN" &&
+		(payload.snapshot ||
+			payload.expectedCount !== undefined ||
+			payload.expectedProductionIdDigest)
+	) {
+		throw new Error("A full-universe dry-run cannot use committed evidence");
+	}
 	const subject = subjectFor(payload);
 	const pending = await db.agentTask.findFirst({
 		where: { kind: "production-refresh", subject, finishedAt: null },
@@ -106,6 +131,10 @@ export const productionBoundaryEvidenceSchema = z
 		clientEvidence: z.literal("GET_ONLY_HTTP_CLIENT"),
 		manifestSnapshot: z.string().datetime(),
 		manifestProductionIds: z.array(z.string().uuid()).optional(),
+		manifestProductionIdDigest: z
+			.string()
+			.regex(/^[a-f0-9]{64}$/)
+			.optional(),
 	})
 	.strict();
 
@@ -311,6 +340,7 @@ export async function runProductionRefresh(
 			snapshot: payload.snapshot,
 			auditScope: payload.auditScope,
 			expectedProductionIds: payload.expectedProductionIds,
+			expectedProductionIdDigest: payload.expectedProductionIdDigest,
 		},
 	);
 	const action = payload.dryRun ? "Validated" : "Processed";

@@ -21,6 +21,7 @@ export type ProductionImportOptions = {
 	fullReconciliation?: boolean;
 	auditScope?: "qualifying-hotels:sydney:idempotency";
 	expectedProductionIds?: string[];
+	expectedProductionIdDigest?: string;
 };
 export type ProductionImportResult = {
 	qualifying: number;
@@ -64,6 +65,17 @@ function assertApprovedManifest(
 	) {
 		throw new Error("Production manifest does not match the approved IDs");
 	}
+}
+
+export async function productionIdDigest(productionIds: Iterable<string>) {
+	const input = [...productionIds].sort().join("\n");
+	const bytes = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(input),
+	);
+	return [...new Uint8Array(bytes)]
+		.map((byte) => byte.toString(16).padStart(2, "0"))
+		.join("");
 }
 
 function updatedSinceFor(
@@ -324,6 +336,7 @@ export async function importProductionHotels(
 		const productionIds = new Set(
 			records.map((record) => record.productionPropertyId),
 		);
+		const productionIdManifestDigest = await productionIdDigest(productionIds);
 		assertApprovedManifest(productionIds, options.expectedProductionIds);
 		if (productionIds.size !== records.length) {
 			const seen = new Set<string>();
@@ -348,6 +361,12 @@ export async function importProductionHotels(
 				});
 			}
 			throw new Error("Production snapshot contains duplicate property IDs");
+		}
+		if (
+			options.expectedProductionIdDigest &&
+			productionIdManifestDigest !== options.expectedProductionIdDigest
+		) {
+			throw new Error("Production manifest digest does not match approval");
 		}
 		if (options.destination) {
 			const mismatched = records.filter(
@@ -582,6 +601,7 @@ export async function importProductionHotels(
 								manifestProductionIds: records.map(
 									(record) => record.productionPropertyId,
 								),
+								manifestProductionIdDigest: productionIdManifestDigest,
 							},
 							destinations: destinations.size,
 							countries: countries.size,

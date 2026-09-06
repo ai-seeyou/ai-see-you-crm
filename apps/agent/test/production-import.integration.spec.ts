@@ -7,8 +7,17 @@ import {
 	RecordSource,
 } from "@crm/db";
 import type { ProductionBusiness } from "@crm/validation/production-business";
+import {
+	FULL_UNIVERSE,
+	queueApprovedFullUniverseCommit,
+	queueFullUniverseDryRun,
+	readFullUniverseProof,
+} from "../agent/lib/full-production-gate";
 import type { ProductionReadClient } from "../agent/lib/production-client";
-import { importProductionHotels } from "../agent/lib/production-import";
+import {
+	importProductionHotels,
+	productionIdDigest,
+} from "../agent/lib/production-import";
 import {
 	approveSydneyProductionProving,
 	holdProductionUniverseRefresh,
@@ -83,7 +92,14 @@ function clientFor(pages: ProductionBusiness[][]): ProductionReadClient {
 async function cleanup() {
 	await db.productionImportRun.deleteMany({
 		where: {
-			scope: { in: [scope, "qualifying-hotels", "qualifying-hotels:sydney"] },
+			scope: {
+				in: [
+					scope,
+					"qualifying-hotels",
+					"qualifying-hotels:sydney",
+					"qualifying-hotels:sydney:idempotency",
+				],
+			},
 		},
 	});
 	await db.productionImportState.deleteMany({
@@ -1016,5 +1032,162 @@ describe("Production hotel import proving gates", () => {
 			},
 		});
 		expect((await readSydneyProductionProof()).manifestValid).toBe(false);
+	});
+
+	it("gates the full universe through exact durable dry-run evidence", async () => {
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.deleteMany({
+			where: {
+				scope: {
+					in: [FULL_UNIVERSE.scope, "qualifying-hotels:sydney:idempotency"],
+				},
+			},
+		});
+		await db.productionImportRun.create({
+			data: {
+				scope: "qualifying-hotels:sydney:idempotency",
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				destination: "sydney",
+				dryRun: false,
+				qualifyingCount: 228,
+				fetchedCount: 228,
+				unchangedCount: 228,
+				exceptionCount: 0,
+				completedAt: new Date(),
+			},
+		});
+		const activeRun = await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "RUNNING",
+				dryRun: true,
+			},
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		await db.productionImportRun.delete({ where: { id: activeRun.id } });
+		await db.agentTask.create({
+			data: {
+				kind: "production-refresh",
+				reason: "Sydney task still active",
+				payload: { fullReconciliation: false },
+				priority: 600,
+				budget: 0,
+				dueAt: new Date(),
+				subject: "production-hotel-universe-proving:sydney:commit",
+			},
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		const queued = await Promise.all([
+			queueFullUniverseDryRun(),
+			queueFullUniverseDryRun(),
+		]);
+		expect(queued.filter(Boolean)).toHaveLength(1);
+		const dryTask = await db.agentTask.findFirstOrThrow({
+			where: { subject: FULL_UNIVERSE.drySubject },
+			select: { payload: true },
+		});
+		expect(productionRefreshPayload(dryTask.payload)).toEqual({
+			fullReconciliation: false,
+			dryRun: true,
+			universeGate: "DRY_RUN",
+		});
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		const snapshot = "2026-09-06T01:00:00.000Z";
+		const fullIds = [crypto.randomUUID(), crypto.randomUUID()];
+		const digest = await productionIdDigest(fullIds);
+		await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				dryRun: true,
+				qualifyingCount: 2,
+				fetchedCount: 2,
+				readRequestCount: 1,
+				boundaryEvidence: {
+					contractVersion: "1",
+					httpMethod: "GET",
+					readRequests: 1,
+					clientEvidence: "GET_ONLY_HTTP_CLIENT",
+					manifestSnapshot: snapshot,
+					manifestProductionIds: fullIds,
+					manifestProductionIdDigest: digest,
+				},
+				completedAt: new Date(),
+			},
+		});
+		await expect(
+			queueApprovedFullUniverseCommit({
+				expectedCount: 2,
+				snapshot,
+				productionIdDigest: "b".repeat(64),
+			}),
+		).rejects.toThrow("does not match dry-run evidence");
+		const commitId = await queueApprovedFullUniverseCommit({
+			expectedCount: 2,
+			snapshot,
+			productionIdDigest: digest,
+		});
+		expect(commitId).not.toBeNull();
+		const commit = await db.agentTask.findUniqueOrThrow({
+			where: { id: commitId ?? "" },
+			select: { payload: true },
+		});
+		expect(productionRefreshPayload(commit.payload)).toEqual({
+			fullReconciliation: false,
+			dryRun: false,
+			universeGate: "COMMIT",
+			expectedCount: 2,
+			snapshot,
+			expectedProductionIdDigest: digest,
+		});
+		expect(await readFullUniverseProof(true)).toMatchObject({
+			runStatus: "COMPLETED",
+			dryRun: true,
+			qualifyingCount: 2,
+			readRequestCount: 1,
+			manifestSnapshot: snapshot,
+			productionIdDigest: digest,
+			manifestValid: true,
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		await db.agentTask.deleteMany({ where: { kind: "production-refresh" } });
+		await db.productionImportRun.create({
+			data: {
+				scope: FULL_UNIVERSE.scope,
+				leaseOwner: crypto.randomUUID(),
+				heartbeatAt: new Date(),
+				status: "COMPLETED",
+				dryRun: false,
+				qualifyingCount: 2,
+				fetchedCount: 2,
+				createdCount: 2,
+				exceptionCount: 0,
+				boundaryEvidence: {
+					contractVersion: "1",
+					httpMethod: "GET",
+					readRequests: 1,
+					clientEvidence: "GET_ONLY_HTTP_CLIENT",
+					manifestSnapshot: snapshot,
+					manifestProductionIds: fullIds,
+					manifestProductionIdDigest: digest,
+				},
+				completedAt: new Date(),
+			},
+		});
+		expect(await queueFullUniverseDryRun()).toBeNull();
+		expect(
+			await queueApprovedFullUniverseCommit({
+				expectedCount: 2,
+				snapshot,
+				productionIdDigest: digest,
+			}),
+		).toBeNull();
 	});
 });

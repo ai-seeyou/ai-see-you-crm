@@ -27,9 +27,10 @@ function failureCode(error: string | null | undefined) {
 	if (!error) return null;
 	const status = /^Production read failed with HTTP (\d{3})$/.exec(error)?.[1];
 	if (status) return `PRODUCTION_HTTP_${status}`;
-	const rpc = /^Production read failed with (RPC_(?:HTTP_\d{3}|UNKNOWN))$/.exec(
-		error,
-	)?.[1];
+	const rpc =
+		/^Production read failed with (RPC_(?:HTTP_\d{3}|PGRST\d{3}|UNKNOWN))$/.exec(
+			error,
+		)?.[1];
 	if (rpc) return `PRODUCTION_${rpc}`;
 	if (error.startsWith("[")) return "PRODUCTION_CONTRACT_INVALID";
 	if (error === "Production snapshot changed during pagination")

@@ -14,6 +14,7 @@ import type {
 import { productionCategorySnapshotSchema } from "@crm/validation/production-category";
 import { PRODUCTION_CATEGORY } from "./production-category-config";
 import type { ProductionReadClient } from "./production-client";
+import { PRODUCTION_READ } from "./production-read-config";
 
 export type ProductionCategorySyncResult = {
 	snapshotId: string;
@@ -140,6 +141,7 @@ async function fetchMemberships(
 			snapshotId: snapshot.snapshotId,
 			cursor,
 			limit: PRODUCTION_CATEGORY.pageLimit,
+			timeoutMs: requestTimeout(deadline),
 		});
 		readRequests += 1;
 		if (page.snapshotId !== snapshot.snapshotId)
@@ -157,6 +159,13 @@ async function fetchMemberships(
 		cursor = page.nextCursor ?? undefined;
 	} while (cursor);
 	return { records, readRequests };
+}
+
+function requestTimeout(deadline: number) {
+	const remaining = deadline - Date.now();
+	if (remaining <= 0)
+		throw new Error("Production Category fetch exceeded its operation limit");
+	return Math.min(remaining, PRODUCTION_READ.requestTimeoutMs);
 }
 
 async function assertMemberships(
@@ -288,7 +297,7 @@ export async function syncProductionCategories(
 	const mode = productionCategorySyncMode(initialState.snapshotId, options);
 	if (mode === "SKIP") return null;
 	const deadline = Date.now() + PRODUCTION_CATEGORY.fetchDeadlineMs;
-	const snapshot = await client.categorySnapshot();
+	const snapshot = await client.categorySnapshot(requestTimeout(deadline));
 	await assertSnapshot(snapshot);
 	if (
 		options.expectedSnapshotId &&
@@ -310,7 +319,9 @@ export async function syncProductionCategories(
 	if (!isCurrent) await assertMemberships(snapshot, fetched.records);
 	if (Date.now() > deadline)
 		throw new Error("Production Category fetch exceeded its operation limit");
-	const verification = isCurrent ? snapshot : await client.categorySnapshot();
+	const verification = isCurrent
+		? snapshot
+		: await client.categorySnapshot(requestTimeout(deadline));
 	if (Date.now() > deadline)
 		throw new Error("Production Category fetch exceeded its operation limit");
 	if (!sameSnapshot(snapshot, verification))

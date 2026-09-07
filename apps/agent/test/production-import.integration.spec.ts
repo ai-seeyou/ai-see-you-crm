@@ -6,7 +6,10 @@ import {
 	MatchActor,
 	RecordSource,
 } from "@crm/db";
-import type { ProductionBusiness } from "@crm/validation/production-business";
+import {
+	type ProductionBusiness,
+	productionBusinessSchema,
+} from "@crm/validation/production-business";
 import {
 	FULL_UNIVERSE,
 	queueApprovedFullUniverseCommit,
@@ -734,7 +737,7 @@ describe("Production hotel import database behavior", () => {
 		expect(state.sourceWatermark).toEqual(before?.sourceWatermark ?? null);
 	});
 
-	it("confirms absences twice before staling importer-owned property refs", async () => {
+	it("blocks the first weekly contraction before hotel writes or reference staling", async () => {
 		await db.productionImportRun.create({
 			data: {
 				scope: "qualifying-hotels",
@@ -747,7 +750,94 @@ describe("Production hotel import database behavior", () => {
 				completedAt: new Date(),
 			},
 		});
-		const result = await importProductionHotels(clientFor([[record(0)]]), {
+		expect(
+			await db.productionImportRun.count({
+				where: {
+					scope: "qualifying-hotels",
+					status: "COMPLETED",
+					fullReconciliation: true,
+				},
+			}),
+		).toBe(0);
+		const beforeRefs = await db.externalRef.findMany({
+			where: {
+				system: ExternalSystem.PRODUCTION,
+				matchMethod: "production-property-id",
+				matchedBy: MatchActor.IMPORT,
+				confirmedAt: { not: null },
+				staleAt: null,
+			},
+			orderBy: { id: "asc" },
+		});
+		expect(beforeRefs.length).toBeGreaterThan(2);
+		const beforeCompanies = await db.company.findMany({
+			where: { id: { in: beforeRefs.map((ref) => ref.recordId) } },
+			orderBy: { id: "asc" },
+		});
+		const beforeSnapshots = await db.productionSnapshot.findMany({
+			orderBy: { productionId: "asc" },
+		});
+		await expect(
+			importProductionHotels(
+				clientFor([
+					[{ ...record(0), canonicalName: "Must not overwrite the hotel" }],
+				]),
+				{
+					dryRun: false,
+					fullReconciliation: true,
+				},
+			),
+		).rejects.toThrow("Full reconciliation manifest is sharply reduced");
+		expect(
+			await db.externalRef.findMany({
+				where: { id: { in: beforeRefs.map((ref) => ref.id) } },
+				orderBy: { id: "asc" },
+			}),
+		).toEqual(beforeRefs);
+		expect(
+			await db.company.findMany({
+				where: { id: { in: beforeCompanies.map((company) => company.id) } },
+				orderBy: { id: "asc" },
+			}),
+		).toEqual(beforeCompanies);
+		expect(
+			await db.productionSnapshot.findMany({
+				orderBy: { productionId: "asc" },
+			}),
+		).toEqual(beforeSnapshots);
+		const failed = await db.productionImportRun.findFirstOrThrow({
+			where: {
+				scope: "qualifying-hotels",
+				status: "FAILED",
+				fullReconciliation: true,
+			},
+			orderBy: { startedAt: "desc" },
+		});
+		expect(failed.createdCount).toBe(0);
+		expect(failed.updatedCount).toBe(0);
+		expect(failed.staleRefCount).toBe(0);
+	});
+
+	it("confirms bounded absences twice before staling importer-owned property refs", async () => {
+		const refs = await db.externalRef.findMany({
+			where: {
+				system: ExternalSystem.PRODUCTION,
+				matchMethod: "production-property-id",
+				matchedBy: MatchActor.IMPORT,
+				confirmedAt: { not: null },
+				staleAt: null,
+			},
+			select: { externalId: true },
+		});
+		const snapshots = await db.productionSnapshot.findMany({
+			where: {
+				productionId: { in: refs.map((ref) => ref.externalId), not: ids[1] },
+			},
+		});
+		const manifest = snapshots.map((snapshot) =>
+			productionBusinessSchema.parse(snapshot.payload),
+		);
+		const result = await importProductionHotels(clientFor([manifest]), {
 			dryRun: false,
 			fullReconciliation: true,
 		});

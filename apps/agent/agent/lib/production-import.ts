@@ -872,11 +872,23 @@ export async function importProductionHotels(
 			if (records.length === 0) {
 				throw new Error("Full reconciliation returned an empty manifest");
 			}
-			const priorCount = priorFullRun?.qualifyingCount;
+			const currentHotelCount = await db.externalRef.count({
+				where: {
+					system: ExternalSystem.PRODUCTION,
+					recordType: ExternalRecordType.COMPANY,
+					matchedBy: MatchActor.IMPORT,
+					matchMethod: "production-property-id",
+					confirmedAt: { not: null },
+					staleAt: null,
+				},
+			});
+			const priorCount = Math.max(
+				priorFullRun?.qualifyingCount ?? 0,
+				currentHotelCount,
+			);
 			if (
-				priorCount &&
 				records.length <
-					Math.floor(priorCount * PRODUCTION_IMPORT.reconciliationMinimumRatio)
+				Math.floor(priorCount * PRODUCTION_IMPORT.reconciliationMinimumRatio)
 			) {
 				throw new Error("Full reconciliation manifest is sharply reduced");
 			}

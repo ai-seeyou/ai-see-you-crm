@@ -193,6 +193,53 @@ Second pass complete. All material actions and remaining gates appear here or in
 
 ## Evidence
 
+## PR71 approved deployment continuation
+
+- Founder explicitly approves PR71's exact migration and unchanged-baseline exception after the prior release gate explanation.
+- Independent review reconfirms head 6b3e16fb325715197b757e6d6252128d033f1fa0 and unchanged CI signatures.
+- Exact migration harness passes again. Forward SHA remains 388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e.
+- PR71 merges at 2ce4377d5597b1a7de3550fe1686d5407a83fae6.
+- Exact migration executes once from source baseline 919b171d. Postflight source equals 27c4d3a54be74843fbe72ed7c6919644c265143bb8e78b4115fe78998ad3ccb0.
+- Independent postflight verifies unchanged OID, owner, ACL, STABLE status, definer, search path, UTC and hotel function sources.
+- Authority count remains 4,105. All three capability verifiers retain the current rotation. Migration ledger entry remains absent.
+- Parent deploys exact Edge bundle but omits --no-verify-jwt. The CLI enables incompatible gateway JWT verification.
+- I caused this deployment-setting regression. The first fresh dry-run attempt records HTTP 401 before Category evidence.
+- Independent review confirms the existing constant-time opaque-token gate remains enforced. Fifteen handler tests pass.
+- Parent restores --no-verify-jwt for only crm-universe-read-v2. Version8 is ACTIVE with verify_jwt=false.
+- Bundle hash e53bc2087cea8b19a510b4edd66e4f939f6243c34138460094da69083a2f5cfc remains identical across versions7 and8.
+- A live unauthenticated GET still returns401. No token, credential, source or database permission changes accompany the restoration.
+- New dry task is crm-category-dry-fd77329e3d6245558f2a71c8cd120083, request d6190058-fc33-426b-8cd7-a764992c474a.
+- Queue SQL SHA is 1ad0df7a9e458465eb1c3ff631fe721da05a60a49058a4c2ac1d8bd7164a351b. Independent review passes.
+- First monitor query fails on nonexistent lastError. Child corrects it to the actual outcome column. No database mutation occurs.
+- Automatic retry remains governed by the existing lease, which expires at13:10:23 UTC. No forced restart or activation occurs.
+- Independent current oracle confirms snapshot54795ad0, all four expected digests, nine Categories,77 destinations,4,272 properties and13,184 memberships.
+- A cold operator query takes5,260ms before warm calls return within2,399ms. Three-second timeout headroom remains a recorded risk.
+- Browser discovery remains empty. Parent asks the founder to open and sign into the CRM in Codex's browser.
+- Category activation and enrichment remain paused pending completed deployed dry evidence and live certification.
+- The automatic second attempt records RPC_HTTP_500 after gateway restoration. No evidence or active snapshot appears.
+- The coordinator requests a separate bounded exception for only a ten-second Category-function timeout and unchanged baseline CI.
+- No approval for this new correction arrives yet. Worktree /private/tmp/tri-crm-category-timeout prepares reviewed artifacts without hosted changes.
+- Official Supabase and PostgREST documentation supports function-level timeout hoisting before REST execution.
+- Ordinary SQL function-call tests alone do not certify this REST behaviour. Deployed full validation remains mandatory.
+- The actual timeout PR is80, not the predicted72. Head is c61b38b2872d0bd6a3f846edfe1e1737245629df.
+- Three files contain forward migration, rollback and isolated local test. No Edge source or deployment change is required.
+- Forward SHA40c69c4e265a4b484beeb3a8e32bd8d92a2ff2065ebea225fd9ab899af1829d9.
+- Rollback SHA9bb0cabf5e70d745f75ccfaabb05db33557a3b5647336e8cdecf59f8e239009f.
+- Test SHAaddcbda67bc3f93b23ee0ef0c1b5eee45256ad6527014502afa3360860006cca.
+- Independent review catches quoted-empty-search-path and test-output-index defects. Builder fixes both before final review PASS.
+- Parent reruns the exact harness successfully. Sandbox denial of loopback precedes the correctly escalated isolated test.
+- Failed synthetic test fixtures are identified and cleaned by their owning agents. Live databases remain untouched by local tests.
+- PR80 pushes and opens as draft. CI34126945286 starts. Independent failure-signature comparison remains pending.
+- Final independent comparison passes CI34126945286 against baseline34107196023 with zero new or removed signatures.
+- Counts remain auth3, advisories14, inventory118 and secret9. Exactly three files match reviewed artifacts at headc61b38b.
+- Parent marks PR80 ready without merging or deploying. The bounded timeout exception remains pending.
+- Third live dry attempt again records RPC_HTTP_500 with no evidence. Its lease expires at13:24:23.409 UTC.
+- Dormant activation SQL /private/tmp/crm-queue-category-activation-pr71.sql SHAe9f9f702b69b671ef19b1315d57027383548434ce7adb0fe0dd0a6ffc81f0d22 remains unexecuted.
+- It is bound to the unsuccessful task. After timeout deployment, use a new dry task and rebind independently reviewed activation guards.
+- Second pass complete. These records include the deployment regression, its verified repair and the unclosed timeout risk.
+
+## Earlier evidence
+
 Final CRM deployment receipt:
 
 - App: dpl_CCvfPJrHFsRh1gXsXiPyA8pjKbEk.

@@ -4,7 +4,7 @@
 
 **Context:** Governed Core Category navigation enhancement. CRM contains 5,010 certified hotels and preserves all original 4,996 mappings.
 
-**Current:** CRM preserves all 5,010 certified hotels and all 4,996 original mappings. CRM PR34 passes independent review and CI. All three live deployments are READY at 8c529b8551cb8b417ddad6f609f28cab745d10ad. Production PR70 and the approved verifier alignment are deployed. Category remains inactive because exact page queries exceed the existing timeout. Reviewed Production PR71 corrects repeated query work and passes all 28 page checks. Its exact migration and unchanged-baseline exceptions remain pending. Browser certification has no connected browser. Contact enrichment remains paused.
+**Current:** CRM preserves all 5,010 certified hotels and all 4,996 original mappings. All three live CRM deployments remain READY at PR34 merge8c529b85. Founder approves PR71. Its exact migration deploys at merge2ce4377d with source27c4d3a5 and unchanged permissions. Edge version8 restores the reviewed opaque-token gateway setting after a coordinator deployment error. Category remains inactive. Fresh dry taskfd77329e records HTTP401 on attempt1, then RPC_HTTP_500 on attempt2 after gateway restoration. Cold queries exceed the existing three-second limit. A function-specific ten-second timeout correction is under review. Its separate exception is requested, not yet approved. Browser certification has no connected browser. Contact enrichment remains paused.
 
 **Pending:**
 
@@ -20,17 +20,27 @@
 - Founder approves PR70's exact migration and unchanged-baseline exception. Merge 8c74ab04 deploys the exact migration once.
 - PR70 head is 1a29cae8527e5bdc4c11f297730b739513086d87. Migration SHA is e0f6ab1a603f9b5a0edccdf282c1f252bbda2edd7edae50f78ca14d3b4bc02ae.
 - PR70 source passes independent postflight. Approved rotation alignment repairs the obsolete Category verifier without retrieving credentials.
-- Current Category source is 919b171df140390537f27fe1aa27561499c0bb428eff8a33f0b7d4ccf9bc1bbb. Both hotel functions remain unchanged.
+- The verifier-alignment source is 919b171d before PR71. Current deployed Category source is27c4d3a5. Both hotel functions remain unchanged.
 - New dry task crm-category-dry-fd157501afea4d46829a36e486169cfc exhausts three attempts at 08:48:32 UTC without evidence.
 - Category remains inactive. Diagnose the actual hosted HTTP failure before another dry run or activation.
 - Independent deployed Edge bundle audit matches all six reviewed runtime files. Stale deployment is excluded as the cause.
 - Exact first, middle and terminal page computations exceed the anonymous three-second timeout. First-page work takes 5.868 seconds.
 - Reviewed Production correction 6b3e16f preserves rules, permissions and all digests. Its migration and rollback pass independent tests.
-- Migration SHA is 388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e. No correction deploys yet.
+- Migration SHA388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e deploys after the PR71 founder exception.
 - All 28 cursor replays pass three seconds. Exact snapshot headroom reaches 168 milliseconds, so require the deployed complete dry run.
-- Obtain the new exact migration and unchanged-baseline CI exception after PR review. PR70's exception remains specific to PR70.
+- PR70 and PR71 exceptions remain specific to their exact artifacts. PR80 needs its separately requested timeout exception.
 - CRM PR34 merges at 8c529b8551cb8b417ddad6f609f28cab745d10ad after independent review and passing CI34108183790.
-- All three live deployments match that merge. Production PR71 remains unmerged pending its specific migration and baseline exceptions.
+- All three live deployments match that merge. Production PR71 merges and deploys after explicit approval.
+- PR71 forward SHA388d7922 applies once. Source becomes27c4d3a5 with unchanged permissions and current capability verifier.
+- Parent repairs its Edge gateway regression. Version8 verifies JWT=false while custom token authentication stays enforced.
+- New dry task crm-category-dry-fd77329e3d6245558f2a71c8cd120083 still lacks completed evidence. Do not activate.
+- Function-specific ten-second timeout correction is Production PR80, headc61b38b2872d0bd6a3f846edfe1e1737245629df.
+- Its worktree is /private/tmp/tri-crm-category-timeout, branchfix/crm-category-read-budget.
+- Forward SHA40c69c4e and rollback9bb0cabf pass independent review and the parent local test rerun.
+- CI34126945286 matches baseline34107196023 with zero new signatures. Final independent review passes exact headc61b38b.
+- Obtain the separately requested bounded Production timeout and baseline exceptions before deployment. PR80 remains unmerged and undeployed.
+- Fresh dry taskfd77329e reaches attempt3 with RPC_HTTP_500 and no evidence. Do not restart it or activate from its dormant template.
+- After the reviewed timeout correction, queue a new uniquely identified dry task and bind activation only to its certified completed evidence.
 - Complete signed-in browser acceptance for Businesses, Contacts and Coverage. Do not substitute SQL tests for browser certification.
 - Use only crm-agent for Production GET calls. PRODUCTION_CATEGORY_SYNC_REQUEST queues bounded dry-run/commit tasks without downloading tokens.
 - Browser runtime finds no connected browser. Founder receives a non-blocking request to open and sign into the CRM in Codex's browser.

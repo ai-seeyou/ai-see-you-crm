@@ -1,6 +1,9 @@
 # Governed Core Category delivery
 
-Status: Implemented and locally reviewed. Production deployment and live certification remain blocked. Not live.
+Status: Production Category contract deployed. Hotel-feed correction and CRM release remain pending. Category filtering is not live.
+
+Current execution evidence: [Category release execution](./category-release-execution-2026-09-07.md).
+The founder approves PR67 and the hotel eligibility correction after the predeployment receipt below.
 
 ## Verification receipt
 

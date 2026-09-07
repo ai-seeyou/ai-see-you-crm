@@ -87,7 +87,13 @@ The review validates actual service output schemas against the complete identity
 Country and Hotel group sorting pass both directions, alphabetical boundaries, and repeated-page stability.
 The six interface tests validate URL state, saved-view application, default columns, and named filter controls.
 The application deployment build passes.
-CI and deployment verification remain pending at this draft revision.
+PR 29 merges after CI and all preview deployments pass.
+The reviewed implementation commit is `9aac22dff6725381dcee439218a2c991a8165906`.
+The release merge commit is `c6848aa2f098fbecb85c711c1f195701c0a92919`.
+Release CI also passes.
+The app, API, and agent deployments all reach READY on this merge commit.
+The live navigation endpoint returns HTTP 401 without authentication.
+The live application redirects unauthenticated visitors to sign-in.
 The in-app browser reports no available browser backend.
 Authenticated visual and keyboard checks remain unverified.
 
@@ -111,9 +117,7 @@ These measurements exclude hosted network and browser rendering time.
 
 1. NOT DONE. Authenticated browser verification has no available browser backend.
    Fix: Open the signed-in CRM in the in-app browser, then verify filters, saved views, sorting, and keyboard navigation.
-2. NOT DONE. CI and deployment evidence remain pending.
-   Fix: Complete these checks before certifying the release.
-3. RISK. Country and Hotel group sorting load matching row data before server-side pagination.
+2. RISK. Country and Hotel group sorting load matching row data before server-side pagination.
    Fix: Current scale checks pass. Repeat performance checks as the hotel universe grows.
-4. RISK. Local transaction tests emit an existing PostgreSQL client concurrency deprecation warning.
+3. RISK. Local transaction tests emit an existing PostgreSQL client concurrency deprecation warning.
    Fix: Review adapter compatibility before upgrading the PostgreSQL client to version 9.

@@ -26,6 +26,10 @@ export const metadata: Metadata = {
 	},
 	description:
 		"AI See You's internal CRM: contacts, commercial relationships and outreach for travel businesses.",
+	robots: {
+		index: false,
+		follow: false,
+	},
 	icons: {
 		icon: [
 			{ url: "/favicon.svg", type: "image/svg+xml" },

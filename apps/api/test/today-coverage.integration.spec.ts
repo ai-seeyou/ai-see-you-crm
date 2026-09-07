@@ -365,6 +365,7 @@ describe("TODAY", () => {
 describe("COVERAGE", () => {
 	it("names the target business missing a required role", async () => {
 		const result = await coverage.gaps({
+			scope: "TARGET_BUSINESSES",
 			vertical: [],
 			entityType: [EntityType.HOTEL],
 			includeCovered: false,
@@ -382,6 +383,7 @@ describe("COVERAGE", () => {
 
 	it("does not name the target business that has every required role", async () => {
 		const result = await coverage.gaps({
+			scope: "TARGET_BUSINESSES",
 			vertical: [],
 			entityType: [EntityType.HOTEL],
 			includeCovered: false,
@@ -392,6 +394,7 @@ describe("COVERAGE", () => {
 
 	it("returns the covered business when asked for it, with its holders", async () => {
 		const result = await coverage.gaps({
+			scope: "TARGET_BUSINESSES",
 			vertical: [],
 			entityType: [EntityType.HOTEL],
 			includeCovered: true,
@@ -411,11 +414,26 @@ describe("COVERAGE", () => {
 		const untargeted = await business(`WSC Untargeted ${suffix}`);
 
 		const result = await coverage.gaps({
+			scope: "TARGET_BUSINESSES",
 			vertical: [],
 			entityType: [EntityType.HOTEL],
 			includeCovered: true,
 		});
 
 		expect(result.rows.map((row) => row.id)).not.toContain(untargeted);
+	});
+
+	it("clamps a stale page to the filtered result range", async () => {
+		const result = await coverage.gaps({
+			scope: "TARGET_BUSINESSES",
+			page: 999,
+			pageSize: 25,
+			vertical: [],
+			entityType: [EntityType.HOTEL],
+			includeCovered: true,
+		});
+
+		expect(result.page).toBe(1);
+		expect(result.rows.length).toBeGreaterThan(0);
 	});
 });

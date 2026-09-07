@@ -74,6 +74,7 @@ export type DataTableFacet = {
 	id: string;
 	label: string;
 	options: { value: string; label: string }[];
+	featured?: boolean;
 	searchable?: boolean;
 	search?: string;
 	onSearchChange?: (search: string) => void;
@@ -176,7 +177,7 @@ function toggle(selected: string[], value: string, checked: boolean): string[] {
 	return checked ? [...selected, value] : selected.filter((v) => v !== value);
 }
 
-function FacetSubmenu({
+function FacetOptions({
 	facet,
 	selected,
 	onChange,
@@ -186,14 +187,7 @@ function FacetSubmenu({
 	onChange: (values: string[]) => void;
 }) {
 	return (
-		<DropdownMenuSub>
-			<DropdownMenuSubTrigger>
-				<span className="flex-1">{facet.label}</span>
-				{selected.length > 0 && (
-					<span className="tabular-nums opacity-60">({selected.length})</span>
-				)}
-			</DropdownMenuSubTrigger>
-			<DropdownMenuSubContent className="max-h-72 min-w-52 overflow-hidden">
+		<div className="max-h-72 min-w-52 overflow-hidden">
 				{facet.searchable ? (
 					<Command
 						shouldFilter={facet.onSearchChange === undefined}
@@ -258,6 +252,61 @@ function FacetSubmenu({
 						})}
 					</div>
 				)}
+		</div>
+	);
+}
+
+export function DataTableFacetFilter({
+	facet,
+	selected,
+	onChange,
+}: {
+	facet: DataTableFacet;
+	selected: string[];
+	onChange: (values: string[]) => void;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="outline"
+					size="sm"
+					className="justify-between sm:min-w-36"
+				>
+					<span className="truncate">{facetLabel(facet, selected)}</span>
+					<ChevronDown className="shrink-0 opacity-60" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="min-w-52">
+				<FacetOptions facet={facet} selected={selected} onChange={onChange} />
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function FacetSubmenu({
+	facet,
+	selected,
+	onChange,
+}: {
+	facet: DataTableFacet;
+	selected: string[];
+	onChange: (values: string[]) => void;
+}) {
+	return (
+		<DropdownMenuSub>
+			<DropdownMenuSubTrigger>
+				<span className="flex-1">{facet.label}</span>
+				{selected.length > 0 && (
+					<span className="tabular-nums opacity-60">({selected.length})</span>
+				)}
+			</DropdownMenuSubTrigger>
+			<DropdownMenuSubContent className="max-h-72 min-w-52 overflow-hidden">
+				<FacetOptions
+					facet={facet}
+					selected={selected}
+					onChange={onChange}
+				/>
 			</DropdownMenuSubContent>
 		</DropdownMenuSub>
 	);
@@ -329,6 +378,7 @@ export function DataTable<TRow, TSub = unknown>({
 		() =>
 			(facets ?? []).filter(
 				(facet) =>
+					facet.featured ||
 					facet.options.length > 0 ||
 					facet.searchable ||
 					(query.filters[facet.id]?.length ?? 0) > 0,
@@ -345,6 +395,11 @@ export function DataTable<TRow, TSub = unknown>({
 		actions != null ||
 		leadingActions != null;
 	const activeFacetFilterCount = availableFacets.filter(
+		(facet) => (query.filters[facet.id]?.length ?? 0) > 0,
+	).length;
+	const featuredFacets = availableFacets.filter((facet) => facet.featured);
+	const overflowFacets = availableFacets.filter((facet) => !facet.featured);
+	const activeOverflowFacetFilterCount = overflowFacets.filter(
 		(facet) => (query.filters[facet.id]?.length ?? 0) > 0,
 	).length;
 	const activeFilterCount =
@@ -456,7 +511,15 @@ export function DataTable<TRow, TSub = unknown>({
 					{leadingActions}
 
 					<div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center lg:ml-auto">
-						{availableFacets.length > 0 && (
+						{featuredFacets.map((facet) => (
+							<DataTableFacetFilter
+								key={facet.id}
+								facet={facet}
+								selected={query.filters[facet.id] ?? []}
+								onChange={(values) => query.setFilter(facet.id, values)}
+							/>
+						))}
+						{overflowFacets.length > 0 && (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<Button
@@ -466,15 +529,15 @@ export function DataTable<TRow, TSub = unknown>({
 									>
 										<Filter data-icon="inline-start" />
 										Filters
-										{activeFacetFilterCount > 0 && (
+										{activeOverflowFacetFilterCount > 0 && (
 											<span className="tabular-nums opacity-60">
-												({activeFacetFilterCount})
+												({activeOverflowFacetFilterCount})
 											</span>
 										)}
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="start" className="min-w-48">
-									{availableFacets.map((facet) => (
+									{overflowFacets.map((facet) => (
 										<FacetSubmenu
 											key={facet.id}
 											facet={facet}

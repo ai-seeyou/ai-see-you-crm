@@ -63,6 +63,7 @@ async function Companies({
 			trpc.companies.list.queryOptions(companiesSearchParams.toInput(values)),
 		),
 		queryClient.prefetchQuery(trpc.users.list.queryOptions()),
+		queryClient.prefetchQuery(trpc.companies.navigation.queryOptions({})),
 	]);
 
 	return (

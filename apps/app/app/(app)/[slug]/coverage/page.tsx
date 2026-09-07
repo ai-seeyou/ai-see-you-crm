@@ -33,7 +33,7 @@ export default function CoveragePage({
 				<PageShellHeading>
 					<PageShellTitle>Coverage</PageShellTitle>
 					<PageShellDescription>
-						{`Target ${BUSINESS.manyLower} missing the people we need.`}
+						{`${BUSINESS.many} missing the people we need.`}
 					</PageShellDescription>
 				</PageShellHeading>
 			</PageShellHeader>
@@ -64,12 +64,19 @@ async function Coverage({
 					vertical: values[COVERAGE_PARAM.vertical],
 					entityType: values[COVERAGE_PARAM.entityType],
 					covered: values[COVERAGE_PARAM.includeCovered],
+					countryCodes: values[COVERAGE_PARAM.countryCodes],
+					destinationIds: values[COVERAGE_PARAM.destinationIds],
+					hotelGroupIds: values[COVERAGE_PARAM.hotelGroupIds],
+					missingRoleTypes: values[COVERAGE_PARAM.missingRoleTypes],
+					page: values[COVERAGE_PARAM.page],
+					scope: values[COVERAGE_PARAM.scope],
 				}),
 			),
 		),
 		queryClient.prefetchQuery(
 			trpc.verticals.list.queryOptions({ includeArchived: false }),
 		),
+		queryClient.prefetchQuery(trpc.companies.navigation.queryOptions({})),
 	]);
 
 	return (

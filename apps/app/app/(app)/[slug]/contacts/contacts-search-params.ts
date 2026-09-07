@@ -12,6 +12,9 @@ export const contactsSearchParams = createListSearchParams({
 		"persona",
 		"activity",
 		"roleType",
+		"countryCodes",
+		"destinationIds",
+		"hotelGroupIds",
 	] as const,
 	facetValues: { roleType: Object.values(ContactRoleType) },
 });

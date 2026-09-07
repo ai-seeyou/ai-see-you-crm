@@ -61,6 +61,7 @@ async function Contacts({
 		),
 		queryClient.prefetchQuery(trpc.users.list.queryOptions()),
 		queryClient.prefetchQuery(trpc.companies.options.queryOptions({ q: "" })),
+		queryClient.prefetchQuery(trpc.companies.navigation.queryOptions({})),
 	]);
 
 	return (

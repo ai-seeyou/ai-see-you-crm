@@ -128,3 +128,22 @@ This release does not implement those future summaries.
 The PR 66 CI exception does not apply to another Production PR.
 The PR 65 migration exception does not authorise a new Production migration.
 Large-scale contact enrichment remains paused until the complete feature passes live certification.
+
+## Deployed operator path
+
+The crm-agent deployment owns the only Category execution path.
+The operator never downloads the Production URL or token.
+
+Set `PRODUCTION_CATEGORY_SYNC_REQUEST` on crm-agent to `DRY_RUN:<new UUID>`.
+Redeploy crm-agent, then wait for the durable task to finish.
+The task payload stores the bounded snapshot evidence.
+Each exact request queues once, including after a retry or redeployment.
+
+Review the dry-run evidence before activation.
+Set the variable to `COMMIT:<approved snapshot ID>` only after that review passes.
+Redeploy crm-agent, then verify the active snapshot equals the approved identifier.
+Remove the variable after the durable task completes.
+
+The minute dispatcher creates and runs these tasks inside the deployed agent.
+The payload contains no endpoint, token or database credential.
+A queue failure logs a fixed error and does not stop unrelated dispatch work.

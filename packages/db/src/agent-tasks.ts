@@ -12,6 +12,7 @@ export const TASK_KINDS = [
 	"slack-channel-join",
 	"agent-event",
 	"production-refresh",
+	"production-category-sync",
 ] as const;
 
 export type TaskKind = (typeof TASK_KINDS)[number];
@@ -23,6 +24,7 @@ export const DIRECT_KINDS = [
 	"slack-channel-join",
 	"agent-event",
 	"production-refresh",
+	"production-category-sync",
 ] as const;
 
 export type DirectKind = (typeof DIRECT_KINDS)[number];
@@ -62,4 +64,5 @@ export const PRIORITY = {
 	slackJoin: 950,
 	event: 700,
 	productionRefresh: 600,
+	productionCategorySync: 600,
 } as const;

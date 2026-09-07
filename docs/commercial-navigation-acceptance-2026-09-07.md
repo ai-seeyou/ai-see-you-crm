@@ -94,6 +94,9 @@ Release CI also passes.
 The app, API, and agent deployments all reach READY on this merge commit.
 The live navigation endpoint returns HTTP 401 without authentication.
 The live application redirects unauthenticated visitors to sign-in.
+PR 30 adds the previously omitted noindex/nofollow metadata and all-route response header.
+Independent review and focused source tests pass for this bounded safeguard.
+Its final live header and rendered-metadata verification resides in the PR 30 release receipt.
 The in-app browser reports no available browser backend.
 Authenticated visual and keyboard checks remain unverified.
 

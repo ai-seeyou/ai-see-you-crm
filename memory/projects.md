@@ -12,7 +12,7 @@
 - Complete commercial workflow acceptance with the live hotel universe.
 - Complete signed-in browser checks for the new navigation controls. The in-app browser backend is unavailable during this session.
 - Keep large-scale contact enrichment paused until navigation interaction verification passes.
-- Verify the bounded noindex/nofollow follow-up after deployment.
+- Read PR 30's release receipt for the bounded noindex/nofollow deployment verification. Do not repeat deployment without checking current evidence.
 - Retire the expired temporary operator role through Supabase-managed administration. Reviewed SQL cleanup lacks required privileges.
 - Preserve the certified 4,996-hotel manifest, 76 destinations, and four countries.
 - Production retains four pre-existing baseline CI failure categories. The PR 65 exception does not waive new regressions.

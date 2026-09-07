@@ -39,6 +39,10 @@ The live deployment succeeds. Browser interaction remains unverified because no 
 - Verify the app redirects unauthenticated visitors to `/sign-in`.
 - Discover the inherited public sign-in page lacks noindex metadata and headers.
 - Start a bounded follow-up for the permanent noindex/nofollow ruling and final acceptance documentation.
+- Add root noindex/nofollow metadata and the all-route X-Robots-Tag header.
+- Independently review the 17-line runtime change. Two focused tests and the full 171-test app suite pass.
+- Commit and push the safeguard with normal hooks. Create PR 30 and record independent review.
+- Maintain final live indexing verification in PR 30's release receipt, linked below.
 
 ## Decisions made
 
@@ -92,6 +96,9 @@ The live deployment succeeds. Browser interaction remains unverified because no 
 - Live app deployment: `crm-15t9kixhi-ai-see-you.vercel.app`.
 - Live API deployment: `crm-grcqd7y40-ai-see-you.vercel.app`.
 - Live agent deployment: `crm-agent-qpnw4mm2r-ai-see-you.vercel.app`.
+- Indexing safeguard commit: `b30385418a52f8bfa6578c8df88d48bf24aadaa0`.
+- Indexing safeguard and final release receipt: `https://github.com/ai-seeyou/ai-see-you-crm/pull/30`.
+- Indexing independent review: `https://github.com/ai-seeyou/ai-see-you-crm/pull/30#issuecomment-5563850062`.
 
 ## Problems and solutions
 
@@ -117,7 +124,7 @@ The live deployment succeeds. Browser interaction remains unverified because no 
 - Complete live browser selection, filtering, multiselect, saved-view restoration, sorting, pagination, and keyboard checks.
 - Do not claim synthetic responsibility tests verify real people. No real contacts exist yet.
 - Keep large-scale enrichment paused until the remaining interaction acceptance passes.
-- Finish and independently verify the narrow indexing-exclusion follow-up.
+- Read PR 30's final release receipt for live header and rendered metadata verification before repeating indexing work.
 - Monitor full-row sorting as the universe grows.
 - Review the existing PostgreSQL client concurrency deprecation warning before upgrading that client to version 9.
 - Preserve the separately documented expired Production operator-role cleanup item. This session does not touch Production privileges.

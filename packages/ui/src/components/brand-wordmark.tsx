@@ -7,7 +7,7 @@ export function BrandWordmark() {
 			alt="AI See You"
 			width={1000}
 			height={220}
-			className="h-auto w-40 shrink-0 sm:w-48"
+			className="h-auto w-24 shrink-0 sm:w-48"
 			preload
 		/>
 	);

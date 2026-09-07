@@ -19,7 +19,7 @@ describe("AI See You header wordmark", () => {
 		expect(html).toContain('alt="AI See You"');
 		expect(html).toContain('width="1000"');
 		expect(html).toContain('height="220"');
-		expect(html).toContain("h-auto w-40 shrink-0 sm:w-48");
+		expect(html).toContain("h-auto w-24 shrink-0 sm:w-48");
 		expect(html).toContain("logo-ai-see-you.png");
 		expect(html).not.toContain("Comp AI");
 	});

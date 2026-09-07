@@ -6,6 +6,7 @@ import Logout from "@carbon/icons-react/es/Logout";
 import Menu from "@carbon/icons-react/es/Menu";
 import UserAvatar from "@carbon/icons-react/es/UserAvatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@crm/ui/components/avatar";
+import { BrandWordmark } from "@crm/ui/components/brand-wordmark";
 import { Button } from "@crm/ui/components/button";
 import {
 	DropdownMenu,
@@ -15,7 +16,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@crm/ui/components/dropdown-menu";
-import Logo from "@crm/ui/components/logo";
 import { Separator } from "@crm/ui/components/separator";
 import { Skeleton } from "@crm/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -52,13 +52,18 @@ export function AppHeader({ user }: { user: User }) {
 				</Button>
 				<Link
 					href={workspaceUrl()}
-					aria-label="Homepage"
-					className="hidden size-8 items-center justify-center text-foreground md:flex"
+					aria-label="AI See You CRM home"
+					className="flex h-10 shrink-0 items-center rounded-sm focus-visible:outline-offset-2"
 				>
-					<Logo className="size-5" />
+					<BrandWordmark />
 				</Link>
-				<Separator orientation="vertical" className="mx-1 h-5 bg-transparent" />
-				<span className="min-w-0 truncate font-medium text-sm">{label}</span>
+				<Separator
+					orientation="vertical"
+					className="mx-1 hidden h-5 bg-transparent sm:block"
+				/>
+				<span className="hidden min-w-0 truncate font-medium text-sm sm:block">
+					{label}
+				</span>
 			</div>
 
 			<div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -83,11 +88,15 @@ export function AppHeaderFallback() {
 			aria-busy="true"
 		>
 			<div className="flex shrink-0 items-center gap-1">
-				<span className="hidden size-8 items-center justify-center text-foreground md:flex">
-					<Logo className="size-5" />
+				<span className="size-8 md:hidden" aria-hidden="true" />
+				<span className="flex h-10 shrink-0 items-center">
+					<BrandWordmark />
 				</span>
-				<Separator orientation="vertical" className="mx-1 h-5 bg-transparent" />
-				<Skeleton className="h-4 w-24" />
+				<Separator
+					orientation="vertical"
+					className="mx-1 hidden h-5 bg-transparent sm:block"
+				/>
+				<Skeleton className="hidden h-4 w-24 sm:block" />
 			</div>
 
 			<div className="ml-auto flex shrink-0 items-center gap-1.5">

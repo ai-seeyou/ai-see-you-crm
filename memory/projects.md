@@ -8,6 +8,7 @@
 
 **Pending:**
 
+- Header wordmark is implemented locally using the unchanged Production logo. Type and logo tests pass. Push, deployment and browser verification remain pending.
 - Open and sign into crm.ai-seeyou.com in the supported Codex browser. The founder receives an asynchronous request.
 - Verify Country/Destination/Group/Category combinations in Businesses, Contacts and missing-role Coverage through the actual UI.
 - Do not claim SQL acceptance replaces browser certification. Do not invent live contact responsibilities to create positive results.

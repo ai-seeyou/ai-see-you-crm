@@ -44,4 +44,8 @@ The separate Category evidence remains 13,184 memberships across 4,272 propertie
 Eleven Category properties lack CRM links. All eleven belong to Yorkshire Dales.
 The Category implementation retains those memberships as explicit unresolved links.
 
-Release status: independently reviewed locally. Remote CI and live deployment verification remain pending.
+Release status: PR 31 merges after all CI checks pass.
+Release commit: `f38ee8de6d17a2be53dd1958427c44ca2ae27a7e`.
+Vercel deployment `dpl_7mcrQ3vtem2iBnHjHpQKBqGZehMF` reports READY with that exact Git SHA.
+The production alias is `agent.crm.ai-seeyou.com`.
+Category code and migration 67 are not part of this release.

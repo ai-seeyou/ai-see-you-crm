@@ -20,6 +20,10 @@ The existing hotel view remains unchanged.
 
 The Category migration requires a separate exact founder exception before Production execution.
 No hosted mutation occurs during this implementation and review work.
+Production draft PR: https://github.com/ai-seeyou/tri/pull/67.
+CRM draft PR: https://github.com/ai-seeyou/ai-see-you-crm/pull/32.
+Production PR67 reports the same four baseline CI failure categories. Its CRM authentication audit passes.
+The Production implementer reports no new Category failure. The exception still requires founder authority.
 
 ## Separate hotel feed discrepancy
 

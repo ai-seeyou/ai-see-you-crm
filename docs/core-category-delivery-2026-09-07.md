@@ -1,12 +1,15 @@
 # Governed Core Category delivery
 
-Status: Hotel reconciliation and CRM PR32 deployment pass. Category activation remains blocked by the Production certification-join defect.
+Status: Hotel reconciliation and CRM deployment pass. Category activation remains blocked by a failed hosted read.
 
 Current execution evidence: [Category release execution](./category-release-execution-2026-09-07.md).
 The founder approves PR67 and the hotel eligibility correction after the predeployment receipt below.
 
 Current CRM contains 5,010 certified hotels. All original 4,996 references remain intact.
-Production PR70 contains the independently tested source correction. Its migration remains undeployed.
+Production PR70 deploys its exact reviewed migration after founder approval. Independent source verification passes.
+The approved rotation repair also aligns the obsolete Category verifier. No credential leaves its deployed boundary.
+The new dry run exhausts three attempts without evidence. Category remains inactive.
+Independent deployed Edge source verification passes. Hosted read diagnosis continues.
 CRM PR33 merges at `621ce420137f1f0abc5f0c4cf5506c70a8391e1c` with request timeouts and saved failure outcomes.
 Browser certification remains pending. Contact enrichment remains paused.
 

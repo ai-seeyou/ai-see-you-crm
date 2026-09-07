@@ -172,6 +172,53 @@ The exact PR67-only migration and CI exception does not cover PR70.
 PR70 remains unmerged and undeployed pending its required separate exception.
 After deployment, queue a new Category dry run and certify its completed evidence before activation.
 
+## Execution after PR70 approval
+
+The founder approves PR70's exact migration and unchanged-baseline CI exception.
+PR70 merges at `8c74ab04a445b31ac5afa5d425abfeae553e13b9`.
+The coordinator executes the exact `e0f6ab1a` migration once through the approved Production operator.
+Independent postflight confirms source `c2d1d4f52c6aee3ec404f12df23b0e3558fe85933c39786ae262cf5e9a84215d`.
+All 77 selected runs, 13,184 memberships and 4,105 authority coordinates remain unchanged.
+Function identity, owner, permissions and read-only execution settings remain unchanged.
+
+Fresh dry-run task: `crm-category-dry-fd157501afea4d46829a36e486169cfc`.
+Request: `3cf20d64-fdce-4df0-a3d7-a56a6495377a`.
+Its first attempts expose a separate obsolete capability verifier in the Category function.
+Both hotel functions already use the rotated public verifier `80aa86ad4dd3cae988016357729bfbed6ce84f6661cbc959587000c6c072457a`.
+The Category function incorrectly retains the retired `50f5de0e` verifier from the historical migration.
+The earlier review misses cross-function verifier parity. This is an implementation and certification defect.
+
+The coordinator completes the previously approved internal capability rotation through a separately reviewed, bounded verifier alignment.
+Operational SQL SHA-256: `de2e31c76374d8624847b8c4a397a879630ec9408697d6f5d64b232311d40a52`.
+Only the Category verifier changes. No new credential, permission or measurement change occurs.
+No credential is retrieved or printed. Both hotel functions remain byte-identical.
+Live Category source becomes `919b171df140390537f27fe1aa27561499c0bb428eff8a33f0b7d4ccf9bc1bbb`.
+Independent postflight proves all three verifier hashes match the current rotated capability.
+The old PR70 rollback correctly rejects this rotated source. Future rollback must preserve the current verifier.
+Never restore the retired verifier from historical migration SQL.
+The dry task exhausts three attempts at `2026-09-07T08:48:32.747Z` without completed evidence.
+Category remains inactive. No activation task is queued.
+Independent deployed Edge bundle verification matches all six reviewed runtime files exactly.
+The Category router exists in the deployed bundle. A stale Edge deployment does not explain the remaining failure.
+The Category error path collapses the upstream failure into `RPC_UNKNOWN`.
+Read-only HTTP and database metadata diagnosis continues before another dry run.
+The anonymous database role has a three-second statement timeout.
+Combined snapshot and full membership reconstruction takes 5,571.901 milliseconds.
+Exact snapshot fragments, including the authority guard, pass at 2,815.559 milliseconds.
+Exact first, middle and terminal page fragments each exceed three seconds with SQLSTATE `57014`.
+First-page work completes in 5,868.458 milliseconds without that limit. It returns 501 rows and the expected snapshot.
+The exact replay includes the authority guard, full digests and bounded page calculation.
+Unknown authority coordinates and ambiguous destinations both remain zero.
+This proves a page-query budget defect. Direct hosted HTTP error details remain unavailable.
+No timeout, permission or additional Production schema change occurs during diagnosis.
+Tool policy blocks proposed trace-based credential recovery and separate function-statistics access.
+Neither blocked operation is retried through another route.
+The final CRM read verifies 5,010 references, 5,010 unique properties and 5,010 unique businesses.
+The Category state remains at revision zero with no active snapshot.
+Independent EXPLAIN attributes the cost to repeated pair computation and deduplication, not JIT compilation.
+A blanket-materialization candidate exceeds ten seconds and is rejected without deployment.
+No speculative performance correction changes Production.
+
 ## Browser gate
 
 The Browser skill initialises successfully but finds no connected browser.

@@ -121,6 +121,44 @@ Second pass complete. All material actions and remaining gates appear here or in
 
 ## Evidence
 
+## Continuation after PR70 approval
+
+- Founder approves the requested exact PR70 migration and unchanged-baseline CI exception, then asks whether Category works live.
+- Parent reports Category remains unavailable. No activation or browser completion claim occurs.
+- PR70 merges at 8c74ab04a445b31ac5afa5d425abfeae553e13b9. Exact reviewed migration e0f6ab1a executes once.
+- Independent postflight proves corrected source c2d1d4f52c6aee3ec404f12df23b0e3558fe85933c39786ae262cf5e9a84215d.
+- All 77 selected runs, 13,184 memberships and 4,105 authority coordinates remain unchanged.
+- Fresh dry task crm-category-dry-fd157501afea4d46829a36e486169cfc uses request 3cf20d64-fdce-4df0-a3d7-a56a6495377a.
+- The first attempts expose an obsolete Category verifier. The hotel functions already use the completed rotation's current verifier.
+- Complete the previously approved rotation through independently reviewed alignment SQL de2e31c76374d8624847b8c4a397a879630ec9408697d6f5d64b232311d40a52.
+- Only the Category public verifier hash changes. No raw credential is retrieved. Both hotel functions remain byte-identical.
+- Current Category source is 919b171df140390537f27fe1aa27561499c0bb428eff8a33f0b7d4ccf9bc1bbb.
+- The old PR70 rollback rejects the rotated source. Never restore the retired verifier through historical SQL.
+- The new dry task exhausts three attempts at 08:48:32.747 UTC without evidence. Category remains inactive.
+- Independent deployed Edge audit matches all six reviewed runtime files. Stale deployment is excluded.
+- The Category Edge error path discards upstream status and returns RPC_UNKNOWN. CRM records only fixed safe classifications.
+- Supabase CLI provides no log command. Tool policy rejects proposed trace-based authorization recovery before execution.
+- Do not bypass that denial or read credentials from diagnostic traces. No such script executes.
+- Read-only metadata proves anon statement_timeout is 3 seconds and authenticator timeout is 8 seconds.
+- The Category function has expected identity, arguments, schema access and anonymous execute permission.
+- Independent combined snapshot and membership reconstruction exceeds 3 seconds with SQLSTATE57014.
+- The normal combined reconstruction takes 5,571.901 milliseconds and passes CRM validation.
+- Exact snapshot fragments pass at 2,742.584 milliseconds. The combined test does not prove initial snapshot failure.
+- Exact first, middle and terminal membership-page fragments all exceed three seconds with SQLSTATE57014.
+- First-page work completes normally in 5,868.458 milliseconds. It returns 501 rows and the expected snapshot.
+- This proves a page-query budget defect, not direct observation of the hosted HTTP error status.
+- EXPLAIN separates 328 milliseconds of authority work, 2,459 milliseconds of digest work and 2,950 milliseconds of page work.
+- Transaction-local JIT disabling does not fix the timeout. Repeated pair computation and deduplication dominate execution.
+- The first blanket-materialization candidate exceeds ten seconds. Reject it without deployment.
+- A narrower query candidate remains under investigation. No new Production migration or configuration change executes.
+- Separate function-statistics access is also blocked by tool policy. No alternate access follows that denial.
+- Final CRM read proves 5,010 references, unique properties and unique businesses. Category revision remains zero with no active snapshot.
+- Browser runtime reports no connected browsers. Founder receives a non-blocking request to open and sign into CRM.
+- All 5,010 hotels remain intact. No committed Category import occurs. Contact enrichment remains paused.
+- Use /opt/homebrew/bin/supabase explicitly. Unqualified supabase from CRM resolves to a different Bun CLI with telemetry errors.
+- Remaining work: identify exact hosted failure, correct it through reviewed authority, certify dry evidence, activate, reconcile and verify browser workflows.
+- Second pass complete. These receipts preserve the rollback restriction, policy denial and distinction between query timing and HTTP evidence.
+
 Full execution receipt: docs/category-release-execution-2026-09-07.md.
 CRM operator tests: /private/tmp/crm-category-operator-push-retry.log.
 Production PR67: https://github.com/ai-seeyou/tri/pull/67.

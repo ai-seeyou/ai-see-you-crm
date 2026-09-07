@@ -4,7 +4,7 @@
 
 **Context:** Governed Core Category navigation enhancement. CRM contains 5,010 certified hotels and preserves all original 4,996 mappings.
 
-**Current:** CRM contains 5,010 certified hotels and preserves all 4,996 original mappings. The fourteen additions pass an unchanged rerun. CRM PR32 and PR33 are merged. All three live deployments are READY at 621ce420. Migration 67 applies exactly once, with 67 total and zero unfinished migrations. Category activation remains off because duplicate commercial certificates expand 77 destinations into 214 rows. The failed dry task is fenced. Production PR70 at 1a29cae contains the independently certified correction. All 77 selected runs and 13,184 pairs remain unchanged. Exact migration, full RPC, rollback and local-only harness tests pass. Its four CI failure groups exactly match baseline, with no new signatures. The new migration remains undeployed pending its required separate exception. Browser certification remains blocked by no connected browser.
+**Current:** CRM contains 5,010 certified hotels and preserves all 4,996 original mappings. The fourteen additions pass an unchanged rerun. CRM PR32 and PR33 are merged. All three live deployments are READY at 621ce420. Migration 67 applies exactly once, with 67 total and zero unfinished migrations. Founder approves Production PR70. Its exact independently reviewed migration deploys successfully after merge 8c74ab04. All 77 selected runs and 13,184 pairs remain unchanged. A separately reviewed repair aligns the obsolete Category verifier with the completed approved capability rotation. Both hotel functions remain unchanged. The new dry task still exhausts three attempts without evidence. Category remains inactive. The deployed Edge bundle matches reviewed source. Read-only diagnosis now targets the actual HTTP failure. Browser certification remains blocked by no connected browser.
 
 **Pending:**
 
@@ -17,9 +17,15 @@
 - Founder approves the hotel-feed correction. PR68 exact migration a6bfb25210d274f2348e076fb38404eef83b7ec0591ee367263c41c9e480d87f preserves all existing IDs.
 - PR68 deploys after the founder's subsequent direction to proceed. Independent CI comparison proves no new failure signatures.
 - Live hotel ID digest is 37928f110ade40f5dd3c3e0ed7682687c1ed7b0859052a66aa4bf3eb2c26cdeb.
-- Obtain the exact Production PR70 migration and unchanged-baseline CI exception. Do not extend the PR67-only exception silently.
+- Founder approves PR70's exact migration and unchanged-baseline exception. Merge 8c74ab04 deploys the exact migration once.
 - PR70 head is 1a29cae8527e5bdc4c11f297730b739513086d87. Migration SHA is e0f6ab1a603f9b5a0edccdf282c1f252bbda2edd7edae50f78ca14d3b4bc02ae.
-- Deploy PR70 under that authority. Run a new Category dry-run, independently certify its complete evidence, activate and verify idempotency.
+- PR70 source passes independent postflight. Approved rotation alignment repairs the obsolete Category verifier without retrieving credentials.
+- Current Category source is 919b171df140390537f27fe1aa27561499c0bb428eff8a33f0b7d4ccf9bc1bbb. Both hotel functions remain unchanged.
+- New dry task crm-category-dry-fd157501afea4d46829a36e486169cfc exhausts three attempts at 08:48:32 UTC without evidence.
+- Category remains inactive. Diagnose the actual hosted HTTP failure before another dry run or activation.
+- Independent deployed Edge bundle audit matches all six reviewed runtime files. Stale deployment is excluded as the cause.
+- Exact first, middle and terminal page computations exceed the anonymous three-second timeout. First-page work takes 5.868 seconds.
+- Optimise repeated read-query work without changing the evidence rules, permissions or unrelated consumers. No correction deploys yet.
 - Complete signed-in browser acceptance for Businesses, Contacts and Coverage. Do not substitute SQL tests for browser certification.
 - Use only crm-agent for Production GET calls. PRODUCTION_CATEGORY_SYNC_REQUEST queues bounded dry-run/commit tasks without downloading tokens.
 - Browser runtime finds no connected browser. Founder receives a non-blocking request to open and sign into the CRM in Codex's browser.

@@ -1,5 +1,38 @@
 # Governed Core Category delivery
 
+## Current activation, 8 September 2026
+
+Production PR80 merges at `402126e6ac71e51b4f1cf253785f86429b06bd2a` after explicit founder approval.
+Its exact migration SHA is `40c69c4e265a4b484beeb3a8e32bd8d92a2ff2065ebea225fd9ab899af1829d9`.
+Independent verification confirms only the Category function gains a ten-second timeout. Source and access controls remain unchanged.
+The deployed dry run completes on its first attempt through 29 GET requests. The previous HTTP500 does not recur.
+Independent certification matches all four source digests, nine Categories,4,272 properties and13,184 memberships with zero unresolved references.
+CRM reconciliation completes on its first attempt at20:18:47.841UTC on7 September,06:18:47.841Sydney time on8 September.
+Snapshot `54795ad01a12590eb549b840b015372fc7cc9bff1af154610dcfb1b3d27d055e` is active at revision1.
+Stored and recomputed membership digests match. All5,010 hotels remain intact. Retired Category count is zero.
+Read-only data checks return Gold Coast Luxury18, Sydney Boutique42, Accor Luxury34 and Sydney Accor Luxury4.
+These are database acceptance results, not browser certification. Current qualifying assignments return zero contacts.
+The deployed rerun completes at20:25:13.750UTC with one GET request and no duplicate or rewritten Category rows.
+Before/after membership, registry, snapshot and state row-version fingerprints match exactly. Revision remains1.
+Signed-in browser acceptance remains outstanding. No browser is connected to the supported runtime.
+Contact enrichment remains paused until the full release gate passes.
+
+## Non-blocking optimisation task CAT-PERF-001
+
+Status: OPEN. Owner: CRM coordinator. Priority: follow-up after live workflow certification.
+The founder authorises profiling and an optimisation proposal. This task does not block certified Category activation.
+GitHub Issues are disabled for this repository. This document holds the durable task instead.
+
+Profile the complete Category read contract under cold and warm conditions.
+Measure per-page query cost, repeated membership and digest work, source change frequency and complete synchronisation runtime.
+Compare materialisation, caching, precomputation and equivalent cheaper read-contract designs.
+Recommend the smallest design that preserves accepted measurement semantics, provenance, freshness and fail-closed snapshot checks.
+Retain stable Category/property identifiers, incremental refresh, idempotency and the no-Production-write CRM boundary.
+Record performance evidence and independent review before proposing implementation.
+Any new Production migration or material architecture change follows its normal approval boundary.
+
+## Historical release sequence
+
 Status: Hotel reconciliation and CRM deployment pass. Category activation remains blocked by a failed hosted read.
 
 Current execution evidence: [Category release execution](./category-release-execution-2026-09-07.md).
@@ -9,7 +42,16 @@ Current CRM contains 5,010 certified hotels. All original 4,996 references remai
 Production PR70 deploys its exact reviewed migration after founder approval. Independent source verification passes.
 The approved rotation repair also aligns the obsolete Category verifier. No credential leaves its deployed boundary.
 The new dry run exhausts three attempts without evidence. Category remains inactive.
-Independent deployed Edge source verification passes. Hosted read diagnosis continues.
+Independent deployed Edge source verification passes. Exact page queries exceed the existing three-second timeout.
+Production PR71 corrects repeated query work. Independent review, 28 page checks and unchanged-baseline CI comparison pass.
+Founder approves PR71 separately. Merge `2ce4377d5597b1a7de3550fe1686d5407a83fae6` and its exact migration deploy successfully.
+Independent postflight verifies source `27c4d3a5`, unchanged permissions and all three current capability verifiers.
+The coordinator corrects an incompatible gateway JWT setting introduced during deployment. The original custom token gate remains enforced.
+Edge version8 is ACTIVE. Unauthenticated GET remains401. Its exact bundle remains unchanged during gateway restoration.
+The new live dry run reaches the RPC but still returns HTTP500. Category remains inactive.
+Independent cold-query timing exceeds the existing three-second limit. A function-specific ten-second timeout correction awaits review and separate approval.
+CRM PR34 merges at `8c529b8551cb8b417ddad6f609f28cab745d10ad` after independent review and passing CI.
+All three live CRM domains report READY at that commit. This diagnostic deployment does not activate Category.
 CRM PR33 merges at `621ce420137f1f0abc5f0c4cf5506c70a8391e1c` with request timeouts and saved failure outcomes.
 Browser certification remains pending. Contact enrichment remains paused.
 

@@ -4,9 +4,21 @@
 
 **Context:** Governed Core Category navigation enhancement. CRM contains 5,010 certified hotels and preserves all original 4,996 mappings.
 
-**Current:** CRM contains 5,010 certified hotels and preserves all 4,996 original mappings. The fourteen additions pass an unchanged rerun. CRM PR32 and PR33 are merged. All three live deployments are READY at 621ce420. Migration 67 applies exactly once, with 67 total and zero unfinished migrations. Founder approves Production PR70. Its exact independently reviewed migration deploys successfully after merge 8c74ab04. All 77 selected runs and 13,184 pairs remain unchanged. A separately reviewed repair aligns the obsolete Category verifier with the completed approved capability rotation. Both hotel functions remain unchanged. The new dry task still exhausts three attempts without evidence. Category remains inactive. The deployed Edge bundle matches reviewed source. Read-only diagnosis now targets the actual HTTP failure. Browser certification remains blocked by no connected browser.
+**Current:** Category data is active and independently certified on8 September2026. PR80 merges at402126e6 and its exact approved function-only ten-second migration deploys. Complete live dry and commit runs each pass29GETrequests on their first attempt. Nine Categories cover4,272 hotels through13,184 memberships. All5,010hotel identities remain intact. Snapshot54795ad0 is active at revision1. A deployed rerun uses one GET and leaves all Category row fingerprints unchanged. The previous HTTP500 does not recur. All three CRM domains serve reviewed commit8c529b85. Browser discovery remains empty. Positive live Contact results lack qualifying assignments. Contact enrichment remains paused pending final browser/workflow certification.
 
 **Pending:**
+
+- Header wordmark is implemented locally using the unchanged Production logo. Type and logo tests pass. Push, deployment and browser verification remain pending.
+- Open and sign into crm.ai-seeyou.com in the supported Codex browser. The founder receives an asynchronous request.
+- Verify Country/Destination/Group/Category combinations in Businesses, Contacts and missing-role Coverage through the actual UI.
+- Do not claim SQL acceptance replaces browser certification. Do not invent live contact responsibilities to create positive results.
+- Keep contact enrichment paused until the complete live release gate passes.
+- Non-blocking optimisation taskCAT-PERF-001 is OPEN in docs/core-category-delivery-2026-09-07.md. GitHub Issues is disabled.
+- Preserve Production no-write capability, scoped token isolation, nine governed Categories and accepted/sealed recommendation appearance semantics.
+- Separate prior security cleanup remains: expired temporary role retirement, PR66 migration-version collision and unregistered migration ledger entries.
+- Never repeat deployed migrations to repair history. Existing specific approval boundaries still apply.
+
+**Historical programme record:**
 
 - Daily incremental and weekly full reconciliation schedules are enabled through the completed-import certification gate.
 - Complete commercial workflow acceptance with the live hotel universe.
@@ -20,16 +32,27 @@
 - Founder approves PR70's exact migration and unchanged-baseline exception. Merge 8c74ab04 deploys the exact migration once.
 - PR70 head is 1a29cae8527e5bdc4c11f297730b739513086d87. Migration SHA is e0f6ab1a603f9b5a0edccdf282c1f252bbda2edd7edae50f78ca14d3b4bc02ae.
 - PR70 source passes independent postflight. Approved rotation alignment repairs the obsolete Category verifier without retrieving credentials.
-- Current Category source is 919b171df140390537f27fe1aa27561499c0bb428eff8a33f0b7d4ccf9bc1bbb. Both hotel functions remain unchanged.
+- The verifier-alignment source is 919b171d before PR71. Current deployed Category source is27c4d3a5. Both hotel functions remain unchanged.
 - New dry task crm-category-dry-fd157501afea4d46829a36e486169cfc exhausts three attempts at 08:48:32 UTC without evidence.
 - Category remains inactive. Diagnose the actual hosted HTTP failure before another dry run or activation.
 - Independent deployed Edge bundle audit matches all six reviewed runtime files. Stale deployment is excluded as the cause.
 - Exact first, middle and terminal page computations exceed the anonymous three-second timeout. First-page work takes 5.868 seconds.
 - Reviewed Production correction 6b3e16f preserves rules, permissions and all digests. Its migration and rollback pass independent tests.
-- Migration SHA is 388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e. No correction deploys yet.
+- Migration SHA388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e deploys after the PR71 founder exception.
 - All 28 cursor replays pass three seconds. Exact snapshot headroom reaches 168 milliseconds, so require the deployed complete dry run.
-- Obtain the new exact migration and unchanged-baseline CI exception after PR review. PR70's exception remains specific to PR70.
-- CRM branch fix/category-read-status carries independently reviewed bounded task error codes. Complete normal CI and deployment.
+- PR70 and PR71 exceptions remain specific to their exact artifacts. PR80 needs its separately requested timeout exception.
+- CRM PR34 merges at 8c529b8551cb8b417ddad6f609f28cab745d10ad after independent review and passing CI34108183790.
+- All three live deployments match that merge. Production PR71 merges and deploys after explicit approval.
+- PR71 forward SHA388d7922 applies once. Source becomes27c4d3a5 with unchanged permissions and current capability verifier.
+- Parent repairs its Edge gateway regression. Version8 verifies JWT=false while custom token authentication stays enforced.
+- New dry task crm-category-dry-fd77329e3d6245558f2a71c8cd120083 still lacks completed evidence. Do not activate.
+- Function-specific ten-second timeout correction is Production PR80, headc61b38b2872d0bd6a3f846edfe1e1737245629df.
+- Its worktree is /private/tmp/tri-crm-category-timeout, branchfix/crm-category-read-budget.
+- Forward SHA40c69c4e and rollback9bb0cabf pass independent review and the parent local test rerun.
+- CI34126945286 matches baseline34107196023 with zero new signatures. Final independent review passes exact headc61b38b.
+- Obtain the separately requested bounded Production timeout and baseline exceptions before deployment. PR80 remains unmerged and undeployed.
+- Fresh dry taskfd77329e reaches attempt3 with RPC_HTTP_500 and no evidence. Do not restart it or activate from its dormant template.
+- After the reviewed timeout correction, queue a new uniquely identified dry task and bind activation only to its certified completed evidence.
 - Complete signed-in browser acceptance for Businesses, Contacts and Coverage. Do not substitute SQL tests for browser certification.
 - Use only crm-agent for Production GET calls. PRODUCTION_CATEGORY_SYNC_REQUEST queues bounded dry-run/commit tasks without downloading tokens.
 - Browser runtime finds no connected browser. Founder receives a non-blocking request to open and sign into the CRM in Codex's browser.
@@ -44,4 +67,4 @@
 - Production retains four pre-existing baseline CI failure categories. The PR 65 exception does not waive new regressions.
 - Preserve founder-only access, Production authority, no private-mail processing, and no outbound email.
 
-**Evidence:** docs/category-release-execution-2026-09-07.md, docs/core-category-delivery-2026-09-07.md and memory/sessions/2026-09-07-category-release.md. Earlier implementation, Stage 0, navigation and import records remain unchanged.
+**Evidence:** Latest memory/sessions/2026-09-08-category-activation.md and docs/core-category-delivery-2026-09-07.md. Earlier docs/category-release-execution-2026-09-07.md and memory/sessions/2026-09-07-category-release.md remain historical receipts.

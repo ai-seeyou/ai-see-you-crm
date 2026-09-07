@@ -42,18 +42,22 @@ import {
 	archivedFilter,
 	countsByKey,
 	FACET_UNASSIGNED,
-	type ListResult,
 	type OrderByColumns,
 	ownerFilter,
 	paginate,
 	resolveOrderBy,
 	splitSentinel,
 } from "../trpc/list-input";
+import {
+	businessDimensionFilter,
+	countryLabel,
+	hotelGroupMemberships,
+	navigationFacets,
+} from "./commercial-navigation";
 import type {
 	CompanyBulkOwnerInput,
 	CompanyCreateInput,
 	CompanyListInput,
-	CompanyRow,
 	CompanyUpdateInput,
 } from "./companies.contracts";
 import { normalizeDomain } from "./domain";
@@ -81,6 +85,7 @@ const SORTABLE: OrderByColumns<Prisma.CompanyOrderByWithRelationInput> = {
 	name: (dir) => ({ name: dir }),
 	domain: (dir) => ({ domain: dir }),
 	industry: (dir) => ({ industry: dir }),
+	destination: (dir) => ({ productionProfile: { destinationName: dir } }),
 	entityType: (dir) => ({ entityType: dir }),
 	vertical: (dir) => ({ vertical: { label: dir } }),
 	createdAt: (dir) => ({ createdAt: dir }),
@@ -105,19 +110,30 @@ export class CompaniesService {
 		private readonly fields: FieldsService,
 	) {}
 
-	async list(input: CompanyListInput): Promise<ListResult<CompanyRow>> {
+	async list(input: CompanyListInput) {
+		const dimensions = {
+			countryCodes: input.countryCodes ?? [],
+			destinationIds: input.destinationIds ?? [],
+			hotelGroupIds: input.hotelGroupIds ?? [],
+		};
 		const filterableFields = await this.fields.filterableFieldsFor("COMPANY");
-		const where = this.buildWhere(input, filterableFields);
+		const where = await this.buildWhere(
+			{ ...input, ...dimensions },
+			filterableFields,
+		);
 		const { skip, take } = paginate(input);
+		const labelSort = input.sort === "country" || input.sort === "hotelGroup";
 
-		const [rows, total, facetCounts] = await Promise.all([
+		const [unpagedRows, total, facetCounts] = await Promise.all([
 			this.db.company.findMany({
 				where,
-				skip,
-				take,
-				orderBy: resolveOrderBy(input, SORTABLE, {
-					createdAt: "desc",
-				}),
+				skip: labelSort ? undefined : skip,
+				take: labelSort ? undefined : take,
+				orderBy: labelSort
+					? { id: "asc" }
+					: resolveOrderBy(input, SORTABLE, {
+							createdAt: "desc",
+						}),
 				select: {
 					id: true,
 					name: true,
@@ -128,6 +144,10 @@ export class CompaniesService {
 					logoUrl: true,
 					brandColor: true,
 					industry: true,
+					countryCode: true,
+					productionProfile: {
+						select: { destinationProductionId: true, destinationName: true },
+					},
 					entityType: true,
 					vertical: { select: { id: true, key: true, label: true } },
 					enrichmentStatus: true,
@@ -154,6 +174,35 @@ export class CompaniesService {
 			this.facetCounts(input, filterableFields),
 		]);
 
+		const memberships = await hotelGroupMemberships(
+			this.db,
+			unpagedRows.map(({ id }) => id),
+		);
+		const direction = input.dir === "desc" ? -1 : 1;
+		const sortedRows = labelSort
+			? [...unpagedRows].sort((a, b) => {
+					const aLabel =
+						input.sort === "country"
+							? a.countryCode
+								? countryLabel(a.countryCode)
+								: ""
+							: ([...(memberships.memberships.get(a.id) ?? [])]
+									.map((id) => memberships.groupById.get(id)?.name ?? "")
+									.sort()[0] ?? "");
+					const bLabel =
+						input.sort === "country"
+							? b.countryCode
+								? countryLabel(b.countryCode)
+								: ""
+							: ([...(memberships.memberships.get(b.id) ?? [])]
+									.map((id) => memberships.groupById.get(id)?.name ?? "")
+									.sort()[0] ?? "");
+					return (
+						direction * aLabel.localeCompare(bLabel) || a.id.localeCompare(b.id)
+					);
+				})
+			: unpagedRows;
+		const rows = labelSort ? sortedRows.slice(skip, skip + take) : sortedRows;
 		const ids = rows.map((row) => row.id);
 		const [queued, tableFields] = await Promise.all([
 			this.queue.queuedCompanies(ids),
@@ -171,6 +220,19 @@ export class CompaniesService {
 				logoUrl: row.logoUrl,
 				brandColor: row.brandColor,
 				industry: row.industry,
+				countryCode: row.countryCode,
+				countryLabel: row.countryCode ? countryLabel(row.countryCode) : null,
+				destination: row.productionProfile
+					? {
+							id: row.productionProfile.destinationProductionId,
+							name: row.productionProfile.destinationName,
+						}
+					: null,
+				hotelGroups: [...(memberships.memberships.get(row.id) ?? [])]
+					.map((id) => memberships.groupById.get(id))
+					.filter((group): group is { id: string; name: string } =>
+						Boolean(group),
+					),
 				entityType: row.entityType,
 				vertical: row.vertical,
 				enrichmentStatus: row.enrichmentStatus,
@@ -336,6 +398,10 @@ export class CompaniesService {
 			orderBy: { name: "asc" },
 			take: 100,
 		});
+	}
+
+	async navigation() {
+		return navigationFacets(this.db);
 	}
 
 	async create(input: CompanyCreateInput) {
@@ -725,10 +791,10 @@ export class CompaniesService {
 		};
 	}
 
-	private buildWhere(
+	private async buildWhere(
 		input: CompanyListInput,
 		filterableFields: FieldDefinitionWithOptions[],
-	): Prisma.CompanyWhereInput {
+	): Promise<Prisma.CompanyWhereInput> {
 		const and: Prisma.CompanyWhereInput[] = [
 			this.searchFilter(input.q),
 			archivedFilter(input.archived),
@@ -759,13 +825,21 @@ export class CompaniesService {
 		const activity = activityFilter(input.activity);
 		if (activity) and.push(activity);
 
+		and.push(
+			await businessDimensionFilter(this.db, {
+				countryCodes: input.countryCodes ?? [],
+				destinationIds: input.destinationIds ?? [],
+				hotelGroupIds: input.hotelGroupIds ?? [],
+			}),
+		);
+
 		return { AND: and };
 	}
 
 	private async facetCounts(
 		input: CompanyListInput,
 		filterableFields: FieldDefinitionWithOptions[],
-	) {
+	): Promise<Record<string, Record<string, number>>> {
 		const where = {
 			AND: [this.searchFilter(input.q), archivedFilter(input.archived)],
 		};

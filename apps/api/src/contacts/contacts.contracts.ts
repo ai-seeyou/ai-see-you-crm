@@ -13,11 +13,18 @@ import {
 	contactAssignmentOutput,
 	contactRoleType,
 } from "../assignments/assignments.contracts";
+import {
+	canonicalIdsFilter,
+	countryCodesFilter,
+} from "../companies/companies.contracts";
 import { bulkIdsInput } from "../crm/bulk";
 import { recordFieldValues } from "../fields/fields.contracts";
 import { activityFacetInput, listInput } from "../trpc/list-input";
 
 export const contactListInput = listInput.extend({
+	countryCodes: countryCodesFilter.default([]),
+	destinationIds: canonicalIdsFilter.default([]),
+	hotelGroupIds: canonicalIdsFilter.default([]),
 	owner: z.array(z.string()).default([]),
 	company: z.array(z.string()).default([]),
 	source: z.array(z.string()).default([]),
@@ -30,7 +37,17 @@ export const contactListInput = listInput.extend({
 	archived: z.boolean().default(false),
 });
 
-export type ContactListInput = z.infer<typeof contactListInput>;
+type ParsedContactListInput = z.infer<typeof contactListInput>;
+export type ContactListInput = Omit<
+	ParsedContactListInput,
+	"countryCodes" | "destinationIds" | "hotelGroupIds"
+> &
+	Partial<
+		Pick<
+			ParsedContactListInput,
+			"countryCodes" | "destinationIds" | "hotelGroupIds"
+		>
+	>;
 
 export const contactCreateInput = z.object({
 	firstName: z.string().trim().min(1, "A contact needs a first name."),

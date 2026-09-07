@@ -24,6 +24,10 @@ import {
 	CONTACT_ASSIGNMENT_SELECT,
 	serializeContactAssignment,
 } from "../assignments/assignment-rows";
+import {
+	activeAssignmentWhere,
+	businessDimensionFilter,
+} from "../companies/commercial-navigation";
 import { CompanyDirectoryService } from "../companies/company-directory.service";
 import {
 	ActivityStampService,
@@ -40,7 +44,6 @@ import {
 	countsByKey,
 	FACET_UNASSIGNED,
 	type FacetCount,
-	type ListResult,
 	type OrderByColumns,
 	ownerFilter,
 	paginate,
@@ -52,7 +55,6 @@ import type {
 	ContactBulkOwnerInput,
 	ContactCreateInput,
 	ContactListInput,
-	ContactRow,
 	ContactUpdateInput,
 	FactDecisionInput,
 } from "./contacts.contracts";
@@ -123,9 +125,17 @@ export class ContactsService {
 		private readonly fields: FieldsService,
 	) {}
 
-	async list(input: ContactListInput): Promise<ListResult<ContactRow>> {
+	async list(input: ContactListInput) {
+		const dimensions = {
+			countryCodes: input.countryCodes ?? [],
+			destinationIds: input.destinationIds ?? [],
+			hotelGroupIds: input.hotelGroupIds ?? [],
+		};
 		const filterableFields = await this.fields.filterableFieldsFor("CONTACT");
-		const where = this.buildWhere(input, filterableFields);
+		const where = await this.buildWhere(
+			{ ...input, ...dimensions },
+			filterableFields,
+		);
 		const { skip, take } = paginate(input);
 
 		const [rows, total, facetCounts] = await Promise.all([
@@ -185,7 +195,7 @@ export class ContactsService {
 		if (ids.length === 0) return byContact;
 
 		const assignments = await this.db.contactAssignment.findMany({
-			where: { contactId: { in: ids }, validTo: null },
+			where: { contactId: { in: ids }, ...activeAssignmentWhere() },
 			select: { contactId: true, roleType: true, scope: true },
 		});
 
@@ -903,10 +913,10 @@ export class ContactsService {
 		return { OR: [{ companyId: { in: ids } }, { companyId: null }] };
 	}
 
-	private buildWhere(
+	private async buildWhere(
 		input: ContactListInput,
 		filterableFields: FieldDefinitionWithOptions[],
-	): Prisma.ContactWhereInput {
+	): Promise<Prisma.ContactWhereInput> {
 		const and: Prisma.ContactWhereInput[] = [
 			this.searchFilter(input.q),
 			archivedFilter(input.archived),
@@ -927,12 +937,36 @@ export class ContactsService {
 			and.push({ seniority: { in: input.seniority } });
 		}
 		if (input.persona.length > 0) and.push({ function: { in: input.persona } });
-		if (input.roleType.length > 0) {
+		const dimensionsSelected =
+			(input.countryCodes?.length ?? 0) > 0 ||
+			(input.destinationIds?.length ?? 0) > 0 ||
+			(input.hotelGroupIds?.length ?? 0) > 0;
+		if (dimensionsSelected) {
+			and.push({
+				assignments: {
+					some: {
+						...activeAssignmentWhere(),
+						roleType:
+							input.roleType.length > 0 ? { in: input.roleType } : undefined,
+						company: {
+							AND: [
+								{ archivedAt: null },
+								await businessDimensionFilter(this.db, {
+									countryCodes: input.countryCodes ?? [],
+									destinationIds: input.destinationIds ?? [],
+									hotelGroupIds: input.hotelGroupIds ?? [],
+								}),
+							],
+						},
+					},
+				},
+			});
+		} else if (input.roleType.length > 0) {
 			and.push({
 				assignments: {
 					some: {
 						roleType: { in: input.roleType },
-						validTo: null,
+						...activeAssignmentWhere(),
 					},
 				},
 			});
@@ -947,7 +981,7 @@ export class ContactsService {
 	private async facetCounts(
 		input: ContactListInput,
 		filterableFields: FieldDefinitionWithOptions[],
-	) {
+	): Promise<Record<string, Record<string, number>>> {
 		const where = {
 			AND: [this.searchFilter(input.q), archivedFilter(input.archived)],
 		};

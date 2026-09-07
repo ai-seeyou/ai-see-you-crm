@@ -47,6 +47,12 @@ export function usePrefetchSection(): (section: string) => void {
 								vertical: [],
 								entityType: [],
 								covered: false,
+								countryCodes: [],
+								destinationIds: [],
+								hotelGroupIds: [],
+								missingRoleTypes: [],
+								page: 1,
+								scope: "all",
 							}),
 						),
 					);

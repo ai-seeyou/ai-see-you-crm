@@ -12,7 +12,23 @@ export const companyEntityType = z.enum(
 	Object.values(EntityType) as [EntityType, ...EntityType[]],
 );
 
+export const countryCodesFilter = z
+	.array(
+		z
+			.string()
+			.trim()
+			.length(2)
+			.transform((code) => code.toUpperCase()),
+	)
+	.max(20);
+export const canonicalIdsFilter = z
+	.array(z.string().trim().min(1).max(100))
+	.max(200);
+
 export const companyListInput = listInput.extend({
+	countryCodes: countryCodesFilter.default([]),
+	destinationIds: canonicalIdsFilter.default([]),
+	hotelGroupIds: canonicalIdsFilter.default([]),
 	owner: z.array(z.string()).default([]),
 	industry: z.array(z.string()).default([]),
 	vertical: z.array(z.string()).default([]),
@@ -24,7 +40,17 @@ export const companyListInput = listInput.extend({
 	archived: z.boolean().default(false),
 });
 
-export type CompanyListInput = z.infer<typeof companyListInput>;
+type ParsedCompanyListInput = z.infer<typeof companyListInput>;
+export type CompanyListInput = Omit<
+	ParsedCompanyListInput,
+	"countryCodes" | "destinationIds" | "hotelGroupIds"
+> &
+	Partial<
+		Pick<
+			ParsedCompanyListInput,
+			"countryCodes" | "destinationIds" | "hotelGroupIds"
+		>
+	>;
 
 export const companyCreateInput = z.object({
 	name: z.string().trim().min(1, "A company needs a name."),
@@ -105,6 +131,28 @@ const companyVerticalOutput = z.object({
 	label: z.string(),
 });
 
+export const navigationFacetsOutput = z.object({
+	countries: z.array(
+		z.object({ code: z.string(), label: z.string(), count: z.number() }),
+	),
+	destinations: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			countryCode: z.string().nullable(),
+			count: z.number(),
+		}),
+	),
+	hotelGroups: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			parentId: z.string().nullable(),
+			count: z.number(),
+		}),
+	),
+});
+
 const companyFieldOptionOutput = z.object({
 	id: z.string(),
 	label: z.string(),
@@ -140,6 +188,10 @@ export const companyRowOutput = z.object({
 	logoUrl: z.string().nullable(),
 	brandColor: z.string().nullable(),
 	industry: z.string().nullable(),
+	countryCode: z.string().nullable(),
+	countryLabel: z.string().nullable(),
+	destination: z.object({ id: z.string(), name: z.string() }).nullable(),
+	hotelGroups: z.array(z.object({ id: z.string(), name: z.string() })),
 	entityType: companyEntityType,
 	vertical: companyVerticalOutput.nullable(),
 	enrichmentStatus: companyEnrichmentStatus,
@@ -161,6 +213,9 @@ export const companyListOutput = z.object({
 	total: z.number(),
 	facetCounts: z.record(z.string(), z.record(z.string(), z.number())),
 });
+
+export const companyNavigationOutput = navigationFacetsOutput;
+export const companyNavigationInput = z.object({});
 
 const companyDetailContactOutput = z.object({
 	id: z.string(),

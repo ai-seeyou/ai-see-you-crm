@@ -1,39 +1,37 @@
-import type { ContactRoleType, Db, Prisma } from "@crm/db";
+import {
+	AssignmentScope,
+	type ContactRoleType,
+	type Db,
+	EntityType,
+	ExternalRecordType,
+	ExternalSystem,
+	type Prisma,
+} from "@crm/db";
 import { Injectable } from "@nestjs/common";
+import {
+	activeAssignmentWhere,
+	businessDimensionFilter,
+	hotelGroupMemberships,
+} from "../companies/commercial-navigation";
 import { InjectDatabase } from "../database/database.constants";
 import { FACET_UNASSIGNED, splitSentinel } from "../trpc/list-input";
-import type { CoverageInput } from "./coverage.contracts";
+import { type CoverageInput, coverageInput } from "./coverage.contracts";
 import { COVERAGE, requiredRolesFor } from "./coverage-config";
-
-const EMPTY = {
-	configured: false,
-	targetFieldKey: COVERAGE.target.fieldKey,
-	targetLabels: [...COVERAGE.target.optionLabels],
-	truncated: false,
-	examined: 0,
-	summary: { targets: 0, covered: 0, gaps: 0 },
-	rows: [],
-};
 
 @Injectable()
 export class CoverageService {
 	constructor(@InjectDatabase() private readonly db: Db) {}
 
 	async gaps(input: CoverageInput) {
-		const target = await this.targetField();
-		if (!target) return EMPTY;
-
-		const where = this.buildWhere(input, target);
-
-		// The summary counts the population, not the page. Counting the page made
-		// both numbers understate the moment the target list passed the cap, and a
-		// coverage figure that quietly shrinks is worse than no figure.
-		const total = await this.db.company.count({ where });
-
+		input = coverageInput.parse(input) as Required<CoverageInput>;
+		const missingRoleTypes = input.missingRoleTypes ?? [];
+		const page = input.page ?? 1;
+		const pageSize = input.pageSize ?? 25;
+		const target =
+			input.scope === "TARGET_BUSINESSES" ? await this.targetField() : null;
 		const companies = await this.db.company.findMany({
-			where,
-			orderBy: [{ name: "asc" }],
-			take: COVERAGE.page.maxBusinesses + 1,
+			where: await this.buildWhere(input, target),
+			orderBy: [{ name: "asc" }, { id: "asc" }],
 			select: {
 				id: true,
 				name: true,
@@ -45,84 +43,144 @@ export class CoverageService {
 				vertical: { select: { id: true, key: true, label: true } },
 			},
 		});
-
-		const truncated = companies.length > COVERAGE.page.maxBusinesses;
-		const page = truncated
-			? companies.slice(0, COVERAGE.page.maxBusinesses)
-			: companies;
-
+		const now = new Date();
 		const assignments = await this.db.contactAssignment.findMany({
 			where: {
-				companyId: { in: page.map((company) => company.id) },
-				validTo: null,
+				companyId: { in: companies.map(({ id }) => id) },
+				...activeAssignmentWhere(now),
+			},
+			select: {
+				companyId: true,
+				roleType: true,
+				contact: { select: { archivedAt: true } },
+			},
+		});
+		const held = new Map<string, Set<ContactRoleType>>();
+		for (const assignment of assignments) {
+			if (assignment.contact.archivedAt) continue;
+			const roles =
+				held.get(assignment.companyId) ?? new Set<ContactRoleType>();
+			held.set(assignment.companyId, roles);
+			roles.add(assignment.roleType);
+		}
+		const allRows = companies.map((company) => {
+			const evaluatedRoles = [
+				...new Set([
+					...requiredRolesFor(company.entityType),
+					...missingRoleTypes,
+				]),
+			];
+			const roles = evaluatedRoles.map((roleType) => {
+				return {
+					roleType,
+					filled: held.get(company.id)?.has(roleType) ?? false,
+					holders: [] as CoverageHolder[],
+				};
+			});
+			const missing = roles
+				.filter(({ filled }) => !filled)
+				.map(({ roleType }) => roleType);
+			return { ...company, roles, missing, covered: missing.length === 0 };
+		});
+		const gapRows = missingRoleTypes.length
+			? allRows.filter((row) =>
+					missingRoleTypes.some((role) => row.missing.includes(role)),
+				)
+			: allRows.filter(({ covered }) => !covered);
+		const visible =
+			missingRoleTypes.length || !input.includeCovered ? gapRows : allRows;
+		const effectivePage = Math.min(
+			page,
+			Math.max(1, Math.ceil(visible.length / pageSize)),
+		);
+		const start = (effectivePage - 1) * pageSize;
+		const pageRows = visible.slice(start, start + pageSize);
+		const pageAssignments = await this.db.contactAssignment.findMany({
+			where: {
+				companyId: { in: pageRows.map(({ id }) => id) },
+				...activeAssignmentWhere(now),
+				contact: { archivedAt: null },
 			},
 			select: {
 				companyId: true,
 				roleType: true,
 				scope: true,
 				contact: {
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
-						archivedAt: true,
-					},
+					select: { id: true, firstName: true, lastName: true, email: true },
 				},
 			},
 		});
-
-		const held = new Map<string, Map<ContactRoleType, CoverageHolder[]>>();
-		for (const row of assignments) {
-			if (row.contact.archivedAt !== null) continue;
-			const byRole = held.get(row.companyId) ?? new Map();
-			held.set(row.companyId, byRole);
-			const holders = byRole.get(row.roleType) ?? [];
-			byRole.set(row.roleType, holders);
-			holders.push({
-				id: row.contact.id,
-				name: [row.contact.firstName, row.contact.lastName]
-					.filter(Boolean)
-					.join(" "),
-				email: row.contact.email,
-				scope: row.scope,
-			});
-		}
-
-		const rows = page.map((company) => {
-			const byRole = held.get(company.id);
-			const roles = requiredRolesFor(company.entityType).map((roleType) => {
-				const holders = byRole?.get(roleType) ?? [];
-				return { roleType, filled: holders.length > 0, holders };
-			});
-			const missing = roles
-				.filter((role) => !role.filled)
-				.map((role) => role.roleType);
-
-			return {
-				...company,
-				roles,
-				missing,
-				covered: missing.length === 0,
-			};
-		});
-
-		const visible = input.includeCovered
-			? rows
-			: rows.filter((row) => !row.covered);
-
+		for (const row of pageRows)
+			for (const role of row.roles) {
+				role.holders = pageAssignments
+					.filter(
+						(assignment) =>
+							assignment.companyId === row.id &&
+							assignment.roleType === role.roleType,
+					)
+					.map((assignment) => ({
+						id: assignment.contact.id,
+						name: [assignment.contact.firstName, assignment.contact.lastName]
+							.filter(Boolean)
+							.join(" "),
+						email: assignment.contact.email,
+						scope: assignment.scope,
+					}));
+			}
+		const { memberships, groupById } = await hotelGroupMemberships(
+			this.db,
+			companies.map(({ id }) => id),
+			now,
+		);
+		const gaps = new Map<
+			string,
+			{
+				hotelCount: number;
+				gapCount: number;
+				missingByRole: Record<string, number>;
+			}
+		>();
+		for (const row of allRows)
+			for (const groupId of memberships.get(row.id) ?? []) {
+				const value = gaps.get(groupId) ?? {
+					hotelCount: 0,
+					gapCount: 0,
+					missingByRole: {},
+				};
+				gaps.set(groupId, value);
+				const relevantMissing = missingRoleTypes.length
+					? row.missing.filter((role) => missingRoleTypes.includes(role))
+					: row.missing;
+				value.hotelCount += 1;
+				if (relevantMissing.length > 0) value.gapCount += 1;
+				for (const role of relevantMissing)
+					value.missingByRole[role] = (value.missingByRole[role] ?? 0) + 1;
+			}
 		return {
-			configured: true,
+			configured: input.scope === "ALL_HOTELS" || target !== null,
 			targetFieldKey: COVERAGE.target.fieldKey,
 			targetLabels: [...COVERAGE.target.optionLabels],
-			truncated,
-			examined: rows.length,
+			truncated: false,
+			examined: allRows.length,
+			page: effectivePage,
+			pageSize,
+			total: visible.length,
 			summary: {
-				targets: total,
-				covered: rows.filter((row) => row.covered).length,
-				gaps: rows.filter((row) => !row.covered).length,
+				targets: allRows.length,
+				covered: allRows.length - gapRows.length,
+				gaps: gapRows.length,
 			},
-			rows: visible,
+			rows: pageRows,
+			groupGaps: [...gaps]
+				.map(([groupId, value]) => ({
+					groupId,
+					groupName: groupById.get(groupId)?.name ?? groupId,
+					...value,
+				}))
+				.sort(
+					(a, b) =>
+						b.gapCount - a.gapCount || a.groupName.localeCompare(b.groupName),
+				),
 		};
 	}
 
@@ -141,58 +199,70 @@ export class CoverageService {
 				},
 			},
 		});
-
-		if (!definition || definition.options.length === 0) return null;
-
-		return {
-			fieldId: definition.id,
-			optionIds: definition.options.map((option) => option.id),
-		};
+		return definition?.options.length
+			? {
+					fieldId: definition.id,
+					optionIds: definition.options.map(({ id }) => id),
+				}
+			: null;
 	}
 
-	private buildWhere(
+	private async buildWhere(
 		input: CoverageInput,
-		target: TargetField,
-	): Prisma.CompanyWhereInput {
-		const and: Prisma.CompanyWhereInput[] = [
-			{ archivedAt: null },
-			{
-				fieldValues: {
-					some: {
-						fieldId: target.fieldId,
-						optionId: { in: target.optionIds },
-					},
+		target: TargetField | null,
+	): Promise<Prisma.CompanyWhereInput> {
+		const and: Prisma.CompanyWhereInput[] = [{ archivedAt: null }];
+		if (input.scope === "ALL_HOTELS") {
+			const refs = await this.db.externalRef.findMany({
+				where: {
+					system: ExternalSystem.PRODUCTION,
+					recordType: ExternalRecordType.COMPANY,
+					matchMethod: "production-property-id",
+					matchedBy: "IMPORT",
+					confirmedAt: { not: null },
+					staleAt: null,
 				},
-			},
-		];
-
-		if (input.entityType.length > 0) {
+				select: { recordId: true },
+			});
+			and.push({
+				id: { in: refs.map(({ recordId }) => recordId) },
+				entityType: EntityType.HOTEL,
+			});
+		} else if (target)
+			and.push({
+				fieldValues: {
+					some: { fieldId: target.fieldId, optionId: { in: target.optionIds } },
+				},
+			});
+		else and.push({ id: { in: [] } });
+		if (input.entityType.length)
 			and.push({ entityType: { in: input.entityType } });
-		}
-
-		if (input.vertical.length > 0) {
+		if (input.vertical.length) {
 			const { ids, includesSentinel } = splitSentinel(
 				input.vertical,
 				FACET_UNASSIGNED,
 			);
-			if (includesSentinel && ids.length === 0) {
-				and.push({ verticalId: null });
-			} else if (includesSentinel) {
-				and.push({ OR: [{ verticalId: { in: ids } }, { verticalId: null }] });
-			} else {
-				and.push({ verticalId: { in: ids } });
-			}
+			and.push(
+				includesSentinel
+					? { OR: [{ verticalId: { in: ids } }, { verticalId: null }] }
+					: { verticalId: { in: ids } },
+			);
 		}
-
+		and.push(
+			await businessDimensionFilter(this.db, {
+				countryCodes: input.countryCodes ?? [],
+				destinationIds: input.destinationIds ?? [],
+				hotelGroupIds: input.hotelGroupIds ?? [],
+			}),
+		);
 		return { AND: and };
 	}
 }
 
 type TargetField = { fieldId: string; optionIds: string[] };
-
 type CoverageHolder = {
 	id: string;
 	name: string;
 	email: string | null;
-	scope: "EMPLOYER" | "RESPONSIBLE_FOR";
+	scope: AssignmentScope;
 };

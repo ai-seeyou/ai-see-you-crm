@@ -22,6 +22,8 @@ import {
 	companyIdInput,
 	companyListInput,
 	companyListOutput,
+	companyNavigationInput,
+	companyNavigationOutput,
 	companyOptionOutput,
 	companyOptionsInput,
 	companyResearchOutput,
@@ -64,6 +66,15 @@ export class CompaniesRouter {
 	})
 	async options(@Input("q") q: string) {
 		return this.companies.options(q);
+	}
+
+	@Query({
+		input: companyNavigationInput,
+		output: companyNavigationOutput,
+		meta: restMeta("GET", "/companies/navigation", ["Companies"]),
+	})
+	async navigation() {
+		return this.companies.navigation();
 	}
 
 	@Mutation({

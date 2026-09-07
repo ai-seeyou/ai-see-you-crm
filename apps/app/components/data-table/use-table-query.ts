@@ -61,6 +61,36 @@ function asStringArray(value: QueryValue): string[] {
 	return result.success ? result.data : [];
 }
 
+export function savedViewUpdate(
+	view: SavedViewFilters,
+	facetIds: readonly string[],
+	tabId?: string,
+): RawUpdate {
+	const update: RawUpdate = {
+		q: view.q,
+		sort: view.sort,
+		dir: view.dir,
+		archived: view.archived,
+		page: 1,
+	};
+
+	for (const id of facetIds) update[id] = [];
+
+	const nextFields: FieldFilters = {};
+	for (const [key, selected] of Object.entries(view.filters)) {
+		if (key.startsWith(FIELD_FILTER_PREFIX)) {
+			nextFields[key.slice(FIELD_FILTER_PREFIX.length)] = selected;
+		} else if (key === tabId) {
+			update[key] = selected[0] ?? "all";
+		} else {
+			update[key] = selected;
+		}
+	}
+	update.fields = nextFields;
+
+	return update;
+}
+
 export function useTableQuery<TTab extends string, TFacet extends string>(
 	searchParams: ListSearchParams<TTab, TFacet>,
 ): TableQuery<TTab, TFacet> {
@@ -154,29 +184,7 @@ export function useTableQuery<TTab extends string, TFacet extends string>(
 	const currentView: SavedViewFilters = { q, sort, dir, archived, filters };
 
 	const applyView = (view: SavedViewFilters) => {
-		const update: RawUpdate = {
-			q: view.q,
-			sort: view.sort,
-			dir: view.dir,
-			archived: view.archived,
-			page: 1,
-		};
-
-		for (const id of facetIds ?? []) update[id] = [];
-
-		const nextFields: FieldFilters = {};
-		for (const [key, selected] of Object.entries(view.filters)) {
-			if (key.startsWith(FIELD_FILTER_PREFIX)) {
-				nextFields[key.slice(FIELD_FILTER_PREFIX.length)] = selected;
-			} else if (key === tabId) {
-				update[key] = selected[0] ?? "all";
-			} else {
-				update[key] = selected;
-			}
-		}
-		update.fields = nextFields;
-
-		setValues(update);
+		setValues(savedViewUpdate(view, facetIds ?? [], tabId));
 	};
 
 	return { query, input, setArchived, currentView, applyView };

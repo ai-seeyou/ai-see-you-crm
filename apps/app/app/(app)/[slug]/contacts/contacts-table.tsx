@@ -179,6 +179,7 @@ export function ContactsTable() {
 		placeholderData: (previous) => previous,
 	});
 	const users = useQuery(trpc.users.list.queryOptions());
+	const navigation = useQuery(trpc.companies.navigation.queryOptions({}));
 
 	const [companyQuery, setCompanyQuery] = useState("");
 	const [companyText, setCompanyText] = useSearchInput(
@@ -215,9 +216,39 @@ export function ContactsTable() {
 	};
 
 	const facetCounts = contacts.data?.facetCounts;
+	const navigationFacets = navigation.data;
 	const fieldFacets = useFieldFacets("CONTACT", facetCounts);
 
 	const facets: DataTableFacet[] = [
+		{
+			id: "countryCodes",
+			label: "Country",
+			featured: true,
+			options: (navigationFacets?.countries ?? []).map((country) => ({
+				value: country.code,
+				label: country.label,
+			})),
+		},
+		{
+			id: "destinationIds",
+			label: "Destination",
+			featured: true,
+			searchable: true,
+			options: (navigationFacets?.destinations ?? []).map((destination) => ({
+				value: destination.id,
+				label: destination.name,
+			})),
+		},
+		{
+			id: "hotelGroupIds",
+			label: "Hotel group",
+			featured: true,
+			searchable: true,
+			options: (navigationFacets?.hotelGroups ?? []).map((group) => ({
+				value: group.id,
+				label: group.name,
+			})),
+		},
 		{
 			id: "owner",
 			label: "Owner",

@@ -40,7 +40,7 @@ import { companiesSearchParams } from "./companies-search-params";
 
 type CompanyRow = RouterOutputs["companies"]["list"]["rows"][number];
 
-const COLUMNS: DataTableColumn<CompanyRow>[] = [
+export const COMPANY_COLUMNS: DataTableColumn<CompanyRow>[] = [
 	{
 		id: "name",
 		header: BUSINESS.one,
@@ -65,6 +65,7 @@ const COLUMNS: DataTableColumn<CompanyRow>[] = [
 		header: "Domain",
 		sortable: true,
 		width: "w-[16%]",
+		defaultHidden: true,
 		hideBelow: "md",
 		cell: (row) =>
 			row.domain ? (
@@ -74,10 +75,52 @@ const COLUMNS: DataTableColumn<CompanyRow>[] = [
 			),
 	},
 	{
+		id: "country",
+		header: "Country",
+		sortable: true,
+		width: "w-[13%]",
+		hideBelow: "md",
+		cell: (row) =>
+			row.countryLabel ? (
+				<span className="truncate">{row.countryLabel}</span>
+			) : (
+				<EmptyCellValue />
+			),
+	},
+	{
+		id: "destination",
+		header: "Destination",
+		sortable: true,
+		width: "w-[15%]",
+		hideBelow: "md",
+		cell: (row) =>
+			row.destination ? (
+				<span className="truncate">{row.destination.name}</span>
+			) : (
+				<EmptyCellValue />
+			),
+	},
+	{
+		id: "hotelGroup",
+		header: "Hotel group",
+		sortable: true,
+		width: "w-[16%]",
+		hideBelow: "lg",
+		cell: (row) =>
+			row.hotelGroups.length > 0 ? (
+				<span className="truncate">
+					{row.hotelGroups.map((group) => group.name).join(", ")}
+				</span>
+			) : (
+				<EmptyCellValue />
+			),
+	},
+	{
 		id: "entityType",
 		header: "Type",
 		width: "w-[14%]",
 		hideBelow: "lg",
+		defaultHidden: true,
 		cell: (row) => (
 			<span className="truncate">{entityTypeLabel(row.entityType)}</span>
 		),
@@ -87,6 +130,7 @@ const COLUMNS: DataTableColumn<CompanyRow>[] = [
 		header: "Vertical",
 		width: "w-[12%]",
 		hideBelow: "lg",
+		defaultHidden: true,
 		cell: (row) =>
 			row.vertical ? (
 				<span className="truncate">{row.vertical.label}</span>
@@ -215,6 +259,7 @@ export function CompaniesTable() {
 	const verticals = useQuery(
 		trpc.verticals.list.queryOptions({ includeArchived: false }),
 	);
+	const navigation = useQuery(trpc.companies.navigation.queryOptions({}));
 
 	const rows = companies.data?.rows ?? [];
 	const selection = useTableSelection(
@@ -222,9 +267,39 @@ export function CompaniesTable() {
 	);
 
 	const facetCounts = companies.data?.facetCounts;
+	const navigationFacets = navigation.data;
 	const fieldFacets = useFieldFacets("COMPANY", facetCounts);
 
 	const facets: DataTableFacet[] = [
+		{
+			id: "countryCodes",
+			label: "Country",
+			featured: true,
+			options: (navigationFacets?.countries ?? []).map((country) => ({
+				value: country.code,
+				label: country.label,
+			})),
+		},
+		{
+			id: "destinationIds",
+			label: "Destination",
+			featured: true,
+			searchable: true,
+			options: (navigationFacets?.destinations ?? []).map((destination) => ({
+				value: destination.id,
+				label: destination.name,
+			})),
+		},
+		{
+			id: "hotelGroupIds",
+			label: "Hotel group",
+			featured: true,
+			searchable: true,
+			options: (navigationFacets?.hotelGroups ?? []).map((group) => ({
+				value: group.id,
+				label: group.name,
+			})),
+		},
 		{
 			id: "owner",
 			label: "Owner",
@@ -278,8 +353,8 @@ export function CompaniesTable() {
 	const columns = useMemo(
 		() =>
 			input.archived
-				? [...COLUMNS, ARCHIVED_COLUMN, ...fieldColumns]
-				: [...COLUMNS, ...fieldColumns],
+				? [...COMPANY_COLUMNS, ARCHIVED_COLUMN, ...fieldColumns]
+				: [...COMPANY_COLUMNS, ...fieldColumns],
 		[fieldColumns, input.archived],
 	);
 

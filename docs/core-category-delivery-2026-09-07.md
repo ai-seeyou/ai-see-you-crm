@@ -9,7 +9,11 @@ Current CRM contains 5,010 certified hotels. All original 4,996 references remai
 Production PR70 deploys its exact reviewed migration after founder approval. Independent source verification passes.
 The approved rotation repair also aligns the obsolete Category verifier. No credential leaves its deployed boundary.
 The new dry run exhausts three attempts without evidence. Category remains inactive.
-Independent deployed Edge source verification passes. Hosted read diagnosis continues.
+Independent deployed Edge source verification passes. Exact page queries exceed the existing three-second timeout.
+Production PR71 corrects repeated query work. Independent review, 28 page checks and unchanged-baseline CI comparison pass.
+PR71 remains undeployed pending its exact migration and baseline exceptions. PR70 approval does not cover PR71.
+CRM PR34 merges at `8c529b8551cb8b417ddad6f609f28cab745d10ad` after independent review and passing CI.
+All three live CRM domains report READY at that commit. This diagnostic deployment does not activate Category.
 CRM PR33 merges at `621ce420137f1f0abc5f0c4cf5506c70a8391e1c` with request timeouts and saved failure outcomes.
 Browser certification remains pending. Contact enrichment remains paused.
 

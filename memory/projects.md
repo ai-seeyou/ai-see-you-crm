@@ -4,7 +4,7 @@
 
 **Context:** Governed Core Category navigation enhancement. CRM contains 5,010 certified hotels and preserves all original 4,996 mappings.
 
-**Current:** CRM contains 5,010 certified hotels and preserves all 4,996 original mappings. The fourteen additions pass an unchanged rerun. CRM PR32 and PR33 are merged. All three live deployments are READY at 621ce420. Migration 67 applies exactly once, with 67 total and zero unfinished migrations. Founder approves Production PR70. Its exact independently reviewed migration deploys successfully after merge 8c74ab04. All 77 selected runs and 13,184 pairs remain unchanged. A separately reviewed repair aligns the obsolete Category verifier with the completed approved capability rotation. Both hotel functions remain unchanged. The new dry task still exhausts three attempts without evidence. Category remains inactive. The deployed Edge bundle matches reviewed source. Read-only diagnosis now targets the actual HTTP failure. Browser certification remains blocked by no connected browser.
+**Current:** CRM preserves all 5,010 certified hotels and all 4,996 original mappings. CRM PR34 passes independent review and CI. All three live deployments are READY at 8c529b8551cb8b417ddad6f609f28cab745d10ad. Production PR70 and the approved verifier alignment are deployed. Category remains inactive because exact page queries exceed the existing timeout. Reviewed Production PR71 corrects repeated query work and passes all 28 page checks. Its exact migration and unchanged-baseline exceptions remain pending. Browser certification has no connected browser. Contact enrichment remains paused.
 
 **Pending:**
 
@@ -29,7 +29,8 @@
 - Migration SHA is 388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e. No correction deploys yet.
 - All 28 cursor replays pass three seconds. Exact snapshot headroom reaches 168 milliseconds, so require the deployed complete dry run.
 - Obtain the new exact migration and unchanged-baseline CI exception after PR review. PR70's exception remains specific to PR70.
-- CRM branch fix/category-read-status carries independently reviewed bounded task error codes. Complete normal CI and deployment.
+- CRM PR34 merges at 8c529b8551cb8b417ddad6f609f28cab745d10ad after independent review and passing CI34108183790.
+- All three live deployments match that merge. Production PR71 remains unmerged pending its specific migration and baseline exceptions.
 - Complete signed-in browser acceptance for Businesses, Contacts and Coverage. Do not substitute SQL tests for browser certification.
 - Use only crm-agent for Production GET calls. PRODUCTION_CATEGORY_SYNC_REQUEST queues bounded dry-run/commit tasks without downloading tokens.
 - Browser runtime finds no connected browser. Founder receives a non-blocking request to open and sign into the CRM in Codex's browser.

@@ -112,7 +112,7 @@ Second pass complete. All material actions and remaining gates appear here or in
 - Preserve verified CRM migration67. Exact deployed CRM commit is 621ce420 across all three projects.
 - PR70 applies after exact founder approval. Complete the separately reviewed Category query performance correction before another dry run.
 - Do not restart the fenced or exhausted tasks. New completed dry evidence remains necessary before activation.
-- CRM PR33 is live. Merge and deploy CRM PR34 after its current checks pass for the bounded diagnostic correction.
+- CRM PR34 merges at 8c529b8551cb8b417ddad6f609f28cab745d10ad. All three live domains verify READY at that commit.
 - Run deployed Category dry-run, independently reconcile all pairs, activate the exact approved snapshot and prove idempotency.
 - Verify actual Businesses, Contacts and Coverage in the signed-in browser against real data.
 - Preserve the completed capability rotation across all three verifiers. The reviewed Category alignment repairs the stale third verifier.
@@ -192,6 +192,16 @@ Second pass complete. All material actions and remaining gates appear here or in
 - Independent final review catches a stale Pending sentence. This receipt replaces it with the PR34 deployment gate.
 
 ## Evidence
+
+Final CRM deployment receipt:
+
+- App: dpl_CCvfPJrHFsRh1gXsXiPyA8pjKbEk.
+- API: dpl_8yyxaBeLxgYBbdi51YWxTNnEeG56.
+- Agent: dpl_344PbsfJwvrciSQp69wvFHp2a4qa.
+- Each production alias reports READY and commit 8c529b8551cb8b417ddad6f609f28cab745d10ad.
+- PR34 reviewed head 4c73c7f passes CI34108183790 and independent final review before merge.
+- Production PR71 remains OPEN at 6b3e16fb325715197b757e6d6252128d033f1fa0. No additional founder approval arrives.
+- Second pass complete. Category activation remains blocked, despite the successful diagnostic deployment.
 
 Full execution receipt: docs/category-release-execution-2026-09-07.md.
 CRM operator tests: /private/tmp/crm-category-operator-push-retry.log.

@@ -121,7 +121,50 @@ function taskEvidence(result: ProductionCategorySyncResult) {
 	};
 }
 
+function failureOutcome(error: Error | null) {
+	if (
+		error instanceof DOMException &&
+		(error.name === "TimeoutError" || error.name === "AbortError")
+	)
+		return "Production Category attempt failed: REQUEST_TIMEOUT.";
+	if (error instanceof Error) {
+		if (error.message.startsWith("Production read failed"))
+			return "Production Category attempt failed: PRODUCTION_READ.";
+		if (error.message.startsWith("Production Category"))
+			return "Production Category attempt failed: CONTRACT_VALIDATION.";
+	}
+	return "Production Category attempt failed: UNKNOWN.";
+}
+
+async function saveFailure(taskId: string, error: Error | null) {
+	await db.agentTask.updateMany({
+		where: { id: taskId, finishedAt: null },
+		data: { outcome: failureOutcome(error) },
+	});
+}
+
 export async function runProductionCategoryTask(
+	taskId: string,
+	payload: ProductionCategoryTaskPayload,
+	client?: ProductionReadClient,
+	sync: typeof syncProductionCategories = syncProductionCategories,
+) {
+	try {
+		return await runProductionCategoryTaskAttempt(
+			taskId,
+			payload,
+			client,
+			sync,
+		);
+	} catch (error) {
+		await saveFailure(taskId, error instanceof Error ? error : null).catch(
+			() => {},
+		);
+		throw error;
+	}
+}
+
+async function runProductionCategoryTaskAttempt(
 	taskId: string,
 	payload: ProductionCategoryTaskPayload,
 	client?: ProductionReadClient,

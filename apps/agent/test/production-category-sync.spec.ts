@@ -193,12 +193,33 @@ describe("Production Category synchronization", () => {
 		});
 		expect(requests.map((request) => request.method)).toEqual(["GET", "GET"]);
 		expect(requests.every((request) => request.body === null)).toBe(true);
+		expect(requests.every((request) => request.redirect === "error")).toBe(
+			true,
+		);
 		expect(new URL(requests[0]?.url ?? "").searchParams.get("resource")).toBe(
 			"snapshot",
 		);
 		expect(new URL(requests[1]?.url ?? "").searchParams.get("resource")).toBe(
 			"memberships",
 		);
+	});
+
+	it("cancels a Category GET at its request deadline", async () => {
+		let signal: AbortSignal | null = null;
+		const client = new ProductionReadClient(
+			"https://production.example/internal/crm",
+			"scoped-token",
+			((_input, init) => {
+				signal = init?.signal as AbortSignal;
+				return new Promise<Response>((_resolve, reject) => {
+					signal?.addEventListener("abort", () => reject(signal?.reason), {
+						once: true,
+					});
+				});
+			}) as typeof fetch,
+		);
+		await expect(client.categorySnapshot(5)).rejects.toThrow();
+		expect(signal?.aborted).toBe(true);
 	});
 
 	it("runs only after committed universe proving tasks", () => {

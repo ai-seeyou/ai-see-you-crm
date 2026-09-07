@@ -146,4 +146,87 @@ describe("Production Category task persistence", () => {
 			else process.env.PRODUCTION_READ_TOKEN = token;
 		}
 	});
+
+	it("stores a bounded retryable failure without finishing the task", async () => {
+		const taskId = await queueProductionCategoryRequest(
+			`DRY_RUN:${crypto.randomUUID()}`,
+		);
+		const task = await db.agentTask.findUniqueOrThrow({
+			where: { id: taskId ?? "" },
+		});
+		const client = new ProductionReadClient(
+			"https://production.test/read",
+			"token",
+		);
+		await expect(
+			runProductionCategoryTask(
+				task.id,
+				productionCategoryTaskPayload(task.payload),
+				client,
+				async () => {
+					throw new Error(
+						"Production read failed with RPC_HTTP_503 secret-value",
+					);
+				},
+			),
+		).rejects.toThrow("secret-value");
+		const saved = await db.agentTask.findUniqueOrThrow({
+			where: { id: task.id },
+			select: { finishedAt: true, outcome: true, payload: true },
+		});
+		expect(saved.finishedAt).toBeNull();
+		expect(saved.outcome).toBe(
+			"Production Category attempt failed: PRODUCTION_READ.",
+		);
+		expect(JSON.stringify(saved)).not.toContain("secret-value");
+	});
+
+	it("stores timeout classification without replacing a completed outcome", async () => {
+		const taskId = await queueProductionCategoryRequest(
+			`DRY_RUN:${crypto.randomUUID()}`,
+		);
+		const task = await db.agentTask.findUniqueOrThrow({
+			where: { id: taskId ?? "" },
+		});
+		const client = new ProductionReadClient(
+			"https://production.test/read",
+			"token",
+		);
+		await expect(
+			runProductionCategoryTask(
+				task.id,
+				productionCategoryTaskPayload(task.payload),
+				client,
+				async () => {
+					throw new DOMException("private response", "TimeoutError");
+				},
+			),
+		).rejects.toThrow("private response");
+		const failed = await db.agentTask.findUniqueOrThrow({
+			where: { id: task.id },
+			select: { outcome: true },
+		});
+		expect(failed.outcome).toBe(
+			"Production Category attempt failed: REQUEST_TIMEOUT.",
+		);
+		await db.agentTask.update({
+			where: { id: task.id },
+			data: { finishedAt: new Date(), outcome: "Completed evidence." },
+		});
+		await expect(
+			runProductionCategoryTask(
+				task.id,
+				productionCategoryTaskPayload(task.payload),
+				client,
+				async () => {
+					throw new Error("Production Category later failure");
+				},
+			),
+		).rejects.toThrow("later failure");
+		const completed = await db.agentTask.findUniqueOrThrow({
+			where: { id: task.id },
+			select: { outcome: true },
+		});
+		expect(completed.outcome).toBe("Completed evidence.");
+	});
 });

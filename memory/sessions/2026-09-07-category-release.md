@@ -60,14 +60,51 @@ Second pass complete. All material actions and remaining gates appear here or in
 - Agent-only type checking misses the new TaskKind API label. The full monorepo hook catches it before push.
 - No browser is connected. Do not substitute SQL tests for live browser certification or inspect cookie stores.
 
+## Subsequent execution
+
+- Founder directs the coordinator to proceed after the deployment plan.
+- Merge and deploy Production PR68 at bfca2bb7e7e7a8c89f0a9c3e167f39bd2ba76a79.
+- Independently certify the deployed 5,010-property feed, with zero missing or unexpected IDs.
+- Merge CRM PR32 at c8d0d9beba9b92c785d447423a6802fbe7d43e90. All three production deployments reach READY.
+- API deployment applies CRM migration 67. No Production token leaves crm-agent.
+- Full deployed dry run cmtqwxt5o000004icq35im377 matches independently reconstructed IDs and payload digest.
+- Import only the fourteen certified Yorkshire additions through the bounded destination workflow.
+- Executed queue hash is 2f2cf57bec6766751ba4493b78f06b759ee0d69c37a3006bbdfb8531ded39019.
+- Preserve this exact executed artefact. Later guard improvements belong in separate unused files.
+- All 4,996 original identity mappings remain intact. All 4,272 Category properties now link to CRM.
+- Independently reviewed idempotency queue hash is 36f183c3f88f368ee26e8776c89fbb25dea353e7da75ce0f492bb203196487ff.
+- Rerun cmtqxfjdy000004jsfztrdpv8 proves fourteen unchanged, zero created, updated, exceptions, reviews or stale records.
+- Queue Category dry task crm-category-dry-4b4bc8601cb14ea9869188b5c2e5c428 through the reviewed CRM-only operator SQL.
+- Task starts at 07:36:10 UTC. Completed evidence remains pending at 07:39 UTC. Investigate runtime before any retry.
+- Browser connection still returns no available browser. No unsupported browser or credential fallback occurs.
+- Independently reproduce the exact failure: duplicate commercial certificates expand 77 selected destinations into 214 rows.
+- The actual RPC rejects these duplicates through its authority guard. No successful snapshot reaches CRM.
+- Aggregating the latest commercial certification timestamp preserves all 77 selected runs and all 13,184 Category pairs.
+- The corrected SELECT response passes actual CRM schema, ordering and digest checks.
+- Corrected snapshot: 54795ad01a12590eb549b840b015372fc7cc9bff1af154610dcfb1b3d27d055e.
+- Independently review and fence the failed dry task at 07:49:18.803 UTC. Preserve its payload and fixed failure outcome.
+- Fence SQL hash: 4ec586440758e66be0ce38fc5c8f1d9a6fc822480b67afe85f1e7d6a1c99cdf6.
+- Implement bounded GET cancellation and fixed Category failure outcomes. Keep activation and retry rules unchanged.
+- The normal push hook catches two unknown-parameter lint failures. Narrow errors at the catch boundary and rerun normally.
+- CRM commits f23dc6f and 6bf4bea pass independent review, fourteen focused tests and all 1,311 repository tests.
+- Push fix/category-sync-runtime and open CRM PR33. CI and previews run normally.
+- Verify CRM migration67 checksum b381e2ade6343462286be7f65581e16362e376dfe05ed534c1ea761d219442f2, applied once.
+- Prepare the separately reviewed Production certificate-aggregation migration and exercised rollback. Do not deploy under the PR67-only exception.
+- Exact source correction passes independent full RPC, forward migration, rollback, authentication and ambiguity tests locally.
+- Migration SHA e0f6ab1a603f9b5a0edccdf282c1f252bbda2edd7edae50f78ca14d3b4bc02ae.
+- Rollback SHA fad389b0487ee380d9b9639b5da58372e96933df78fa9edc1e2f597abe27f0bd.
+- The exact local test catches changed parser source offsets in argument-default metadata. Compare semantic defaults instead.
+- Production correction branch: fix/crm-category-certificates, based on bfca2bb7. No hosted correction execution occurs.
+- Reproducible synthetic RPC harness is being added to the Production correction PR.
+
 ## Pending
 
 - Final independent PR68 CI comparison passes: auth3/3, advisories14/14, inventory118/118 and secrets9/9 match baseline exactly.
-- Obtain its specific baseline exception before merge. The current exception explicitly names PR67 only.
 - Resolve the explicit PR67 migration-ledger policy conflict without overwriting history or repeating migration SQL.
-- Deploy PR68, repeat complete source-set proof, and only then reconcile CRM hotels with exact approved manifest digests.
-- Verify all 4,996 original ID-to-Business mappings remain intact and exactly the fourteen proven additions enter.
-- Merge/deploy CRM PR32 after source assumptions hold. Verify migration67 and deployment SHAs.
+- Hotel reconciliation and exact deployed source proof pass. Preserve both original and expanded manifests.
+- CRM migration67 verification passes. Exact deployed CRM commit is c8d0d9b across all three projects.
+- Finish Production certificate-aggregation artifact review and required deployment authority. The current Category RPC remains broken.
+- Complete CRM PR33 remote CI and deployment.
 - Run deployed Category dry-run, independently reconcile all pairs, activate the exact approved snapshot and prove idempotency.
 - Verify actual Businesses, Contacts and Coverage in the signed-in browser against real data.
 - Rotate the scoped capability across all three reviewed verifiers after proving/import, with no local credential exposure.

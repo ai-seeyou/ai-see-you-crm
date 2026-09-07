@@ -3,6 +3,7 @@ import {
 	productionCategoryMembershipPageSchema,
 	productionCategorySnapshotSchema,
 } from "@crm/validation/production-category";
+import { PRODUCTION_READ } from "./production-read-config";
 
 export type ProductionPageRequest = {
 	destination?: string;
@@ -38,10 +39,10 @@ export class ProductionReadClient {
 		return productionBusinessPageSchema.parse(await response.json());
 	}
 
-	async categorySnapshot() {
+	async categorySnapshot(timeoutMs?: number) {
 		const url = new URL(this.endpoint);
 		url.searchParams.set("resource", "snapshot");
-		const response = await this.get(url);
+		const response = await this.get(url, timeoutMs);
 		return productionCategorySnapshotSchema.parse(await response.json());
 	}
 
@@ -49,20 +50,23 @@ export class ProductionReadClient {
 		snapshotId: string;
 		cursor?: string;
 		limit: number;
+		timeoutMs?: number;
 	}) {
 		const url = new URL(this.endpoint);
 		url.searchParams.set("resource", "memberships");
 		url.searchParams.set("snapshotId", input.snapshotId);
 		url.searchParams.set("limit", String(input.limit));
 		if (input.cursor) url.searchParams.set("cursor", input.cursor);
-		const response = await this.get(url);
+		const response = await this.get(url, input.timeoutMs);
 		return productionCategoryMembershipPageSchema.parse(await response.json());
 	}
 
-	private async get(url: URL) {
+	private async get(url: URL, timeoutMs = PRODUCTION_READ.requestTimeoutMs) {
 		const response = await this.request(url, {
 			method: "GET",
 			headers: { authorization: `Bearer ${this.token}` },
+			redirect: "error",
+			signal: AbortSignal.timeout(timeoutMs),
 		});
 		if (!response.ok) {
 			const failureCode = response.headers.get("x-crm-failure-code");

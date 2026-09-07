@@ -2,9 +2,9 @@
 
 ## AI See You CRM
 
-**Context:** Governed Core Category navigation enhancement. CRM contains all 4,996 certified hotels, including the original 228 Sydney hotels.
+**Context:** Governed Core Category navigation enhancement. CRM contains 5,010 certified hotels and preserves all original 4,996 mappings.
 
-**Current:** Production PR67 merges at 8794e43 and deploys the exact approved Category migration. Independent deployed review confirms 13,184 pairs across 4,272 properties and 77 destinations. PR68 contains the reviewed hotel-feed correction. It preserves 4,996 hotels and adds exactly fourteen individually proven Yorkshire hotels. PR68 remains draft pending its separate baseline CI exception. CRM PR32 adds the deployed Category task at 93e6151 and API label at 10114dd. All 1,308 tests and remote CI pass. Category UI remains undeployed. The stalled import task is fenced without changing any hotel reference.
+**Current:** Production PR67 and PR68 are merged and deployed. PR68 merge is bfca2bb7. Independent live feed certification proves exactly 5,010 hotels. The fourteen certified additions import successfully. Their rerun leaves all fourteen unchanged. CRM PR32 merges at c8d0d9b. All three production deployments are READY at that commit. Migration 67 applies exactly once, with 67 total and zero unfinished migrations. Category validation fails because duplicate commercial certificates expand 77 destinations into 214 rows. The failed dry task is fenced. Initial activation remains off. A read-only correction simulation preserves every selected run and all 13,184 pairs. CRM PR33 adds bounded requests and saved failure outcomes. All 1,311 local tests pass. Browser certification remains blocked by no connected browser.
 
 **Pending:**
 
@@ -15,14 +15,16 @@
 - Founder approves the exact PR67 migration and baseline exception. Its objects deploy successfully, but the migration ledger remains absent.
 - Tool policy rejects the independently reviewed PR67 ledger registration. Obtain explicit ledger authority or supervised execution. Never repeat the migration.
 - Founder approves the hotel-feed correction. PR68 exact migration a6bfb25210d274f2348e076fb38404eef83b7ec0591ee367263c41c9e480d87f preserves all existing IDs.
-- Obtain the PR68-specific baseline CI exception. The approved PR67 exception explicitly covers PR67 only.
-- Deploy the reviewed correction and verify its live ID set before hotel writes. Predeployment ID digest is 37928f110ade40f5dd3c3e0ed7682687c1ed7b0859052a66aa4bf3eb2c26cdeb.
-- Deploy CRM PR32, verify CRM migration 67, execute durable Category dry-run/activation, then finish live acceptance.
+- PR68 deploys after the founder's subsequent direction to proceed. Independent CI comparison proves no new failure signatures.
+- Live hotel ID digest is 37928f110ade40f5dd3c3e0ed7682687c1ed7b0859052a66aa4bf3eb2c26cdeb.
+- Complete and independently review the exact Production certificate-aggregation migration and rollback. Do not extend the PR67-only exception silently.
+- Deploy the reviewed source correction under its required authority. Run a new Category dry-run, activation and live acceptance.
+- Complete CRM PR33 CI and deployment. Head 6bf4bea passes independent review and all local checks.
 - Use only crm-agent for Production GET calls. PRODUCTION_CATEGORY_SYNC_REQUEST queues bounded dry-run/commit tasks without downloading tokens.
 - Browser runtime finds no connected browser. Founder receives a non-blocking request to open and sign into the CRM in Codex's browser.
-- Existing feed still returns 1,948 until PR68 deploys. The live CRM contraction guard protects the existing 4,996 references.
+- Corrected live feed returns 5,010. The CRM contraction guard remains intact.
 - Preserve exact authored provenance, latest certified/sealed/trend-valid readings, nine governed IDs and independent pair reconciliation.
-- Reconcile 77 current destination readings with the earlier 76-destination imported universe explicitly.
+- Yorkshire Dales adds the seventy-seventh hotel destination. All fourteen additions have independently proven recommendation evidence.
 - Keep large-scale contact enrichment paused until Category navigation is live and independently certified.
 - Founder reports live navigation success. Automated signed-in browser coverage remains a separate test limitation.
 - Read PR 30's release receipt for the bounded noindex/nofollow deployment verification. Do not repeat deployment without checking current evidence.

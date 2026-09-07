@@ -112,7 +112,7 @@ Second pass complete. All material actions and remaining gates appear here or in
 - Preserve verified CRM migration67. Exact deployed CRM commit is 621ce420 across all three projects.
 - PR70 applies after exact founder approval. Complete the separately reviewed Category query performance correction before another dry run.
 - Do not restart the fenced or exhausted tasks. New completed dry evidence remains necessary before activation.
-- CRM PR33 deployment passes. No further CRM runtime deployment is required for this correction.
+- CRM PR33 is live. Merge and deploy CRM PR34 after its current checks pass for the bounded diagnostic correction.
 - Run deployed Category dry-run, independently reconcile all pairs, activate the exact approved snapshot and prove idempotency.
 - Verify actual Businesses, Contacts and Coverage in the signed-in browser against real data.
 - Preserve the completed capability rotation across all three verifiers. The reviewed Category alignment repairs the stale third verifier.
@@ -180,6 +180,16 @@ Second pass complete. All material actions and remaining gates appear here or in
 - Browser discovery still returns an empty list. No unsupported browser, cookie or session-store fallback occurs.
 - The draft-PR skill supplies the PR format. Its separate pr-description reference is absent, so the included format is used.
 - Second pass complete. New records include independent review corrections, explicit timeout headroom and the exact frozen artifacts.
+- Production PR71 is ready at 6b3e16fb325715197b757e6d6252128d033f1fa0. Independent CI34107196023 matches baseline34098895378 exactly.
+- Its four unchanged groups remain authentication3, advisories14, inventory118 and secret findings9. CRM authentication audits pass.
+- The founder receives a non-blocking request for PR71's exact migration and unchanged-baseline exception. No new exception arrives yet.
+- CRM PR34 opens at bd614e15271641c3a417ad6f1c83f800127a31e6. Independent runtime review, CI34107921926 and three previews pass.
+- The first push hook catches missing Category tables in localhost:5432/crm_test. No hook bypass occurs.
+- The guarded db:test command initially receives no environment through the workspace runner and exits without changes.
+- A wrapper validates the explicit local TEST_DATABASE_URL, then passes it to the unchanged guarded command without printing credentials.
+- The disposable crm_test database rebuilds and applies all migrations. Live CRM and Production are untouched by this test repair.
+- The normal push retry passes all 1,313 tests, lint and type checks.
+- Independent final review catches a stale Pending sentence. This receipt replaces it with the PR34 deployment gate.
 
 ## Evidence
 

@@ -129,7 +129,7 @@ The direct certification-record join expands 77 destination readings into 214 ro
 The RPC rejects these duplicates through its authority-completeness check before returning a snapshot.
 Independent recommendation calculation still proves 13,184 memberships across 4,272 properties.
 The correction must aggregate commercial certification records without hiding genuinely ambiguous destination runs.
-The existing terminal hotel read uses the latest commercial certification timestamp per Pulse.
+The existing terminal-read certificate metadata selection uses the latest commercial certification timestamp per Pulse.
 The coordinator prepares a separately reviewed correction. No new Production migration executes under the PR67-only exception.
 
 The CRM dispatcher also loses errors for tasks without a Business or Contact owner.
@@ -158,6 +158,19 @@ The metadata guard compares semantic argument defaults, not PostgreSQL parser so
 The initial exact test catches that offset-only difference before any hosted execution.
 Repeated forward migration and rollback both fail closed.
 No correction migration executes in Production at this stage.
+
+Production correction PR: https://github.com/ai-seeyou/tri/pull/70.
+Reviewed source head: `1a29cae8527e5bdc4c11f297730b739513086d87`.
+The repository includes the exact RPC regression harness and synthetic fixtures.
+The harness discards inherited PostgreSQL settings and fixes both host and host-address to loopback.
+Its independent run passes and removes its own test database.
+CRM PR33 merges at `621ce420137f1f0abc5f0c4cf5506c70a8391e1c` after all current CI and previews pass.
+All three CRM production deployments reach READY at that exact merge commit.
+PR70 final CI run `34098895378` matches baseline `34094855243` with zero new or removed failure signatures.
+Counts remain authentication 3, advisories 14, inventory 118 and secret findings 9.
+The exact PR67-only migration and CI exception does not cover PR70.
+PR70 remains unmerged and undeployed pending its required separate exception.
+After deployment, queue a new Category dry run and certify its completed evidence before activation.
 
 ## Browser gate
 

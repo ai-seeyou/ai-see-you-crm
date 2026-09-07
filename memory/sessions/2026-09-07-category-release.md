@@ -96,6 +96,13 @@ Second pass complete. All material actions and remaining gates appear here or in
 - The exact local test catches changed parser source offsets in argument-default metadata. Compare semantic defaults instead.
 - Production correction branch: fix/crm-category-certificates, based on bfca2bb7. No hosted correction execution occurs.
 - Reproducible synthetic RPC harness is being added to the Production correction PR.
+- Production PR70 is open at 1a29cae8527e5bdc4c11f297730b739513086d87 with exactly seven intended files.
+- The checked-in synthetic harness passes exact forward, RPC and rollback tests. It removes its own test database.
+- Independent review catches inherited PGHOSTADDR overriding loopback. Clear all PG variables and fix both host settings before the final passing test.
+- Final CI34098895378 exactly matches baseline34094855243: authentication3, advisories14, inventory118 and secret findings9.
+- CRM PR33 merges at 621ce420137f1f0abc5f0c4cf5506c70a8391e1c. App, API and agent deployments all reach READY.
+- Production PR70 remains unmerged and undeployed. The exact PR67-only migration and baseline exception does not cover it.
+- All activation and browser gates remain explicit. Contact enrichment stays paused.
 
 ## Pending
 
@@ -103,8 +110,9 @@ Second pass complete. All material actions and remaining gates appear here or in
 - Resolve the explicit PR67 migration-ledger policy conflict without overwriting history or repeating migration SQL.
 - Hotel reconciliation and exact deployed source proof pass. Preserve both original and expanded manifests.
 - CRM migration67 verification passes. Exact deployed CRM commit is c8d0d9b across all three projects.
-- Finish Production certificate-aggregation artifact review and required deployment authority. The current Category RPC remains broken.
-- Complete CRM PR33 remote CI and deployment.
+- Obtain the exact PR70 Production migration and unchanged-baseline CI exception. Its final independent review passes.
+- Apply that exact reviewed migration only under its authority, then run a new Category dry task. Do not restart the fenced task.
+- CRM PR33 deployment passes. No further CRM runtime deployment is required for this correction.
 - Run deployed Category dry-run, independently reconcile all pairs, activate the exact approved snapshot and prove idempotency.
 - Verify actual Businesses, Contacts and Coverage in the signed-in browser against real data.
 - Rotate the scoped capability across all three reviewed verifiers after proving/import, with no local credential exposure.

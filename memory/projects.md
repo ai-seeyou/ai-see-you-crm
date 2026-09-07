@@ -4,7 +4,7 @@
 
 **Context:** Governed Core Category navigation enhancement. CRM contains 5,010 certified hotels and preserves all original 4,996 mappings.
 
-**Current:** Production PR67 and PR68 are merged and deployed. PR68 merge is bfca2bb7. Independent live feed certification proves exactly 5,010 hotels. The fourteen certified additions import successfully. Their rerun leaves all fourteen unchanged. CRM PR32 merges at c8d0d9b. All three production deployments are READY at that commit. Migration 67 applies exactly once, with 67 total and zero unfinished migrations. Category validation fails because duplicate commercial certificates expand 77 destinations into 214 rows. The failed dry task is fenced. Initial activation remains off. A read-only correction simulation preserves every selected run and all 13,184 pairs. CRM PR33 adds bounded requests and saved failure outcomes. All 1,311 local tests pass. Browser certification remains blocked by no connected browser.
+**Current:** CRM contains 5,010 certified hotels and preserves all 4,996 original mappings. The fourteen additions pass an unchanged rerun. CRM PR32 and PR33 are merged. All three live deployments are READY at 621ce420. Migration 67 applies exactly once, with 67 total and zero unfinished migrations. Category activation remains off because duplicate commercial certificates expand 77 destinations into 214 rows. The failed dry task is fenced. Production PR70 at 1a29cae contains the independently certified correction. All 77 selected runs and 13,184 pairs remain unchanged. Exact migration, full RPC, rollback and local-only harness tests pass. Its four CI failure groups exactly match baseline, with no new signatures. The new migration remains undeployed pending its required separate exception. Browser certification remains blocked by no connected browser.
 
 **Pending:**
 
@@ -17,9 +17,10 @@
 - Founder approves the hotel-feed correction. PR68 exact migration a6bfb25210d274f2348e076fb38404eef83b7ec0591ee367263c41c9e480d87f preserves all existing IDs.
 - PR68 deploys after the founder's subsequent direction to proceed. Independent CI comparison proves no new failure signatures.
 - Live hotel ID digest is 37928f110ade40f5dd3c3e0ed7682687c1ed7b0859052a66aa4bf3eb2c26cdeb.
-- Complete and independently review the exact Production certificate-aggregation migration and rollback. Do not extend the PR67-only exception silently.
-- Deploy the reviewed source correction under its required authority. Run a new Category dry-run, activation and live acceptance.
-- Complete CRM PR33 CI and deployment. Head 6bf4bea passes independent review and all local checks.
+- Obtain the exact Production PR70 migration and unchanged-baseline CI exception. Do not extend the PR67-only exception silently.
+- PR70 head is 1a29cae8527e5bdc4c11f297730b739513086d87. Migration SHA is e0f6ab1a603f9b5a0edccdf282c1f252bbda2edd7edae50f78ca14d3b4bc02ae.
+- Deploy PR70 under that authority. Run a new Category dry-run, independently certify its complete evidence, activate and verify idempotency.
+- Complete signed-in browser acceptance for Businesses, Contacts and Coverage. Do not substitute SQL tests for browser certification.
 - Use only crm-agent for Production GET calls. PRODUCTION_CATEGORY_SYNC_REQUEST queues bounded dry-run/commit tasks without downloading tokens.
 - Browser runtime finds no connected browser. Founder receives a non-blocking request to open and sign into the CRM in Codex's browser.
 - Corrected live feed returns 5,010. The CRM contraction guard remains intact.

@@ -129,7 +129,7 @@ The direct certification-record join expands 77 destination readings into 214 ro
 The RPC rejects these duplicates through its authority-completeness check before returning a snapshot.
 Independent recommendation calculation still proves 13,184 memberships across 4,272 properties.
 The correction must aggregate commercial certification records without hiding genuinely ambiguous destination runs.
-The existing terminal hotel read uses the latest commercial certification timestamp per Pulse.
+The existing terminal-read certificate metadata selection uses the latest commercial certification timestamp per Pulse.
 The coordinator prepares a separately reviewed correction. No new Production migration executes under the PR67-only exception.
 
 The CRM dispatcher also loses errors for tasks without a Business or Contact owner.
@@ -158,6 +158,88 @@ The metadata guard compares semantic argument defaults, not PostgreSQL parser so
 The initial exact test catches that offset-only difference before any hosted execution.
 Repeated forward migration and rollback both fail closed.
 No correction migration executes in Production at this stage.
+
+Production correction PR: https://github.com/ai-seeyou/tri/pull/70.
+Reviewed source head: `1a29cae8527e5bdc4c11f297730b739513086d87`.
+The repository includes the exact RPC regression harness and synthetic fixtures.
+The harness discards inherited PostgreSQL settings and fixes both host and host-address to loopback.
+Its independent run passes and removes its own test database.
+CRM PR33 merges at `621ce420137f1f0abc5f0c4cf5506c70a8391e1c` after all current CI and previews pass.
+All three CRM production deployments reach READY at that exact merge commit.
+PR70 final CI run `34098895378` matches baseline `34094855243` with zero new or removed failure signatures.
+Counts remain authentication 3, advisories 14, inventory 118 and secret findings 9.
+The exact PR67-only migration and CI exception does not cover PR70.
+PR70 remains unmerged and undeployed pending its required separate exception.
+After deployment, queue a new Category dry run and certify its completed evidence before activation.
+
+## Execution after PR70 approval
+
+The founder approves PR70's exact migration and unchanged-baseline CI exception.
+PR70 merges at `8c74ab04a445b31ac5afa5d425abfeae553e13b9`.
+The coordinator executes the exact `e0f6ab1a` migration once through the approved Production operator.
+Independent postflight confirms source `c2d1d4f52c6aee3ec404f12df23b0e3558fe85933c39786ae262cf5e9a84215d`.
+All 77 selected runs, 13,184 memberships and 4,105 authority coordinates remain unchanged.
+Function identity, owner, permissions and read-only execution settings remain unchanged.
+
+Fresh dry-run task: `crm-category-dry-fd157501afea4d46829a36e486169cfc`.
+Request: `3cf20d64-fdce-4df0-a3d7-a56a6495377a`.
+Its first attempts expose a separate obsolete capability verifier in the Category function.
+Both hotel functions already use the rotated public verifier `80aa86ad4dd3cae988016357729bfbed6ce84f6661cbc959587000c6c072457a`.
+The Category function incorrectly retains the retired `50f5de0e` verifier from the historical migration.
+The earlier review misses cross-function verifier parity. This is an implementation and certification defect.
+
+The coordinator completes the previously approved internal capability rotation through a separately reviewed, bounded verifier alignment.
+Operational SQL SHA-256: `de2e31c76374d8624847b8c4a397a879630ec9408697d6f5d64b232311d40a52`.
+Only the Category verifier changes. No new credential, permission or measurement change occurs.
+No credential is retrieved or printed. Both hotel functions remain byte-identical.
+Live Category source becomes `919b171df140390537f27fe1aa27561499c0bb428eff8a33f0b7d4ccf9bc1bbb`.
+Independent postflight proves all three verifier hashes match the current rotated capability.
+The old PR70 rollback correctly rejects this rotated source. Future rollback must preserve the current verifier.
+Never restore the retired verifier from historical migration SQL.
+The dry task exhausts three attempts at `2026-09-07T08:48:32.747Z` without completed evidence.
+Category remains inactive. No activation task is queued.
+Independent deployed Edge bundle verification matches all six reviewed runtime files exactly.
+The Category router exists in the deployed bundle. A stale Edge deployment does not explain the remaining failure.
+The Category error path collapses the upstream failure into `RPC_UNKNOWN`.
+Read-only HTTP and database metadata diagnosis continues before another dry run.
+The anonymous database role has a three-second statement timeout.
+Combined snapshot and full membership reconstruction takes 5,571.901 milliseconds.
+Exact snapshot fragments, including the authority guard, pass at 2,815.559 milliseconds.
+Exact first, middle and terminal page fragments each exceed three seconds with SQLSTATE `57014`.
+First-page work completes in 5,868.458 milliseconds without that limit. It returns 501 rows and the expected snapshot.
+The exact replay includes the authority guard, full digests and bounded page calculation.
+Unknown authority coordinates and ambiguous destinations both remain zero.
+This proves a page-query budget defect. Direct hosted HTTP error details remain unavailable.
+No timeout, permission or additional Production schema change occurs during diagnosis.
+Tool policy blocks proposed trace-based credential recovery and separate function-statistics access.
+Neither blocked operation is retried through another route.
+The final CRM read verifies 5,010 references, 5,010 unique properties and 5,010 unique businesses.
+The Category state remains at revision zero with no active snapshot.
+Independent EXPLAIN attributes the cost to repeated pair computation and deduplication, not JIT compilation.
+A blanket-materialization candidate exceeds ten seconds and is rejected without deployment.
+No speculative performance correction changes Production.
+
+## Reviewed performance correction
+
+Production commit `6b3e16f` contains the independently reviewed single-graph correction and bounded RPC error handling.
+Forward migration SHA-256: `388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e`.
+Rollback SHA-256: `2d03454d9a467385bc1ac1366f37d86d772c75a2cb1008c23cef0cf3fa9551d9`.
+Regression test SHA-256: `ed185c6fe8be7384f4d2dc242b1d1ccf27bb9c2f4086924ec8c97bebddf96e41`.
+All 28 cursor replays pass the unchanged three-second statement limit, with unchanged digests and membership fields.
+The complete sequence covers every page, the final 184 records and an empty request after the last record.
+Exact migration replay also validates the snapshot, final-nine and empty responses through the actual handler and CRM schemas.
+The slowest independently measured snapshot leaves 168 milliseconds of headroom. The deployed complete dry run remains mandatory.
+Local regression tests pass both exact source baselines, current verifier preservation, metadata, rollback and repeated-execution rejection.
+Anonymous GET succeeds. POST, missing capability and wrong capability fail.
+Twelve independent graph fault cases preserve the original semantics.
+The parent independently reruns the complete local regression and seven bounded RPC error tests successfully.
+The parent rejects an unreachable duplicate query branch during review. The final function contains one graph and no dead fallback.
+No performance migration or related Edge correction deploys at this stage.
+The exact new migration and unchanged-baseline CI exception require separate founder authority from PR70.
+
+CRM task outcomes now have a separately reviewed, pending change to retain only allowlisted HTTP and RPC status codes.
+Arbitrary errors, private suffixes and unrecognised SQLSTATE values retain the generic classification.
+Retry, lease and completed-outcome protection remain unchanged. No raw response body or credential is stored.
 
 ## Browser gate
 

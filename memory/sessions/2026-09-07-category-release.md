@@ -96,20 +96,100 @@ Second pass complete. All material actions and remaining gates appear here or in
 - The exact local test catches changed parser source offsets in argument-default metadata. Compare semantic defaults instead.
 - Production correction branch: fix/crm-category-certificates, based on bfca2bb7. No hosted correction execution occurs.
 - Reproducible synthetic RPC harness is being added to the Production correction PR.
+- Production PR70 is open at 1a29cae8527e5bdc4c11f297730b739513086d87 with exactly seven intended files.
+- The checked-in synthetic harness passes exact forward, RPC and rollback tests. It removes its own test database.
+- Independent review catches inherited PGHOSTADDR overriding loopback. Clear all PG variables and fix both host settings before the final passing test.
+- Final CI34098895378 exactly matches baseline34094855243: authentication3, advisories14, inventory118 and secret findings9.
+- CRM PR33 merges at 621ce420137f1f0abc5f0c4cf5506c70a8391e1c. App, API and agent deployments all reach READY.
+- Production PR70 remains unmerged and undeployed. The exact PR67-only migration and baseline exception does not cover it.
+- All activation and browser gates remain explicit. Contact enrichment stays paused.
 
 ## Pending
 
 - Final independent PR68 CI comparison passes: auth3/3, advisories14/14, inventory118/118 and secrets9/9 match baseline exactly.
 - Resolve the explicit PR67 migration-ledger policy conflict without overwriting history or repeating migration SQL.
 - Hotel reconciliation and exact deployed source proof pass. Preserve both original and expanded manifests.
-- CRM migration67 verification passes. Exact deployed CRM commit is c8d0d9b across all three projects.
-- Finish Production certificate-aggregation artifact review and required deployment authority. The current Category RPC remains broken.
-- Complete CRM PR33 remote CI and deployment.
+- Preserve verified CRM migration67. Exact deployed CRM commit is 621ce420 across all three projects.
+- PR70 applies after exact founder approval. Complete the separately reviewed Category query performance correction before another dry run.
+- Do not restart the fenced or exhausted tasks. New completed dry evidence remains necessary before activation.
+- CRM PR33 is live. Merge and deploy CRM PR34 after its current checks pass for the bounded diagnostic correction.
 - Run deployed Category dry-run, independently reconcile all pairs, activate the exact approved snapshot and prove idempotency.
 - Verify actual Businesses, Contacts and Coverage in the signed-in browser against real data.
-- Rotate the scoped capability across all three reviewed verifiers after proving/import, with no local credential exposure.
+- Preserve the completed capability rotation across all three verifiers. The reviewed Category alignment repairs the stale third verifier.
 - Keep enrichment paused until all release gates pass.
 - Preserve separate existing temporary-role cleanup and PR66 migration-version collision tasks.
+
+## Continuation after PR70 approval
+
+- Founder approves the requested exact PR70 migration and unchanged-baseline CI exception, then asks whether Category works live.
+- Parent reports Category remains unavailable. No activation or browser completion claim occurs.
+- PR70 merges at 8c74ab04a445b31ac5afa5d425abfeae553e13b9. Exact reviewed migration e0f6ab1a executes once.
+- Independent postflight proves corrected source c2d1d4f52c6aee3ec404f12df23b0e3558fe85933c39786ae262cf5e9a84215d.
+- All 77 selected runs, 13,184 memberships and 4,105 authority coordinates remain unchanged.
+- Fresh dry task crm-category-dry-fd157501afea4d46829a36e486169cfc uses request 3cf20d64-fdce-4df0-a3d7-a56a6495377a.
+- The first attempts expose an obsolete Category verifier. The hotel functions already use the completed rotation's current verifier.
+- Complete the previously approved rotation through independently reviewed alignment SQL de2e31c76374d8624847b8c4a397a879630ec9408697d6f5d64b232311d40a52.
+- Only the Category public verifier hash changes. No raw credential is retrieved. Both hotel functions remain byte-identical.
+- Current Category source is 919b171df140390537f27fe1aa27561499c0bb428eff8a33f0b7d4ccf9bc1bbb.
+- The old PR70 rollback rejects the rotated source. Never restore the retired verifier through historical SQL.
+- The new dry task exhausts three attempts at 08:48:32.747 UTC without evidence. Category remains inactive.
+- Independent deployed Edge audit matches all six reviewed runtime files. Stale deployment is excluded.
+- The Category Edge error path discards upstream status and returns RPC_UNKNOWN. CRM records only fixed safe classifications.
+- Supabase CLI provides no log command. Tool policy rejects proposed trace-based authorization recovery before execution.
+- Do not bypass that denial or read credentials from diagnostic traces. No such script executes.
+- Read-only metadata proves anon statement_timeout is 3 seconds and authenticator timeout is 8 seconds.
+- The Category function has expected identity, arguments, schema access and anonymous execute permission.
+- Independent combined snapshot and membership reconstruction exceeds 3 seconds with SQLSTATE57014.
+- The normal combined reconstruction takes 5,571.901 milliseconds and passes CRM validation.
+- Exact snapshot fragments pass at 2,742.584 milliseconds. The combined test does not prove initial snapshot failure.
+- Exact first, middle and terminal membership-page fragments all exceed three seconds with SQLSTATE57014.
+- First-page work completes normally in 5,868.458 milliseconds. It returns 501 rows and the expected snapshot.
+- This proves a page-query budget defect, not direct observation of the hosted HTTP error status.
+- EXPLAIN separates 328 milliseconds of authority work, 2,459 milliseconds of digest work and 2,950 milliseconds of page work.
+- Transaction-local JIT disabling does not fix the timeout. Repeated pair computation and deduplication dominate execution.
+- The first blanket-materialization candidate exceeds ten seconds. Reject it without deployment.
+- A narrower query candidate remains under investigation. No new Production migration or configuration change executes.
+- Separate function-statistics access is also blocked by tool policy. No alternate access follows that denial.
+- Final CRM read proves 5,010 references, unique properties and unique businesses. Category revision remains zero with no active snapshot.
+- Browser runtime reports no connected browsers. Founder receives a non-blocking request to open and sign into CRM.
+- All 5,010 hotels remain intact. No committed Category import occurs. Contact enrichment remains paused.
+- Use /opt/homebrew/bin/supabase explicitly. Unqualified supabase from CRM resolves to a different Bun CLI with telemetry errors.
+- Remaining work: identify exact hosted failure, correct it through reviewed authority, certify dry evidence, activate, reconcile and verify browser workflows.
+- Second pass complete. These receipts preserve the rollback restriction, policy denial and distinction between query timing and HTTP evidence.
+
+## Reviewed query correction and diagnostics
+
+- A single guarded graph removes repeated pair computation. Hash provenance remains in the same-statement fail-closed authority check.
+- The pair query keeps exact current-text equality and NULL exclusion. A separate text-comparison experiment gives no decisive improvement.
+- The parent rejects an early-return implementation that leaves unreachable old query code. The final implementation replaces the repeated graph cleanly.
+- Production branch fix/crm-category-query-work contains commit 6b3e16f and six intended files.
+- Forward SHA: 388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e.
+- Rollback SHA: 2d03454d9a467385bc1ac1366f37d86d772c75a2cb1008c23cef0cf3fa9551d9.
+- Test SHA: ed185c6fe8be7384f4d2dc242b1d1ccf27bb9c2f4086924ec8c97bebddf96e41.
+- All 28 read-only cursor replays pass three seconds. Every page preserves the four canonical digests and actual five-field response.
+- The exact migration also passes independent snapshot, first, middle, final-nine and empty response replay.
+- Independent snapshot execution reaches 2,831.551 milliseconds. Remaining headroom is an explicit risk, not hidden by larger limits.
+- Twelve local fault cases preserve existing semantics. The parent reruns actual migration, rollback, metadata and direct anonymous authentication tests.
+- Local temporary databases use pinned loopback and host-address settings. Each successful harness removes only its own test database.
+- Existing bounded Production RPC error types now cover Category failures. Seven focused Deno tests and independent review pass.
+- CRM branch fix/category-read-status preserves only exact allowlisted HTTP and RPC codes in task outcomes.
+- Six unit tests and independent review pass. Malicious suffixes, URLs, credentials and SQLSTATE57014 remain generic.
+- Task lease, retry and finishedAt:null completed-outcome protection remain unchanged.
+- CRM deployment evidence and earlier memory save commit 7c95faa push successfully through normal hooks.
+- Production correction remains undeployed. New exact migration and unchanged-baseline CI exceptions require separate authority from PR70.
+- Browser discovery still returns an empty list. No unsupported browser, cookie or session-store fallback occurs.
+- The draft-PR skill supplies the PR format. Its separate pr-description reference is absent, so the included format is used.
+- Second pass complete. New records include independent review corrections, explicit timeout headroom and the exact frozen artifacts.
+- Production PR71 is ready at 6b3e16fb325715197b757e6d6252128d033f1fa0. Independent CI34107196023 matches baseline34098895378 exactly.
+- Its four unchanged groups remain authentication3, advisories14, inventory118 and secret findings9. CRM authentication audits pass.
+- The founder receives a non-blocking request for PR71's exact migration and unchanged-baseline exception. No new exception arrives yet.
+- CRM PR34 opens at bd614e15271641c3a417ad6f1c83f800127a31e6. Independent runtime review, CI34107921926 and three previews pass.
+- The first push hook catches missing Category tables in localhost:5432/crm_test. No hook bypass occurs.
+- The guarded db:test command initially receives no environment through the workspace runner and exits without changes.
+- A wrapper validates the explicit local TEST_DATABASE_URL, then passes it to the unchanged guarded command without printing credentials.
+- The disposable crm_test database rebuilds and applies all migrations. Live CRM and Production are untouched by this test repair.
+- The normal push retry passes all 1,313 tests, lint and type checks.
+- Independent final review catches a stale Pending sentence. This receipt replaces it with the PR34 deployment gate.
 
 ## Evidence
 

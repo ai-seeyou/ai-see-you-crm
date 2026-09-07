@@ -1,11 +1,19 @@
 # Governed Core Category delivery
 
-Status: Production Category contract deployed. Hotel-feed correction and CRM release remain pending. Category filtering is not live.
+Status: Hotel reconciliation and CRM deployment pass. Category activation remains blocked by a failed hosted read.
 
 Current execution evidence: [Category release execution](./category-release-execution-2026-09-07.md).
 The founder approves PR67 and the hotel eligibility correction after the predeployment receipt below.
 
-## Verification receipt
+Current CRM contains 5,010 certified hotels. All original 4,996 references remain intact.
+Production PR70 deploys its exact reviewed migration after founder approval. Independent source verification passes.
+The approved rotation repair also aligns the obsolete Category verifier. No credential leaves its deployed boundary.
+The new dry run exhausts three attempts without evidence. Category remains inactive.
+Independent deployed Edge source verification passes. Hosted read diagnosis continues.
+CRM PR33 merges at `621ce420137f1f0abc5f0c4cf5506c70a8391e1c` with request timeouts and saved failure outcomes.
+Browser certification remains pending. Contact enrichment remains paused.
+
+## Historical predeployment verification receipt
 
 The complete CRM suite passes 1,300 tests. Monorepo type checking and focused lint checks pass.
 Independent API tests cover assignments, combined dimensions, retired snapshots, stale references and identity relinking.
@@ -33,7 +41,7 @@ Production head `16b1d49e0f567062870221abf71ed0da16cc3923` adds the missing gove
 The inventory correction passes independent review. The exact migration hash remains unchanged.
 CI run `34085705265` tests that corrected head. No baseline exception covers a new regression.
 
-## Separate hotel feed discrepancy
+## Historical hotel feed discrepancy, now resolved
 
 CRM retains 4,996 confirmed, non-stale imported hotel references.
 The existing Production hotel view currently returns 1,948 properties and omits 3,048 existing CRM hotels.
@@ -150,3 +158,7 @@ Remove the variable after the durable task completes.
 The minute dispatcher creates and runs these tasks inside the deployed agent.
 The payload contains no endpoint, token or database credential.
 A queue failure logs a fixed error and does not stop unrelated dispatch work.
+
+The reviewed CRM-only operator SQL also queues these exact validated task payloads through the existing durable dispatcher.
+The executed dry run uses this path without changing environment variables or retrieving the Production token.
+Use a new dry-run request after the source correction. Do not restart the fenced failed task.

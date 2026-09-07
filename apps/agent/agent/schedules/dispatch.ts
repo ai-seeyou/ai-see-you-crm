@@ -7,6 +7,7 @@ import {
 	queueDueAgentRuns,
 } from "../lib/custom-agent-dispatch";
 import { brief, drainAll, taskAuth } from "../lib/dispatch";
+import { queueProductionCategoryRequest } from "../lib/production-category-task";
 import { reconcileStaleTasks } from "../lib/stale-tasks";
 
 export default defineSchedule({
@@ -17,6 +18,11 @@ export default defineSchedule({
 				sweepBlankFacts(),
 
 				(async () => {
+					await queueProductionCategoryRequest().catch(() => {
+						console.error(
+							"[agent] Production Category request could not be queued.",
+						);
+					});
 					await reconcileStaleTasks();
 					await drainAll((task) =>
 						receive(crm, {

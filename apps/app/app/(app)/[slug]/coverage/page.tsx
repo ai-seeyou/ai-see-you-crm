@@ -67,6 +67,7 @@ async function Coverage({
 					countryCodes: values[COVERAGE_PARAM.countryCodes],
 					destinationIds: values[COVERAGE_PARAM.destinationIds],
 					hotelGroupIds: values[COVERAGE_PARAM.hotelGroupIds],
+					categoryIds: values[COVERAGE_PARAM.categoryIds],
 					missingRoleTypes: values[COVERAGE_PARAM.missingRoleTypes],
 					page: values[COVERAGE_PARAM.page],
 					scope: values[COVERAGE_PARAM.scope],

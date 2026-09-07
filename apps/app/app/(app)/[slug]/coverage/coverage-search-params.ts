@@ -19,6 +19,7 @@ export const COVERAGE_PARAM = {
 	countryCodes: "countryCodes",
 	destinationIds: "destinationIds",
 	hotelGroupIds: "hotelGroupIds",
+	categoryIds: "categoryIds",
 	missingRoleTypes: "missingRoleTypes",
 	page: SEARCH_PARAM.list.page,
 	scope: "coverageScope",
@@ -48,6 +49,9 @@ export const coverageParsers = {
 	[COVERAGE_PARAM.hotelGroupIds]: parseAsNativeArrayOf(
 		parseAsString,
 	).withDefault([]),
+	[COVERAGE_PARAM.categoryIds]: parseAsNativeArrayOf(parseAsString).withDefault(
+		[],
+	),
 	[COVERAGE_PARAM.missingRoleTypes]: parseAsNativeArrayOf(
 		parseAsString,
 	).withDefault([]),
@@ -67,6 +71,7 @@ export type CoverageValues = {
 	countryCodes: string[];
 	destinationIds: string[];
 	hotelGroupIds: string[];
+	categoryIds: string[];
 	missingRoleTypes: string[];
 	page: number;
 	scope: "all" | "targets";
@@ -84,6 +89,7 @@ export function coverageInputFrom(values: CoverageValues) {
 		countryCodes: values.countryCodes,
 		destinationIds: values.destinationIds,
 		hotelGroupIds: values.hotelGroupIds,
+		categoryIds: values.categoryIds,
 		missingRoleTypes: values.missingRoleTypes.filter((value) =>
 			Object.values(ContactRoleType).includes(value as ContactRoleType),
 		) as ContactRoleType[],

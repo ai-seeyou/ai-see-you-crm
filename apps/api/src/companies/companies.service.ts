@@ -50,6 +50,7 @@ import {
 } from "../trpc/list-input";
 import {
 	businessDimensionFilter,
+	coreCategoryMemberships,
 	countryLabel,
 	hotelGroupMemberships,
 	navigationFacets,
@@ -112,6 +113,7 @@ export class CompaniesService {
 
 	async list(input: CompanyListInput) {
 		const dimensions = {
+			categoryIds: input.categoryIds ?? [],
 			countryCodes: input.countryCodes ?? [],
 			destinationIds: input.destinationIds ?? [],
 			hotelGroupIds: input.hotelGroupIds ?? [],
@@ -204,6 +206,7 @@ export class CompaniesService {
 			: unpagedRows;
 		const rows = labelSort ? sortedRows.slice(skip, skip + take) : sortedRows;
 		const ids = rows.map((row) => row.id);
+		const categories = await coreCategoryMemberships(this.db, ids);
 		const [queued, tableFields] = await Promise.all([
 			this.queue.queuedCompanies(ids),
 			this.fields.tableValuesFor("COMPANY", ids),
@@ -211,6 +214,7 @@ export class CompaniesService {
 
 		return {
 			rows: rows.map((row) => ({
+				categories: categories.get(row.id) ?? [],
 				id: row.id,
 				name: row.name,
 				domain: row.domain,
@@ -827,6 +831,7 @@ export class CompaniesService {
 
 		and.push(
 			await businessDimensionFilter(this.db, {
+				categoryIds: input.categoryIds ?? [],
 				countryCodes: input.countryCodes ?? [],
 				destinationIds: input.destinationIds ?? [],
 				hotelGroupIds: input.hotelGroupIds ?? [],

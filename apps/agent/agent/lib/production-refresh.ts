@@ -1,6 +1,7 @@
 import { db, type Prisma } from "@crm/db";
 import { PRIORITY } from "@crm/db/agent-tasks";
 import { z } from "zod";
+import { syncProductionCategories } from "./production-category-sync";
 import { ProductionReadClient } from "./production-client";
 import { importProductionHotels } from "./production-import";
 import { PRODUCTION_IMPORT } from "./production-import-config";
@@ -26,6 +27,11 @@ const payloadSchema = z
 	})
 	.strict();
 export type ProductionRefreshPayload = z.infer<typeof payloadSchema>;
+export function shouldSyncProductionCategories(
+	payload: ProductionRefreshPayload,
+) {
+	return !payload.dryRun && !payload.destination && !payload.universeGate;
+}
 const subjectFor = (payload: ProductionRefreshPayload) => {
 	if (payload.universeGate === "DRY_RUN")
 		return "production-hotel-universe-full-proving:dry-run";
@@ -337,9 +343,10 @@ export async function runProductionRefresh(
 		where: { id: taskId },
 		data: { leasedUntil: new Date(Date.now() + PRODUCTION_IMPORT.leaseMs) },
 	});
-	const result = await importProductionHotels(
-		client ?? new ProductionReadClient(endpoint ?? "", token ?? ""),
-		{
+	const productionClient =
+		client ?? new ProductionReadClient(endpoint ?? "", token ?? "");
+	const { result, categoryResult } = await (async () => {
+		const result = await importProductionHotels(productionClient, {
 			dryRun: payload.dryRun ?? false,
 			fullReconciliation: payload.fullReconciliation,
 			destination: payload.destination,
@@ -349,8 +356,12 @@ export async function runProductionRefresh(
 			expectedProductionIds: payload.expectedProductionIds,
 			expectedProductionIdDigest: payload.expectedProductionIdDigest,
 			expectedManifestDigest: payload.expectedManifestDigest,
-		},
-	).catch(async (error) => {
+		});
+		const categoryResult = shouldSyncProductionCategories(payload)
+			? await syncProductionCategories(productionClient)
+			: null;
+		return { result, categoryResult };
+	})().catch(async (error) => {
 		const retryAt = new Date(Date.now() + PRODUCTION_IMPORT.retryMs);
 		await db.agentTask.updateMany({
 			where: { id: taskId, finishedAt: null },
@@ -359,5 +370,8 @@ export async function runProductionRefresh(
 		throw error;
 	});
 	const action = payload.dryRun ? "Validated" : "Processed";
-	return `${action} ${result.qualifying} qualifying hotels: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged. Snapshot ${result.snapshot}.`;
+	const categorySummary = categoryResult
+		? ` Categories: ${categoryResult.memberships} memberships, ${categoryResult.linkedProperties} linked properties, ${categoryResult.unresolvedProperties} unresolved properties.`
+		: "";
+	return `${action} ${result.qualifying} qualifying hotels: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged. Snapshot ${result.snapshot}.${categorySummary}`;
 }

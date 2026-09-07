@@ -9,6 +9,10 @@ import { markRunning, settle } from "./enrichment";
 import { collapsing, runLimited } from "./pool";
 import { runPortrait } from "./portrait";
 import {
+	productionCategoryTaskPayload,
+	runProductionCategoryTask,
+} from "./production-category-task";
+import {
 	productionRefreshPayload,
 	runProductionRefresh,
 } from "./production-refresh";
@@ -138,6 +142,17 @@ async function handleDirect(task: LeasedTask): Promise<void> {
 			await runProductionRefresh(
 				task.id,
 				productionRefreshPayload(task.payload),
+			),
+		);
+		return;
+	}
+
+	if (task.kind === "production-category-sync") {
+		await completeTask(
+			task.id,
+			await runProductionCategoryTask(
+				task.id,
+				productionCategoryTaskPayload(task.payload),
 			),
 		);
 		return;

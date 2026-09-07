@@ -17,6 +17,7 @@
 		"./field-templates": "./src/field-templates.ts",
 		"./relationship-evidence": "./src/relationship-evidence.ts",
 		"./production-business": "./src/production-business.ts",
+		"./production-category": "./src/production-category.ts",
 		"./saved-view": "./src/saved-view.ts",
 		"./temporal": "./src/temporal.ts"
 	},

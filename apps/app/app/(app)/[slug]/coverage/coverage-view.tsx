@@ -101,6 +101,7 @@ export function CoverageView() {
 				countryCodes: values[COVERAGE_PARAM.countryCodes],
 				destinationIds: values[COVERAGE_PARAM.destinationIds],
 				hotelGroupIds: values[COVERAGE_PARAM.hotelGroupIds],
+				categoryIds: values[COVERAGE_PARAM.categoryIds],
 				missingRoleTypes: values[COVERAGE_PARAM.missingRoleTypes],
 				page: values[COVERAGE_PARAM.page],
 				scope: values[COVERAGE_PARAM.scope],
@@ -117,6 +118,7 @@ export function CoverageView() {
 		[COVERAGE_PARAM.countryCodes]: values[COVERAGE_PARAM.countryCodes],
 		[COVERAGE_PARAM.destinationIds]: values[COVERAGE_PARAM.destinationIds],
 		[COVERAGE_PARAM.hotelGroupIds]: values[COVERAGE_PARAM.hotelGroupIds],
+		[COVERAGE_PARAM.categoryIds]: values[COVERAGE_PARAM.categoryIds],
 		[COVERAGE_PARAM.missingRoleTypes]: values[COVERAGE_PARAM.missingRoleTypes],
 	};
 	const featuredFacets = [
@@ -144,6 +146,15 @@ export function CoverageView() {
 			options: (facetData?.hotelGroups ?? []).map((group) => ({
 				value: group.id,
 				label: group.name,
+			})),
+		},
+		{
+			id: COVERAGE_PARAM.categoryIds,
+			label: "Category",
+			searchable: true,
+			options: (facetData?.categories ?? []).map((category) => ({
+				value: category.id,
+				label: category.name,
 			})),
 		},
 		{

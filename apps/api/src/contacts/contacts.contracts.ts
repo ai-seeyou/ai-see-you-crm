@@ -25,6 +25,7 @@ export const contactListInput = listInput.extend({
 	countryCodes: countryCodesFilter.default([]),
 	destinationIds: canonicalIdsFilter.default([]),
 	hotelGroupIds: canonicalIdsFilter.default([]),
+	categoryIds: canonicalIdsFilter.default([]),
 	owner: z.array(z.string()).default([]),
 	company: z.array(z.string()).default([]),
 	source: z.array(z.string()).default([]),
@@ -40,12 +41,12 @@ export const contactListInput = listInput.extend({
 type ParsedContactListInput = z.infer<typeof contactListInput>;
 export type ContactListInput = Omit<
 	ParsedContactListInput,
-	"countryCodes" | "destinationIds" | "hotelGroupIds"
+	"countryCodes" | "destinationIds" | "hotelGroupIds" | "categoryIds"
 > &
 	Partial<
 		Pick<
 			ParsedContactListInput,
-			"countryCodes" | "destinationIds" | "hotelGroupIds"
+			"countryCodes" | "destinationIds" | "hotelGroupIds" | "categoryIds"
 		>
 	>;
 

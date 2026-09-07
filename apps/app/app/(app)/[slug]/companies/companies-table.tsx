@@ -116,6 +116,20 @@ export const COMPANY_COLUMNS: DataTableColumn<CompanyRow>[] = [
 			),
 	},
 	{
+		id: "categories",
+		header: "Categories",
+		width: "w-[18%]",
+		hideBelow: "lg",
+		cell: (row) =>
+			row.categories.length > 0 ? (
+				<span className="truncate">
+					{row.categories.map((category) => category.name).join(", ")}
+				</span>
+			) : (
+				<EmptyCellValue />
+			),
+	},
+	{
 		id: "entityType",
 		header: "Type",
 		width: "w-[14%]",
@@ -298,6 +312,16 @@ export function CompaniesTable() {
 			options: (navigationFacets?.hotelGroups ?? []).map((group) => ({
 				value: group.id,
 				label: group.name,
+			})),
+		},
+		{
+			id: "categoryIds",
+			label: "Category",
+			featured: true,
+			searchable: true,
+			options: (navigationFacets?.categories ?? []).map((category) => ({
+				value: category.id,
+				label: category.name,
 			})),
 		},
 		{

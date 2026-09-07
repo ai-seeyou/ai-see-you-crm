@@ -639,6 +639,7 @@ model Company {
   enrichmentError  String?
   enrichment       CompanyEnrichment?
   productionProfile ProductionBusinessProfile?
+  categoryMemberships ProductionCategoryMembership[]
 
   source RecordSource @default(MANUAL)
 
@@ -700,6 +701,58 @@ model ProductionBusinessProfile {
   @@index([destinationProductionId])
   @@index([localityProductionId])
   @@map("productionBusinessProfile")
+}
+
+model ProductionCategorySnapshot {
+  id String @id
+  manifest Json
+  membershipDigest String
+  propertyCount Int
+  membershipCount Int
+  linkedPropertyCount Int
+  unresolvedPropertyCount Int
+  createdAt DateTime @default(now())
+  categories ProductionCoreCategory[]
+  memberships ProductionCategoryMembership[]
+  activeIn ProductionCategoryState[]
+
+  @@map("productionCategorySnapshot")
+}
+
+model ProductionCategoryState {
+  id String @id
+  snapshotId String?
+  snapshot ProductionCategorySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  revision Int @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("productionCategoryState")
+}
+
+model ProductionCoreCategory {
+  snapshotId String
+  snapshot ProductionCategorySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  categoryId String
+  name String
+  memberships ProductionCategoryMembership[]
+
+  @@id([snapshotId, categoryId])
+  @@map("productionCoreCategory")
+}
+
+model ProductionCategoryMembership {
+  snapshotId String
+  snapshot ProductionCategorySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  productionPropertyId String
+  categoryId String
+  category ProductionCoreCategory @relation(fields: [snapshotId, categoryId], references: [snapshotId, categoryId], onDelete: Cascade)
+  companyId String?
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@id([snapshotId, productionPropertyId, categoryId])
+  @@index([companyId, snapshotId, categoryId], map: "categoryMembership_company_snapshot_category_idx")
+  @@index([snapshotId, categoryId, companyId], map: "categoryMembership_snapshot_category_company_idx")
+  @@map("productionCategoryMembership")
 }
 
 model CompanyEnrichment {

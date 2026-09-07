@@ -127,6 +127,7 @@ export class ContactsService {
 
 	async list(input: ContactListInput) {
 		const dimensions = {
+			categoryIds: input.categoryIds ?? [],
 			countryCodes: input.countryCodes ?? [],
 			destinationIds: input.destinationIds ?? [],
 			hotelGroupIds: input.hotelGroupIds ?? [],
@@ -938,6 +939,7 @@ export class ContactsService {
 		}
 		if (input.persona.length > 0) and.push({ function: { in: input.persona } });
 		const dimensionsSelected =
+			(input.categoryIds?.length ?? 0) > 0 ||
 			(input.countryCodes?.length ?? 0) > 0 ||
 			(input.destinationIds?.length ?? 0) > 0 ||
 			(input.hotelGroupIds?.length ?? 0) > 0;
@@ -952,6 +954,7 @@ export class ContactsService {
 							AND: [
 								{ archivedAt: null },
 								await businessDimensionFilter(this.db, {
+									categoryIds: input.categoryIds ?? [],
 									countryCodes: input.countryCodes ?? [],
 									destinationIds: input.destinationIds ?? [],
 									hotelGroupIds: input.hotelGroupIds ?? [],

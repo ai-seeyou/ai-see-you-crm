@@ -1,4 +1,8 @@
 import { productionBusinessPageSchema } from "@crm/validation/production-business";
+import {
+	productionCategoryMembershipPageSchema,
+	productionCategorySnapshotSchema,
+} from "@crm/validation/production-category";
 
 export type ProductionPageRequest = {
 	destination?: string;
@@ -30,6 +34,32 @@ export class ProductionReadClient {
 			url.searchParams.set("updatedSince", input.updatedSince);
 		if (input.cursor) url.searchParams.set("cursor", input.cursor);
 		if (input.snapshot) url.searchParams.set("snapshot", input.snapshot);
+		const response = await this.get(url);
+		return productionBusinessPageSchema.parse(await response.json());
+	}
+
+	async categorySnapshot() {
+		const url = new URL(this.endpoint);
+		url.searchParams.set("resource", "snapshot");
+		const response = await this.get(url);
+		return productionCategorySnapshotSchema.parse(await response.json());
+	}
+
+	async categoryMembershipPage(input: {
+		snapshotId: string;
+		cursor?: string;
+		limit: number;
+	}) {
+		const url = new URL(this.endpoint);
+		url.searchParams.set("resource", "memberships");
+		url.searchParams.set("snapshotId", input.snapshotId);
+		url.searchParams.set("limit", String(input.limit));
+		if (input.cursor) url.searchParams.set("cursor", input.cursor);
+		const response = await this.get(url);
+		return productionCategoryMembershipPageSchema.parse(await response.json());
+	}
+
+	private async get(url: URL) {
 		const response = await this.request(url, {
 			method: "GET",
 			headers: { authorization: `Bearer ${this.token}` },
@@ -43,6 +73,6 @@ export class ProductionReadClient {
 				throw new Error(`Production read failed with ${failureCode}`);
 			throw new Error(`Production read failed with HTTP ${response.status}`);
 		}
-		return productionBusinessPageSchema.parse(await response.json());
+		return response;
 	}
 }

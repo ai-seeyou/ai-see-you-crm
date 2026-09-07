@@ -4,9 +4,20 @@
 
 **Context:** Governed Core Category navigation enhancement. CRM contains 5,010 certified hotels and preserves all original 4,996 mappings.
 
-**Current:** CRM preserves all 5,010 certified hotels and all 4,996 original mappings. All three live CRM deployments remain READY at PR34 merge8c529b85. Founder approves PR71. Its exact migration deploys at merge2ce4377d with source27c4d3a5 and unchanged permissions. Edge version8 restores the reviewed opaque-token gateway setting after a coordinator deployment error. Category remains inactive. Fresh dry taskfd77329e records HTTP401 on attempt1, then RPC_HTTP_500 on attempt2 after gateway restoration. Cold queries exceed the existing three-second limit. A function-specific ten-second timeout correction is under review. Its separate exception is requested, not yet approved. Browser certification has no connected browser. Contact enrichment remains paused.
+**Current:** Category data is active and independently certified on8 September2026. PR80 merges at402126e6 and its exact approved function-only ten-second migration deploys. Complete live dry and commit runs each pass29GETrequests on their first attempt. Nine Categories cover4,272 hotels through13,184 memberships. All5,010hotel identities remain intact. Snapshot54795ad0 is active at revision1. A deployed rerun uses one GET and leaves all Category row fingerprints unchanged. The previous HTTP500 does not recur. All three CRM domains serve reviewed commit8c529b85. Browser discovery remains empty. Positive live Contact results lack qualifying assignments. Contact enrichment remains paused pending final browser/workflow certification.
 
 **Pending:**
+
+- Open and sign into crm.ai-seeyou.com in the supported Codex browser. The founder receives an asynchronous request.
+- Verify Country/Destination/Group/Category combinations in Businesses, Contacts and missing-role Coverage through the actual UI.
+- Do not claim SQL acceptance replaces browser certification. Do not invent live contact responsibilities to create positive results.
+- Keep contact enrichment paused until the complete live release gate passes.
+- Non-blocking optimisation taskCAT-PERF-001 is OPEN in docs/core-category-delivery-2026-09-07.md. GitHub Issues is disabled.
+- Preserve Production no-write capability, scoped token isolation, nine governed Categories and accepted/sealed recommendation appearance semantics.
+- Separate prior security cleanup remains: expired temporary role retirement, PR66 migration-version collision and unregistered migration ledger entries.
+- Never repeat deployed migrations to repair history. Existing specific approval boundaries still apply.
+
+**Historical programme record:**
 
 - Daily incremental and weekly full reconciliation schedules are enabled through the completed-import certification gate.
 - Complete commercial workflow acceptance with the live hotel universe.
@@ -55,4 +66,4 @@
 - Production retains four pre-existing baseline CI failure categories. The PR 65 exception does not waive new regressions.
 - Preserve founder-only access, Production authority, no private-mail processing, and no outbound email.
 
-**Evidence:** docs/category-release-execution-2026-09-07.md, docs/core-category-delivery-2026-09-07.md and memory/sessions/2026-09-07-category-release.md. Earlier implementation, Stage 0, navigation and import records remain unchanged.
+**Evidence:** Latest memory/sessions/2026-09-08-category-activation.md and docs/core-category-delivery-2026-09-07.md. Earlier docs/category-release-execution-2026-09-07.md and memory/sessions/2026-09-07-category-release.md remain historical receipts.

@@ -121,7 +121,7 @@ function taskEvidence(result: ProductionCategorySyncResult) {
 	};
 }
 
-function failureOutcome(error: unknown) {
+function failureOutcome(error: Error | null) {
 	if (
 		error instanceof DOMException &&
 		(error.name === "TimeoutError" || error.name === "AbortError")
@@ -136,7 +136,7 @@ function failureOutcome(error: unknown) {
 	return "Production Category attempt failed: UNKNOWN.";
 }
 
-async function saveFailure(taskId: string, error: unknown) {
+async function saveFailure(taskId: string, error: Error | null) {
 	await db.agentTask.updateMany({
 		where: { id: taskId, finishedAt: null },
 		data: { outcome: failureOutcome(error) },
@@ -157,7 +157,9 @@ export async function runProductionCategoryTask(
 			sync,
 		);
 	} catch (error) {
-		await saveFailure(taskId, error).catch(() => {});
+		await saveFailure(taskId, error instanceof Error ? error : null).catch(
+			() => {},
+		);
 		throw error;
 	}
 }

@@ -74,7 +74,13 @@ Future token rotation must update all three verifier hashes atomically.
 ## Pending items
 
 - Production draft PR67 is pushed at the exact reviewed commit: https://github.com/ai-seeyou/tri/pull/67.
-- PR67 reports the four existing baseline CI failures. The CRM function authentication audit passes. No new Category failure appears.
+- PR67 initially reports four failing categories. Independent full-signature comparison catches one new unclassified-table inventory error.
+- Correct crm_category_prompt_authorities classification in scripts/compliance/inventory-config.json at Production head 16b1d49e0f567062870221abf71ed0da16cc3923.
+- The classification fix passes independent review. Migration hash ee3d2dba remains unchanged. CI run 34085705265 tests the corrected head.
+- Authentication failures, fourteen advisory IDs and nine secret-scan signatures remain unchanged.
+- CRM PR32 head 150ce1c passes CI and all three Vercel previews.
+- Independent live safeguard verification confirms HTTP 200 root response and all 4,996 non-stale references.
+- Root response does not certify dispatcher health. No internal health token is retrieved.
 - Do not merge or execute its migration without the required separate exceptions.
 - Complete CRM PR32 CI. Keep it draft until the Production path and live dry run pass.
 - Obtain exact Production migration authority and a scoped CI exception only for independently confirmed baseline failures.

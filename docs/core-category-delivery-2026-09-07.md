@@ -22,8 +22,13 @@ The Category migration requires a separate exact founder exception before Produc
 No hosted mutation occurs during this implementation and review work.
 Production draft PR: https://github.com/ai-seeyou/tri/pull/67.
 CRM draft PR: https://github.com/ai-seeyou/ai-see-you-crm/pull/32.
-Production PR67 reports the same four baseline CI failure categories. Its CRM authentication audit passes.
-The Production implementer reports no new Category failure. The exception still requires founder authority.
+Production PR67 initially reports the same four failing CI categories. Its CRM authentication audit passes.
+Independent comparison finds one new inventory diagnostic inside the existing failing category.
+The new authority table lacks inventory classification. This regression requires correction, not a baseline waiver.
+Authentication failures, fourteen advisory IDs and nine secret-scan signatures remain unchanged.
+Production head `16b1d49e0f567062870221abf71ed0da16cc3923` adds the missing governed inventory classification.
+The inventory correction passes independent review. The exact migration hash remains unchanged.
+CI run `34085705265` tests that corrected head. No baseline exception covers a new regression.
 
 ## Separate hotel feed discrepancy
 

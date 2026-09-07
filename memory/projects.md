@@ -25,7 +25,11 @@
 - Category remains inactive. Diagnose the actual hosted HTTP failure before another dry run or activation.
 - Independent deployed Edge bundle audit matches all six reviewed runtime files. Stale deployment is excluded as the cause.
 - Exact first, middle and terminal page computations exceed the anonymous three-second timeout. First-page work takes 5.868 seconds.
-- Optimise repeated read-query work without changing the evidence rules, permissions or unrelated consumers. No correction deploys yet.
+- Reviewed Production correction 6b3e16f preserves rules, permissions and all digests. Its migration and rollback pass independent tests.
+- Migration SHA is 388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e. No correction deploys yet.
+- All 28 cursor replays pass three seconds. Exact snapshot headroom reaches 168 milliseconds, so require the deployed complete dry run.
+- Obtain the new exact migration and unchanged-baseline CI exception after PR review. PR70's exception remains specific to PR70.
+- CRM branch fix/category-read-status carries independently reviewed bounded task error codes. Complete normal CI and deployment.
 - Complete signed-in browser acceptance for Businesses, Contacts and Coverage. Do not substitute SQL tests for browser certification.
 - Use only crm-agent for Production GET calls. PRODUCTION_CATEGORY_SYNC_REQUEST queues bounded dry-run/commit tasks without downloading tokens.
 - Browser runtime finds no connected browser. Founder receives a non-blocking request to open and sign into the CRM in Codex's browser.

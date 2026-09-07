@@ -219,6 +219,28 @@ Independent EXPLAIN attributes the cost to repeated pair computation and dedupli
 A blanket-materialization candidate exceeds ten seconds and is rejected without deployment.
 No speculative performance correction changes Production.
 
+## Reviewed performance correction
+
+Production commit `6b3e16f` contains the independently reviewed single-graph correction and bounded RPC error handling.
+Forward migration SHA-256: `388d7922d7ad53ce01204d0a564dd35147c090ba0570eeb2070f419bcdfe470e`.
+Rollback SHA-256: `2d03454d9a467385bc1ac1366f37d86d772c75a2cb1008c23cef0cf3fa9551d9`.
+Regression test SHA-256: `ed185c6fe8be7384f4d2dc242b1d1ccf27bb9c2f4086924ec8c97bebddf96e41`.
+All 28 cursor replays pass the unchanged three-second statement limit, with unchanged digests and membership fields.
+The complete sequence covers every page, the final 184 records and an empty request after the last record.
+Exact migration replay also validates the snapshot, final-nine and empty responses through the actual handler and CRM schemas.
+The slowest independently measured snapshot leaves 168 milliseconds of headroom. The deployed complete dry run remains mandatory.
+Local regression tests pass both exact source baselines, current verifier preservation, metadata, rollback and repeated-execution rejection.
+Anonymous GET succeeds. POST, missing capability and wrong capability fail.
+Twelve independent graph fault cases preserve the original semantics.
+The parent independently reruns the complete local regression and seven bounded RPC error tests successfully.
+The parent rejects an unreachable duplicate query branch during review. The final function contains one graph and no dead fallback.
+No performance migration or related Edge correction deploys at this stage.
+The exact new migration and unchanged-baseline CI exception require separate founder authority from PR70.
+
+CRM task outcomes now have a separately reviewed, pending change to retain only allowlisted HTTP and RPC status codes.
+Arbitrary errors, private suffixes and unrecognised SQLSTATE values retain the generic classification.
+Retry, lease and completed-outcome protection remain unchanged. No raw response body or credential is stored.
+
 ## Browser gate
 
 The Browser skill initialises successfully but finds no connected browser.

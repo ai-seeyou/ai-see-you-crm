@@ -19,6 +19,7 @@ export const coverageInput = z.object({
 	countryCodes: countryCodesFilter.default([]),
 	destinationIds: canonicalIdsFilter.default([]),
 	hotelGroupIds: canonicalIdsFilter.default([]),
+	categoryIds: canonicalIdsFilter.default([]),
 	missingRoleTypes: z.array(contactRoleType).max(10).default([]),
 	includeCovered: z.boolean().default(false),
 });
@@ -31,6 +32,7 @@ type NewCoverageKeys =
 	| "countryCodes"
 	| "destinationIds"
 	| "hotelGroupIds"
+	| "categoryIds"
 	| "missingRoleTypes";
 export type CoverageInput = Omit<ParsedCoverageInput, NewCoverageKeys> &
 	Partial<Pick<ParsedCoverageInput, NewCoverageKeys>>;

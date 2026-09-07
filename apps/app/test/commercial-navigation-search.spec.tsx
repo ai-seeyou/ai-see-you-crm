@@ -16,6 +16,7 @@ const dimensions = {
 	countryCodes: ["AU", "GB"],
 	destinationIds: ["destination-sydney"],
 	hotelGroupIds: ["group-accor"],
+	categoryIds: ["RE-0001", "RE-0002"],
 };
 
 describe("commercial navigation search state", () => {
@@ -26,6 +27,7 @@ describe("commercial navigation search state", () => {
 		expect(input.countryCodes).toEqual(dimensions.countryCodes);
 		expect(input.destinationIds).toEqual(dimensions.destinationIds);
 		expect(input.hotelGroupIds).toEqual(dimensions.hotelGroupIds);
+		expect(input.categoryIds).toEqual(dimensions.categoryIds);
 	});
 
 	it("passes contact dimensions from the URL to the list query", async () => {
@@ -35,6 +37,7 @@ describe("commercial navigation search state", () => {
 		expect(input.countryCodes).toEqual(dimensions.countryCodes);
 		expect(input.destinationIds).toEqual(dimensions.destinationIds);
 		expect(input.hotelGroupIds).toEqual(dimensions.hotelGroupIds);
+		expect(input.categoryIds).toEqual(dimensions.categoryIds);
 	});
 
 	it("applies saved dimensions and sorting to URL state", () => {
@@ -53,6 +56,7 @@ describe("commercial navigation search state", () => {
 		expect(restored.countryCodes).toEqual(["AU", "GB"]);
 		expect(restored.destinationIds).toEqual(["destination-sydney"]);
 		expect(restored.hotelGroupIds).toEqual(["group-accor"]);
+		expect(restored.categoryIds).toEqual(["RE-0001", "RE-0002"]);
 		expect(restored.sort).toBe("destination");
 		expect(restored.dir).toBe("asc");
 	});
@@ -62,28 +66,35 @@ describe("commercial navigation search state", () => {
 			COMPANY_COLUMNS.map((column) => [column.id, column]),
 		);
 
-		for (const id of ["name", "country", "destination", "hotelGroup"]) {
+		for (const id of [
+			"name",
+			"country",
+			"destination",
+			"hotelGroup",
+			"categories",
+		]) {
 			expect(columns.get(id)?.defaultHidden).not.toBe(true);
 		}
 	});
 
-	it("renders featured multi-select filters as named controls", () => {
+	it("renders the category multi-select as a named control", () => {
 		const markup = renderToStaticMarkup(
 			<DataTableFacetFilter
 				facet={{
-					id: "countryCodes",
-					label: "Country",
+					id: "categoryIds",
+					label: "Category",
+					searchable: true,
 					options: [
-						{ value: "AU", label: "Australia" },
-						{ value: "GB", label: "United Kingdom" },
+						{ value: "RE-0001", label: "Luxury" },
+						{ value: "RE-0002", label: "Family" },
 					],
 				}}
-				selected={["AU", "GB"]}
+				selected={["RE-0001", "RE-0002"]}
 				onChange={() => undefined}
 			/>,
 		);
 
-		expect(markup).toContain("Country (2)");
+		expect(markup).toContain("Category (2)");
 	});
 
 	it("loads the complete coverage scope from the URL", async () => {
@@ -100,6 +111,7 @@ describe("commercial navigation search state", () => {
 			countryCodes: values[COVERAGE_PARAM.countryCodes],
 			destinationIds: values[COVERAGE_PARAM.destinationIds],
 			hotelGroupIds: values[COVERAGE_PARAM.hotelGroupIds],
+			categoryIds: values[COVERAGE_PARAM.categoryIds],
 			missingRoleTypes: values[COVERAGE_PARAM.missingRoleTypes],
 			page: values[COVERAGE_PARAM.page],
 			scope: values[COVERAGE_PARAM.scope],

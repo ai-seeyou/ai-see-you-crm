@@ -29,6 +29,7 @@ export const companyListInput = listInput.extend({
 	countryCodes: countryCodesFilter.default([]),
 	destinationIds: canonicalIdsFilter.default([]),
 	hotelGroupIds: canonicalIdsFilter.default([]),
+	categoryIds: canonicalIdsFilter.default([]),
 	owner: z.array(z.string()).default([]),
 	industry: z.array(z.string()).default([]),
 	vertical: z.array(z.string()).default([]),
@@ -43,12 +44,12 @@ export const companyListInput = listInput.extend({
 type ParsedCompanyListInput = z.infer<typeof companyListInput>;
 export type CompanyListInput = Omit<
 	ParsedCompanyListInput,
-	"countryCodes" | "destinationIds" | "hotelGroupIds"
+	"countryCodes" | "destinationIds" | "hotelGroupIds" | "categoryIds"
 > &
 	Partial<
 		Pick<
 			ParsedCompanyListInput,
-			"countryCodes" | "destinationIds" | "hotelGroupIds"
+			"countryCodes" | "destinationIds" | "hotelGroupIds" | "categoryIds"
 		>
 	>;
 
@@ -132,6 +133,9 @@ const companyVerticalOutput = z.object({
 });
 
 export const navigationFacetsOutput = z.object({
+	categories: z.array(
+		z.object({ id: z.string(), name: z.string(), count: z.number() }),
+	),
 	countries: z.array(
 		z.object({ code: z.string(), label: z.string(), count: z.number() }),
 	),
@@ -192,6 +196,7 @@ export const companyRowOutput = z.object({
 	countryLabel: z.string().nullable(),
 	destination: z.object({ id: z.string(), name: z.string() }).nullable(),
 	hotelGroups: z.array(z.object({ id: z.string(), name: z.string() })),
+	categories: z.array(z.object({ id: z.string(), name: z.string() })),
 	entityType: companyEntityType,
 	vertical: companyVerticalOutput.nullable(),
 	enrichmentStatus: companyEnrichmentStatus,

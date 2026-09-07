@@ -4,6 +4,7 @@ import {
 	ExternalRecordType,
 	ExternalSystem,
 	type Prisma,
+	Prisma as PrismaSql,
 	RelationshipType,
 } from "@crm/db";
 
@@ -11,6 +12,7 @@ export type BusinessDimensions = {
 	countryCodes: string[];
 	destinationIds: string[];
 	hotelGroupIds: string[];
+	categoryIds?: string[];
 };
 
 export const UNGROUPED_HOTELS = "ungrouped";
@@ -122,6 +124,20 @@ export async function businessDimensionFilter(
 	now = new Date(),
 ): Promise<Prisma.CompanyWhereInput> {
 	const and: Prisma.CompanyWhereInput[] = [];
+	if (dimensions.categoryIds?.length) {
+		and.push({
+			id: {
+				in: [
+					...new Set(
+						(await currentCategoryLinks(db, dimensions.categoryIds)).map(
+							(row) => row.companyId,
+						),
+					),
+				],
+			},
+			entityType: EntityType.HOTEL,
+		});
+	}
 	const countryCodes = dimensions.countryCodes.map((code) =>
 		code.toUpperCase(),
 	);
@@ -263,6 +279,7 @@ export async function navigationFacets(db: Db, now = new Date()) {
 			groupCounts.set(groupId, (groupCounts.get(groupId) ?? 0) + 1);
 	}
 	return {
+		categories: await categoryFacets(db, hotelIds),
 		countries: [...countryCounts]
 			.map(([code, count]) => ({ code, label: countryLabel(code), count }))
 			.sort((a, b) => a.label.localeCompare(b.label)),
@@ -352,3 +369,71 @@ export const activeAssignmentWhere = (
 	scope: { in: ["EMPLOYER", "RESPONSIBLE_FOR"] },
 	...activeAt(now),
 });
+
+async function categoryFacets(db: Db, hotelIds: string[]) {
+	const links = await currentCategoryLinks(db);
+	const activeIds = new Set(
+		(
+			await db.company.findMany({
+				where: { id: { in: hotelIds }, archivedAt: null },
+				select: { id: true },
+			})
+		).map(({ id }) => id),
+	);
+	const counts = new Map<string, number>();
+	for (const link of links) {
+		if (activeIds.has(link.companyId))
+			counts.set(link.categoryId, (counts.get(link.categoryId) ?? 0) + 1);
+	}
+	const categories = await db.productionCoreCategory.findMany({
+		where: { snapshot: { activeIn: { some: { id: "core" } } } },
+		select: {
+			categoryId: true,
+			name: true,
+		},
+		orderBy: { name: "asc" },
+	});
+	return categories.map(({ categoryId, name }) => ({
+		id: categoryId,
+		name,
+		count: counts.get(categoryId) ?? 0,
+	}));
+}
+
+export async function coreCategoryMemberships(db: Db, companyIds: string[]) {
+	if (companyIds.length === 0)
+		return new Map<string, { id: string; name: string }[]>();
+	const rows = await currentCategoryLinks(db, undefined, companyIds);
+	const result = new Map<string, { id: string; name: string }[]>();
+	for (const row of rows) {
+		if (!row.companyId) continue;
+		const categories = result.get(row.companyId) ?? [];
+		categories.push({ id: row.categoryId, name: row.name });
+		result.set(row.companyId, categories);
+	}
+	return result;
+}
+
+async function currentCategoryLinks(
+	db: Db,
+	categoryIds?: string[],
+	companyIds?: string[],
+) {
+	return db.$queryRaw<
+		{ companyId: string; categoryId: string; name: string }[]
+	>(PrismaSql.sql`
+		SELECT DISTINCT m."companyId", m."categoryId", cat."name"
+		FROM "productionCategoryState" s
+		JOIN "productionCategoryMembership" m ON m."snapshotId" = s."snapshotId"
+		JOIN "productionCoreCategory" cat ON cat."snapshotId" = m."snapshotId" AND cat."categoryId" = m."categoryId"
+		JOIN "company" c ON c."id" = m."companyId" AND c."entityType" = 'HOTEL'
+		JOIN "productionBusinessProfile" p ON p."companyId" = m."companyId" AND p."productionPropertyId" = m."productionPropertyId"
+		JOIN "externalRef" e ON e."recordId" = m."companyId" AND e."externalId" = m."productionPropertyId"
+		WHERE s."id" = 'core' AND e."recordType" = 'COMPANY' AND e."system" = 'PRODUCTION'
+		  AND e."matchMethod" = 'production-property-id' AND e."matchedBy" = 'IMPORT'
+		  AND e."confirmedAt" IS NOT NULL AND e."staleAt" IS NULL
+		  ${categoryIds?.length ? PrismaSql.sql`AND m."categoryId" IN (${PrismaSql.join(categoryIds)})` : PrismaSql.empty}
+		  ${companyIds?.length ? PrismaSql.sql`AND m."companyId" IN (${PrismaSql.join(companyIds)})` : PrismaSql.empty}
+		ORDER BY cat."name", m."companyId", m."categoryId"
+	`);
+}

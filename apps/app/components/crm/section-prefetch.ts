@@ -50,6 +50,7 @@ export function usePrefetchSection(): (section: string) => void {
 								countryCodes: [],
 								destinationIds: [],
 								hotelGroupIds: [],
+								categoryIds: [],
 								missingRoleTypes: [],
 								page: 1,
 								scope: "all",

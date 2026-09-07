@@ -14,6 +14,7 @@ export const companiesSearchParams = createListSearchParams({
 		"countryCodes",
 		"destinationIds",
 		"hotelGroupIds",
+		"categoryIds",
 	] as const,
 	facetValues: { entityType: Object.values(EntityType) },
 });

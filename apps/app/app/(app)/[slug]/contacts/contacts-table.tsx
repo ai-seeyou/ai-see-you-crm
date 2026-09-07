@@ -250,6 +250,16 @@ export function ContactsTable() {
 			})),
 		},
 		{
+			id: "categoryIds",
+			label: "Category",
+			featured: true,
+			searchable: true,
+			options: (navigationFacets?.categories ?? []).map((category) => ({
+				value: category.id,
+				label: category.name,
+			})),
+		},
+		{
 			id: "owner",
 			label: "Owner",
 			options: [

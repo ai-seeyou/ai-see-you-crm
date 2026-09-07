@@ -250,6 +250,7 @@ export class CoverageService {
 		}
 		and.push(
 			await businessDimensionFilter(this.db, {
+				categoryIds: input.categoryIds ?? [],
 				countryCodes: input.countryCodes ?? [],
 				destinationIds: input.destinationIds ?? [],
 				hotelGroupIds: input.hotelGroupIds ?? [],
